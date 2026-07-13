@@ -9,8 +9,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LRT Jakarta - Portal Peluang Bisnis",
-  description: "Portal peluang bisnis LRT Jakarta - Naming Right, Iklan, Retail, Vending Machine/ATM, Event & Aktivasi Offline",
+  title: "Prototype Portal Transportasi Umum (PKL) - LRT Jakarta",
+  description: "Prototype portal web layanan transportasi umum LRT Jakarta untuk informasi penumpang dan pengguna jasa (Proyek PKL)",
 };
 
 export default function RootLayout({

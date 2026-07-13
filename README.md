@@ -1,6 +1,6 @@
-# LRT Jakarta - Portal Peluang Bisnis
+# LRT Jakarta - Prototype Portal Transportasi Umum (Proyek PKL)
 
-Portal peluang bisnis LRT Jakarta untuk Naming Right, Iklan, Retail, Vending Machine/ATM, Event & Aktivasi Offline.
+Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta** (situs informasi untuk penumpang dan pengguna layanan LRT Jakarta). Aplikasi ini dikembangkan khusus sebagai bahan demonstrasi dan laporan selama masa **Praktek Kerja Lapangan (PKL)**.
 
 ## Tech Stack
 
@@ -10,46 +10,6 @@ Portal peluang bisnis LRT Jakarta untuk Naming Right, Iklan, Retail, Vending Mac
 - **File Upload:** uploadthing
 - **Styling:** Tailwind CSS v4
 - **Font:** Plus Jakarta Sans
-
-## Getting Started
-
-### Prerequisites
-
-1. Copy `.env.example` to `.env` and fill in the required environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Configure your environment variables in `.env`:
-   - `DATABASE_URL`: Your Supabase PostgreSQL connection string
-   - `DIRECT_URL`: Direct connection string for Prisma migrations
-   - `NEXTAUTH_SECRET`: Generate a random secret key
-   - `NEXTAUTH_URL`: Your application URL (http://localhost:3000 for development)
-   - `UPLOADTHING_TOKEN`: Your UploadThing API token
-
-### Installation
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Generate Prisma client:
-   ```bash
-   npx prisma generate
-   ```
-
-3. Run database migrations (if needed):
-   ```bash
-   npx prisma migrate dev
-   ```
-
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Project Structure
 
@@ -77,18 +37,20 @@ Portal peluang bisnis LRT Jakarta untuk Naming Right, Iklan, Retail, Vending Mac
 
 ## Pages
 
-- **`/`** - Landing page with navbar, search bar, and carousel hero banner
-- **`/login`** - Login page with LRT station background
+- **`/`** - Landing page with a sticky navbar, search bar, and a perfectly aligned carousel hero banner
+- **`/login`** - Login page with LRT station background and a glassmorphic floating "Kembali" back button
 - **`/dashboard`** - Protected dashboard showing welcome message (requires authentication)
 
 ## Features
 
 - ✅ Authentication with next-auth (Credentials provider)
 - ✅ Protected routes
-- ✅ Responsive design with Tailwind CSS
+- ✅ Responsive design with Tailwind CSS (v4)
 - ✅ Custom color palette (LRT Jakarta brand colors)
 - ✅ Plus Jakarta Sans font
 - ✅ Carousel hero banner with LRT images
+- ✅ Sticky Navbar with a perfectly aligned Carousel directly below it (no gap/overlap)
+- ✅ Glassmorphic floating "Kembali" (Back) button on the login page
 - ✅ UploadThing configuration for future file uploads
 - ✅ Prisma ORM with PostgreSQL
 
