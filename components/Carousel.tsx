@@ -26,12 +26,17 @@ export default function Carousel() {
   return (
     <div className="relative w-full">
       {/* Image */}
-      <div className="relative w-full max-w-[1920px] mx-auto bg-[#E5E9E8] rounded-b-[25px] overflow-hidden">
-        <img
-          src={carouselImages[currentIndex]}
-          alt={`LRT Jakarta ${currentIndex + 1}`}
-          className="w-full h-auto object-contain"
-        />
+      <div className="relative w-full max-w-[1920px] mx-auto bg-[#E5E9E8] rounded-b-[25px] overflow-hidden grid grid-cols-1 grid-rows-1">
+        {carouselImages.map((image, index) => (
+          <img
+            key={image}
+            src={image}
+            alt={`LRT Jakarta ${index + 1}`}
+            className={`col-start-1 row-start-1 w-full h-auto object-contain transition-opacity duration-1000 ease-in-out ${
+              index === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+            }`}
+          />
+        ))}
       </div>
 
       {/* Navigation Buttons */}
