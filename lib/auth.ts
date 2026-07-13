@@ -10,13 +10,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" }
       },
       authorize: async (credentials) => {
-        // TODO: Implement actual authentication with Prisma
-        // For now, allow any email/password for demo purposes
-        if (credentials.email && credentials.password) {
+        // Dummy authentication - no database connection
+        if (credentials.email === "adminlrtj@smk.belajar.id" && credentials.password === "123456") {
           return {
             id: "1",
-            email: credentials.email as string,
-            name: "Admin User",
+            email: "adminlrtj@smk.belajar.id",
+            name: "Admin LRTJ",
           }
         }
         return null
