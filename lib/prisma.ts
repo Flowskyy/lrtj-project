@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { withAccelerate } from '@prisma/extension-accelerate'
 
 const globalForPrisma = globalThis as unknown as {
@@ -6,9 +7,10 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function makePrismaClient() {
-  return new PrismaClient({
-    accelerateUrl: process.env.DATABASE_URL,
-  }).$extends(withAccelerate())
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+  })
+  return new PrismaClient({ adapter }).$extends(withAccelerate())
 }
 
 export const prisma = globalForPrisma.prisma ?? makePrismaClient()
