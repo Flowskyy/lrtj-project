@@ -6,8 +6,7 @@ Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta**
 
 - **Framework:** Next.js 16 (App Router)
 - **Auth:** next-auth@beta
-- **Database:** Prisma + PostgreSQL (Supabase)
-- **File Upload:** uploadthing
+- **Database:** Prisma + MySQL
 - **Styling:** Tailwind CSS v4
 - **Font:** Plus Jakarta Sans
 
@@ -16,7 +15,6 @@ Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta**
 ```
 ├── app/
 │   ├── api/auth/[[...nextauth]]/    # NextAuth API routes
-│   ├── api/uploadthing/              # UploadThing API routes
 │   ├── dashboard/                   # Protected dashboard page
 │   ├── login/                        # Login page
 │   ├── globals.css                   # Global styles with Tailwind
@@ -27,8 +25,7 @@ Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta**
 │   └── Navbar.tsx                    # Navigation bar
 ├── lib/
 │   ├── auth.ts                       # NextAuth configuration
-│   ├── prisma.ts                     # Prisma client instance
-│   └── uploadthing.ts               # UploadThing router configuration
+│   └── prisma.ts                     # Prisma client instance
 ├── prisma/
 │   ├── schema.prisma                 # Prisma schema
 │   └── prisma.config.ts              # Prisma configuration
@@ -51,8 +48,7 @@ Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta**
 - ✅ Carousel hero banner with LRT images
 - ✅ Sticky Navbar with a perfectly aligned Carousel directly below it (no gap/overlap)
 - ✅ Glassmorphic floating "Kembali" (Back) button on the login page
-- ✅ UploadThing configuration for future file uploads
-- ✅ Prisma ORM with PostgreSQL
+- ✅ Prisma ORM with MySQL
 
 ## Database Schema
 
