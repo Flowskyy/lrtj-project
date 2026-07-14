@@ -1,21 +1,1079 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  image     String?
-  createdAt DateTime @default(now())
+model activity_log {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  log_name     String?   @db.VarChar(255)
+  description  String    @db.Text
+  subject_type String?   @db.VarChar(255)
+  event        String?   @db.VarChar(255)
+  subject_id   BigInt?   @db.UnsignedBigInt
+  causer_type  String?   @db.VarChar(255)
+  causer_id    BigInt?   @db.UnsignedBigInt
+  properties   Json?
+  batch_uuid   String?   @db.Char(36)
+  created_at   DateTime? @db.Timestamp(0)
+  updated_at   DateTime? @db.Timestamp(0)
+
+  @@index([log_name], map: "activity_log_log_name_index")
+  @@index([causer_type, causer_id], map: "causer")
+  @@index([subject_type, subject_id], map: "subject")
+}
+
+model admin_activity_logs {
+  id         String      @id
+  userId     String?
+  action     String      @db.VarChar(100)
+  metadata   String      @db.LongText
+  createdAt  DateTime    @default(now())
+  auth_users auth_users? @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model admin_permissions {
+  id                     Int                      @id @default(autoincrement())
+  code                   String                   @unique
+  label                  String                   @db.VarChar(255)
+  admin_role_permissions admin_role_permissions[]
+}
+
+model admin_role_permissions {
+  roleId            Int
+  permissionId      Int
+  admin_permissions admin_permissions @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  admin_roles       admin_roles       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "admin_role_permissions_permissionId_fkey")
+}
+
+model admin_roles {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime
+  admin_role_permissions admin_role_permissions[]
+  auth_users             auth_users[]
+}
+
+model api_hits {
+  id         Int       @id
+  api_name   String?   @db.VarChar(255)
+  hit_count  Int?      @default(0) @db.UnsignedInt
+  created_at DateTime? @db.DateTime(0)
+  updated_at DateTime? @db.DateTime(0)
+
+  @@index([created_at], map: "created_at")
+}
+
+model app_messages {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  app         String   @db.VarChar(30)
+  description String   @db.Text
+  created_at  DateTime @db.DateTime(0)
+  parameter   String?  @db.Text
+}
+
+model auth_accounts {
+  id                    String     @id
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?    @db.Text
+  refreshToken          String?    @db.Text
+  idToken               String?    @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?    @db.Text
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime
+  auth_users            auth_users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model auth_sessions {
+  id         String     @id
+  userId     String
+  token      String     @unique
+  expiresAt  DateTime
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime
+  auth_users auth_users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model auth_users {
+  id                  String                @id
+  name                String
+  email               String                @unique
+  emailVerified       Boolean               @default(false)
+  image               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  roleId              Int?
+  admin_activity_logs admin_activity_logs[]
+  auth_accounts       auth_accounts[]
+  auth_sessions       auth_sessions[]
+  admin_roles         admin_roles?          @relation(fields: [roleId], references: [id])
+
+  @@index([roleId], map: "auth_users_roleId_fkey")
+}
+
+model auth_verifications {
+  id         String   @id
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+
+  @@index([identifier])
+}
+
+model banners {
+  id          Int       @id @default(autoincrement())
+  description String?   @db.Text
+  image_url   String    @db.Text
+  sequence    Int
+  created_at  DateTime? @db.DateTime(0)
+  updated_at  DateTime? @db.DateTime(0)
+}
+
+model bayarind_binding_states {
+  id           BigInt                          @id @default(autoincrement())
+  user_id      BigInt
+  phone_number String                          @db.VarChar(20)
+  state        String                          @unique(map: "state") @db.VarChar(255)
+  auth_code    String?                         @db.VarChar(500)
+  expires_at   DateTime                        @db.Timestamp(0)
+  status       bayarind_binding_states_status? @default(pending)
+  created_at   DateTime?                       @default(now()) @db.Timestamp(0)
+  updated_at   DateTime?                       @default(now()) @db.Timestamp(0)
+
+  @@index([expires_at], map: "idx_expires_at")
+  @@index([state], map: "idx_state")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model bayarind_callback {
+  id         Int       @id @default(autoincrement())
+  category   String?   @db.VarChar(255)
+  created_at DateTime? @db.DateTime(0)
+  updated_at DateTime? @db.DateTime(0)
+  user_id    Int?
+  data       String?   @db.VarChar(255)
+}
+
+model bayarind_customer_tokens {
+  id              BigInt                                   @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id         BigInt                                   @db.UnsignedBigInt
+  access_token    String                                   @db.Text
+  refresh_token   String?                                  @db.Text
+  token_type      String?                                  @default("Bearer") @db.VarChar(50)
+  expires_in      Int?
+  expires_at      DateTime?                                @db.Timestamp(0)
+  scope           String?                                  @db.VarChar(255)
+  customer_id     String?                                  @db.VarChar(255)
+  phone_number    String?                                  @db.VarChar(20)
+  grant_type_used bayarind_customer_tokens_grant_type_used
+  raw_response    Json?
+  created_at      DateTime?                                @db.Timestamp(0)
+  updated_at      DateTime?                                @db.Timestamp(0)
+
+  @@index([expires_at], map: "idx_expires_at")
+  @@index([user_id, expires_at], map: "idx_user_expires")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model bayarind_qr_payment {
+  id                    Int       @default(autoincrement())
+  bayarind_reference_no String    @db.VarChar(20)
+  reference_no          String?   @db.VarChar(20)
+  redirect_url          String?   @db.VarChar(255)
+  merchant_name         String?   @db.VarChar(50)
+  merchant_category     String?   @db.VarChar(50)
+  merchant_location     String?   @db.VarChar(50)
+  amount                Int?
+  response_code         Int?
+  valid_time            DateTime? @db.DateTime(0)
+  created_at            DateTime? @db.DateTime(0)
+  updated_at            DateTime? @db.DateTime(0)
+  customer_pan          String?   @db.VarChar(50)
+  merchant_pan          String?   @db.VarChar(50)
+  paid_time             DateTime? @db.DateTime(0)
+
+  @@id([id, bayarind_reference_no])
+}
+
+model daily_benefit {
+  id             Int       @id @default(autoincrement())
+  editedBy       String?   @db.VarChar(50)
+  name           String    @db.VarChar(150)
+  image_url      String    @default("") @db.VarChar(150)
+  redeem_point   Int       @default(0)
+  term_condition String    @db.Text
+  created_at     DateTime? @db.DateTime(0)
+  updated_at     DateTime? @db.DateTime(0)
+  status         Int       @default(1) @db.TinyInt
+  start_date     DateTime? @db.DateTime(0)
+  end_date       DateTime? @db.DateTime(0)
+  is_active      Int?      @db.TinyInt
+}
+
+model daily_redem {
+  daily_reward_id     Int       @id @default(autoincrement())
+  merchant_id         Int
+  name                String    @default("") @db.VarChar(255)
+  image               String    @default("") @db.VarChar(255)
+  description         String    @db.Text
+  is_deleted          Boolean   @default(false)
+  created_by          String    @db.VarChar(255)
+  created_at          DateTime  @db.DateTime(0)
+  update_at           String    @db.VarChar(255)
+  update_by           DateTime  @db.DateTime(0)
+  deleted_at          String    @db.VarChar(255)
+  deleted_by          DateTime  @db.DateTime(0)
+  redempoin           Float?
+  tipe_promo          String?   @default("0") @db.VarChar(10)
+  keterangan_tambahan String?   @db.Text
+  start_date          DateTime? @db.DateTime(0)
+  end_date            DateTime? @db.DateTime(0)
+
+  @@index([merchant_id], map: "merchant_id")
+}
+
+model daily_reward {
+  daily_reward_id    Int       @id @default(autoincrement())
+  merchant_id        Int
+  name               String    @default("") @db.VarChar(255)
+  image              String    @default("") @db.VarChar(255)
+  description        String    @db.Text
+  is_deleted         Boolean   @default(false)
+  created_by         String    @db.VarChar(255)
+  created_at         DateTime  @db.DateTime(0)
+  update_at          String    @db.VarChar(255)
+  update_by          DateTime  @db.DateTime(0)
+  deleted_at         String    @db.VarChar(255)
+  deleted_by         DateTime  @db.DateTime(0)
+  start_date         DateTime? @db.DateTime(0)
+  end_date           DateTime? @db.DateTime(0)
+  minimal_perjalanan Float?    @default(0)
+  total_qty          Float?    @default(0)
+
+  @@index([merchant_id], map: "merchant_id")
+}
+
+model dki_callback {
+  id         Int       @id @default(autoincrement())
+  category   String?   @db.VarChar(255)
+  created_at DateTime? @db.DateTime(0)
+  updated_at DateTime? @db.DateTime(0)
+  user_id    Int?
+  data       String?   @db.VarChar(10000)
+
+  @@index([category], map: "category")
+  @@index([id], map: "id")
+}
+
+model exports {
+  id              BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  completed_at    DateTime? @db.Timestamp(0)
+  file_disk       String    @db.VarChar(255)
+  file_name       String?   @db.VarChar(255)
+  exporter        String    @db.VarChar(255)
+  processed_rows  Int       @default(0) @db.UnsignedInt
+  total_rows      Int       @db.UnsignedInt
+  successful_rows Int       @default(0) @db.UnsignedInt
+  user_id         Int
+  created_at      DateTime? @db.Timestamp(0)
+  updated_at      DateTime? @db.Timestamp(0)
+}
+
+model failed_import_rows {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  data             Json
+  import_id        BigInt    @db.UnsignedBigInt
+  validation_error String?   @db.Text
+  created_at       DateTime? @db.Timestamp(0)
+  updated_at       DateTime? @db.Timestamp(0)
+  imports          imports   @relation(fields: [import_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "failed_import_rows_import_id_foreign")
+
+  @@index([import_id], map: "failed_import_rows_import_id_foreign")
+}
+
+model failed_jobs {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid       String   @unique(map: "failed_jobs_uuid_unique") @db.VarChar(255)
+  connection String   @db.Text
+  queue      String   @db.Text
+  payload    String   @db.LongText
+  exception  String   @db.LongText
+  failed_at  DateTime @default(now()) @db.Timestamp(0)
+}
+
+model fare {
+  id         Int       @id @default(autoincrement())
+  fare       Int?
+  max_ticket Int?
+  status     String?   @db.VarChar(10)
+  created_at DateTime? @db.DateTime(0)
+  updated_at DateTime? @db.DateTime(0)
+}
+
+model history_redem_poin {
+  id                       Int      @id @default(autoincrement())
+  merchant_id              Int
+  daily_reward_id          Int
+  member_id                Int
+  member_daily_reward_code String   @db.VarChar(255)
+  created_by               String   @db.VarChar(255)
+  created_at               DateTime @db.DateTime(0)
+  update_by                String   @db.VarChar(255)
+  update_at                DateTime @db.DateTime(0)
+  point_redem              Float?
+  status_scan              Int?     @default(0) @db.TinyInt
+  kode_stasiun             String?  @db.VarChar(5)
+  merchant_code            String?  @db.VarChar(30)
+
+  @@index([daily_reward_id], map: "daily_reward_id")
+  @@index([member_id], map: "member_id")
+  @@index([merchant_id], map: "merchant_id")
+}
+
+model imports {
+  id                 BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  completed_at       DateTime?            @db.Timestamp(0)
+  file_name          String               @db.VarChar(255)
+  file_path          String               @db.VarChar(255)
+  importer           String               @db.VarChar(255)
+  processed_rows     Int                  @default(0) @db.UnsignedInt
+  total_rows         Int                  @db.UnsignedInt
+  successful_rows    Int                  @default(0) @db.UnsignedInt
+  user_id            Int
+  created_at         DateTime?            @db.Timestamp(0)
+  updated_at         DateTime?            @db.Timestamp(0)
+  failed_import_rows failed_import_rows[]
+}
+
+model job_batches {
+  id             String  @id @db.VarChar(255)
+  name           String  @db.VarChar(255)
+  total_jobs     Int
+  pending_jobs   Int
+  failed_jobs    Int
+  failed_job_ids String  @db.LongText
+  options        String? @db.MediumText
+  cancelled_at   Int?
+  created_at     Int
+  finished_at    Int?
+}
+
+model kebijakan_privasi {
+  id         Int       @id
+  judul      String?   @db.VarChar(255)
+  keterangan String?   @db.Text
+  created_by String?   @db.VarChar(50)
+  created_at DateTime? @db.DateTime(0)
+}
+
+model lrtjp_earning_history {
+  id            BigInt    @id @default(autoincrement())
+  user_id       Int
+  info          String    @db.Text
+  earning_point Decimal   @default(0.000000) @db.Decimal(20, 6)
+  category      String    @db.VarChar(50)
+  json_params   String?   @db.Text
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
+
+  @@index([user_id], map: "user_id")
+}
+
+model masterdata {
+  id            Int     @id @default(autoincrement())
+  type          String? @db.VarChar(100)
+  value_varchar String? @db.VarChar(200)
+  value_text    String? @db.Text
+}
+
+model member {
+  id_member         Int       @id @default(autoincrement())
+  nama              String    @default("") @db.VarChar(255)
+  email             String    @default("") @db.VarChar(255)
+  password          String    @default("") @db.VarChar(255)
+  status            Int       @default(1) @db.TinyInt
+  date_add          DateTime  @default(now()) @db.DateTime(0)
+  alamat            String    @db.VarChar(225)
+  date_upd          DateTime? @db.DateTime(0)
+  telepon           String    @db.VarChar(225)
+  point             Int
+  potongan_poin     Float?    @default(0)
+  total_trip        Int
+  member_level_id   Int       @default(2)
+  electronic_money1 String    @db.VarChar(255)
+  electronic_money2 String    @db.VarChar(255)
+  SYS_CREATED_BY    String    @db.VarChar(255)
+  SYS_CREATED_DATE  DateTime  @db.DateTime(0)
+  SYS_MODIFIED_BY   String    @db.VarChar(255)
+  SYS_MODIFIED_DATE DateTime  @db.DateTime(0)
+  verivy_code       String    @db.VarChar(11)
+  foto              String    @db.VarChar(225)
+  facebookID        String    @db.VarChar(25)
+  twitterID         String    @db.VarChar(25)
+  googleID          String    @db.VarChar(25)
+  profile_img       String?   @db.VarChar(255)
+  birthday          DateTime? @db.DateTime(0)
+  appleID           String?   @db.VarChar(255)
+  nik               String?   @db.VarChar(20)
+  tipe_member       String?   @default("0") @db.VarChar(10)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model member_copy {
+  id_member         Int       @default(0)
+  nama              String    @default("") @db.VarChar(255)
+  email             String    @default("") @db.VarChar(255)
+  password          String    @default("") @db.VarChar(255)
+  status            Int       @default(1) @db.TinyInt
+  date_add          DateTime  @default(now()) @db.DateTime(0)
+  alamat            String    @db.VarChar(225)
+  date_upd          DateTime? @db.DateTime(0)
+  telepon           String    @db.VarChar(225)
+  point             Int
+  potongan_poin     Float?    @default(0)
+  total_trip        Int
+  member_level_id   Int       @default(2)
+  electronic_money1 String    @db.VarChar(255)
+  electronic_money2 String    @db.VarChar(255)
+  SYS_CREATED_BY    String    @db.VarChar(255)
+  SYS_CREATED_DATE  DateTime  @db.DateTime(0)
+  SYS_MODIFIED_BY   String    @db.VarChar(255)
+  SYS_MODIFIED_DATE DateTime  @db.DateTime(0)
+  verivy_code       String    @db.VarChar(11)
+  foto              String    @db.VarChar(225)
+  facebookID        String    @db.VarChar(25)
+  twitterID         String    @db.VarChar(25)
+  googleID          String    @db.VarChar(25)
+  profile_img       String?   @db.VarChar(255)
+  birthday          DateTime? @db.DateTime(0)
+  appleID           String?   @db.VarChar(255)
+  nik               String?   @db.VarChar(20)
+  tipe_member       String?   @default("0") @db.VarChar(10)
+
+  @@ignore
+}
+
+model member_daily_reward {
+  id                       Int      @id @default(autoincrement())
+  merchant_id              Int
+  daily_reward_id          Int
+  member_id                Int
+  member_daily_reward_code String   @db.VarChar(255)
+  created_by               String   @db.VarChar(255)
+  created_at               DateTime @db.DateTime(0)
+  update_by                String   @db.VarChar(255)
+  update_at                DateTime @db.DateTime(0)
+  status_scan              Int?     @default(0) @db.TinyInt
+
+  @@index([daily_reward_id], map: "daily_reward_id")
+  @@index([member_id], map: "member_id")
+  @@index([merchant_id], map: "merchant_id")
+}
+
+model member_level {
+  level_id               Int      @id @default(autoincrement())
+  level_name             String   @default("") @db.VarChar(255)
+  min_trip               Int      @default(0)
+  max_trip               Int
+  point                  Int
+  add_point_happy_hour   Int
+  add_point_national_day Int
+  add_point_birthday     Int
+  is_deleted             Boolean  @default(false)
+  created_by             String   @db.VarChar(255)
+  created_at             DateTime @db.DateTime(0)
+  update_at              String   @db.VarChar(255)
+  update_by              DateTime @db.DateTime(0)
+  deleted_at             String   @db.VarChar(255)
+  deleted_by             DateTime @db.DateTime(0)
+}
+
+model member_ori {
+  id_member         Int       @id @default(autoincrement())
+  nama              String    @default("") @db.VarChar(255)
+  email             String    @default("") @db.VarChar(255)
+  password          String    @default("") @db.VarChar(255)
+  status            Int       @default(1) @db.TinyInt
+  date_add          DateTime  @default(now()) @db.DateTime(0)
+  alamat            String    @db.VarChar(225)
+  date_upd          DateTime? @db.DateTime(0)
+  telepon           String    @db.VarChar(225)
+  point             Int
+  potongan_poin     Float?    @default(0)
+  total_trip        Int
+  member_level_id   Int       @default(2)
+  electronic_money1 String    @db.VarChar(255)
+  electronic_money2 String    @db.VarChar(255)
+  SYS_CREATED_BY    String    @db.VarChar(255)
+  SYS_CREATED_DATE  DateTime  @db.DateTime(0)
+  SYS_MODIFIED_BY   String    @db.VarChar(255)
+  SYS_MODIFIED_DATE DateTime  @db.DateTime(0)
+  verivy_code       String    @db.VarChar(11)
+  foto              String    @db.VarChar(225)
+  facebookID        String    @db.VarChar(25)
+  twitterID         String    @db.VarChar(25)
+  googleID          String    @db.VarChar(25)
+  profile_img       String?   @db.VarChar(255)
+  birthday          DateTime? @db.DateTime(0)
+  appleID           String?   @db.VarChar(255)
+  nik               String?   @db.VarChar(20)
+  tipe_member       String?   @default("0") @db.VarChar(10)
+}
+
+model member_trip {
+  member_trip_id  Int      @id @default(autoincrement())
+  member_id       Int
+  name            String   @db.VarChar(255)
+  phone           String   @default("") @db.VarChar(255)
+  stn_gate_in     String   @db.VarChar(225)
+  stn_gate_out    String   @db.VarChar(225)
+  gate_in         String   @db.VarChar(225)
+  gate_out        String   @db.VarChar(225)
+  card_number     String   @db.VarChar(225)
+  card_type       String   @db.VarChar(225)
+  point           Int
+  created_by      String   @db.VarChar(255)
+  created_at      DateTime @db.DateTime(0)
+  update_at       String   @db.VarChar(255)
+  update_by       DateTime @db.DateTime(0)
+  add_poin        Int?
+  keterangan_poin String?  @db.Text
+
+  @@index([member_id], map: "member_id")
+}
+
+model membership {
+  id             Int      @id @default(autoincrement())
+  name           String   @db.Text
+  min_trip       Int
+  reward_tap_out Int
+  created_at     DateTime @db.DateTime(0)
+  updated_at     DateTime @db.DateTime(0)
+  updated_by     String   @db.VarChar(100)
+}
+
+model merchandise {
+  id             Int       @id @default(autoincrement())
+  editedBy       String?   @db.VarChar(50)
+  name           String    @db.VarChar(150)
+  image_url      String    @default("") @db.VarChar(150)
+  points         Int       @default(0) @map("redeem_point")
+  description    String    @db.Text @map("term_condition")
+  created_at     DateTime? @db.DateTime(0)
+  updated_at     DateTime? @db.DateTime(0)
+  status         Int       @default(1) @db.TinyInt
+}
+
+model merchant {
+  merchant_id   Int      @id @default(autoincrement())
+  merchant_code String   @default("") @db.VarChar(255)
+  name          String   @default("") @db.VarChar(255)
+  phone         String   @db.VarChar(225)
+  address       String   @db.VarChar(225)
+  is_deleted    Boolean  @default(false)
+  created_by    String   @db.VarChar(255)
+  created_at    DateTime @db.DateTime(0)
+  update_by     String   @db.VarChar(255)
+  update_at     DateTime @db.DateTime(0)
+  deleted_by    String   @db.VarChar(255)
+  deleted_at    DateTime @db.DateTime(0)
+}
+
+model midtrans_transaction {
+  id                 Int       @id @default(autoincrement())
+  transaction_id     String?   @db.VarChar(255)
+  order_id           String?   @db.VarChar(255)
+  gross_amount       Int?
+  transaction_status String?   @db.VarChar(255)
+  payment_type       String?   @db.VarChar(255)
+  transaction_time   DateTime? @db.DateTime(0)
+  settlement_time    DateTime? @db.DateTime(0)
+  created_at         DateTime? @db.DateTime(0)
+  updated_at         DateTime? @db.DateTime(0)
+}
+
+model migrations {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  migration String @db.VarChar(255)
+  batch     Int
+}
+
+model model_has_permissions {
+  permission_id BigInt      @db.UnsignedBigInt
+  model_type    String      @db.VarChar(255)
+  model_id      BigInt      @db.UnsignedBigInt
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "model_has_permissions_permission_id_foreign")
+
+  @@id([permission_id, model_id, model_type])
+  @@index([model_id, model_type], map: "model_has_permissions_model_id_model_type_index")
+}
+
+model model_has_roles {
+  role_id    BigInt @db.UnsignedBigInt
+  model_type String @db.VarChar(255)
+  model_id   BigInt @db.UnsignedBigInt
+  roles      roles  @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "model_has_roles_role_id_foreign")
+
+  @@id([role_id, model_id, model_type])
+  @@index([model_id, model_type], map: "model_has_roles_model_id_model_type_index")
+}
+
+model notifications {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  title       String   @db.Text
+  description String   @db.Text
+  created_at  DateTime @db.DateTime(0)
+  payload     String?  @db.Text
+
+  @@index([user_id], map: "user_id")
+}
+
+model notifications_export {
+  id              String    @id @db.Char(36)
+  type            String    @db.VarChar(255)
+  notifiable_type String    @db.VarChar(255)
+  notifiable_id   BigInt    @db.UnsignedBigInt
+  data            String    @db.Text
+  read_at         DateTime? @db.Timestamp(0)
+  created_at      DateTime? @db.Timestamp(0)
+  updated_at      DateTime? @db.Timestamp(0)
+
+  @@index([notifiable_type, notifiable_id], map: "notifications_export_notifiable_type_notifiable_id_index")
+}
+
+model notifications_read {
+  notification_id Int
+  user_id         Int
+  created_at      DateTime @db.DateTime(0)
+
+  @@id([notification_id, user_id])
+}
+
+model password_reset_tokens {
+  email      String    @id @db.VarChar(255)
+  token      String    @db.VarChar(255)
+  created_at DateTime? @db.Timestamp(0)
+}
+
+model permissions {
+  id                    BigInt                  @id @default(autoincrement()) @db.UnsignedBigInt
+  name                  String                  @db.VarChar(255)
+  guard_name            String                  @db.VarChar(255)
+  created_at            DateTime?               @db.Timestamp(0)
+  updated_at            DateTime?               @db.Timestamp(0)
+  model_has_permissions model_has_permissions[]
+  role_has_permissions  role_has_permissions[]
+
+  @@unique([name, guard_name], map: "permissions_name_guard_name_unique")
+}
+
+model personal_access_tokens {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  tokenable_type String    @db.VarChar(255)
+  tokenable_id   BigInt    @db.UnsignedBigInt
+  name           String    @db.VarChar(255)
+  token          String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
+  abilities      String?   @db.Text
+  last_used_at   DateTime? @db.Timestamp(0)
+  expires_at     DateTime? @db.Timestamp(0)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@index([tokenable_type, tokenable_id], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
+}
+
+model provinces {
+  id        String      @id @db.Char(2)
+  name      String      @db.VarChar(255)
+  regencies regencies[]
+}
+
+model qris_tap_auth {
+  id                      Int       @default(autoincrement())
+  partner_reference_no    String    @db.VarChar(255)
+  reference_no            String?   @db.VarChar(255)
+  response_code           Int?
+  response_message        String?   @db.VarChar(255)
+  raw                     String?   @db.LongText
+  created_at              DateTime? @db.DateTime(0)
+  updated_at              DateTime? @db.DateTime(0)
+  paid_time               DateTime? @db.DateTime(0)
+  additional_data_private String?   @db.VarChar(255)
+  approval_code           String?   @db.VarChar(255)
+  cpan                    String?   @db.VarChar(20)
+  acquirer                String?   @db.VarChar(10)
+  type                    String?   @db.VarChar(5)
+  trx_id                  String    @db.VarChar(255)
+  expired_date            DateTime? @db.DateTime(0)
+  qr_content              String?   @db.VarChar(500)
+
+  @@id([id, partner_reference_no, trx_id])
+}
+
+model qris_tap_capture {
+  id                            Int       @default(autoincrement())
+  invoice_number                String?   @db.VarChar(255)
+  partner_reference_no          String    @db.VarChar(255)
+  capture_no                    String?   @db.VarChar(255)
+  response_code                 Int?
+  response_message              String?   @db.VarChar(255)
+  raw                           String?   @db.LongText
+  created_at                    DateTime? @db.DateTime(0)
+  updated_at                    DateTime? @db.DateTime(0)
+  capture_time                  DateTime? @db.DateTime(0)
+  additional_data_private       String?   @db.VarChar(255)
+  cpan                          String?   @db.VarChar(20)
+  acquirer                      String?   @db.VarChar(10)
+  original_reference_no         String?   @db.VarChar(255)
+  original_partner_reference_no String?   @db.VarChar(255)
+  type                          String?   @db.VarChar(5)
+  trx_id                        String    @db.VarChar(255)
+  qr_content                    String?   @db.VarChar(500)
+
+  @@id([id, partner_reference_no, trx_id])
+}
+
+model qris_tap_payment {
+  id                      Int       @default(autoincrement())
+  additional_data_private String?   @db.VarChar(255)
+  invoice_number          String?   @db.VarChar(255)
+  partner_reference_no    String    @db.VarChar(255)
+  reference_no            String?   @db.VarChar(255)
+  response_code           Int?
+  response_message        String?   @db.VarChar(255)
+  raw                     String?   @db.LongText
+  created_at              DateTime? @db.DateTime(0)
+  updated_at              DateTime? @db.DateTime(0)
+  type                    String?   @db.VarChar(255)
+  qr_content              String?   @db.VarChar(255)
+
+  @@id([id, partner_reference_no])
+}
+
+model redeem {
+  id               Int       @id @default(autoincrement())
+  user_id          Int
+  merchandise_id   Int
+  receiver_name    String    @default("") @db.VarChar(100)
+  receiver_phone   String    @default("") @db.VarChar(20)
+  receiver_email   String    @default("") @db.VarChar(100)
+  receiver_address String    @db.Text
+  status           String    @db.VarChar(20)
+  created_at       DateTime? @db.DateTime(0)
+  updated_at       DateTime? @db.DateTime(0)
+
+  @@index([status], map: "status")
+  @@index([user_id], map: "user_id")
+}
+
+model redeem_benefit {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  merchant_id Int
+  name        String    @default("") @db.VarChar(100)
+  email       String    @default("") @db.VarChar(100)
+  status      String    @db.VarChar(20)
+  created_at  DateTime? @db.DateTime(0)
+  updated_at  DateTime? @db.DateTime(0)
+
+  @@index([status], map: "status")
+  @@index([user_id], map: "user_id")
+}
+
+model redempoin {
+  merchant_id   Int      @id @default(autoincrement())
+  merchant_code String   @default("") @db.VarChar(255)
+  name          String   @default("") @db.VarChar(255)
+  phone         String   @db.VarChar(225)
+  address       String   @db.VarChar(225)
+  is_deleted    Boolean  @default(false)
+  created_by    String   @db.VarChar(255)
+  created_at    DateTime @db.DateTime(0)
+  update_by     String   @db.VarChar(255)
+  update_at     DateTime @db.DateTime(0)
+  deleted_by    String   @db.VarChar(255)
+  deleted_at    DateTime @db.DateTime(0)
+}
+
+model regencies {
+  id          String    @id @db.Char(4)
+  province_id String    @db.Char(2)
+  name        String    @db.VarChar(255)
+  provinces   provinces @relation(fields: [province_id], references: [id], onUpdate: Restrict, map: "regencies_province_id_foreign")
+
+  @@index([province_id], map: "regencies_province_id_index")
+}
+
+model role_has_permissions {
+  permission_id BigInt      @db.UnsignedBigInt
+  role_id       BigInt      @db.UnsignedBigInt
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "role_has_permissions_permission_id_foreign")
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "role_has_permissions_role_id_foreign")
+
+  @@id([permission_id, role_id])
+  @@index([role_id], map: "role_has_permissions_role_id_foreign")
+}
+
+model roles {
+  id                   BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  name                 String                 @db.VarChar(255)
+  guard_name           String                 @db.VarChar(255)
+  created_at           DateTime?              @db.Timestamp(0)
+  updated_at           DateTime?              @db.Timestamp(0)
+  model_has_roles      model_has_roles[]
+  role_has_permissions role_has_permissions[]
+
+  @@unique([name, guard_name], map: "roles_name_guard_name_unique")
+}
+
+model slc_earning_history {
+  id            BigInt    @id @default(autoincrement())
+  user_id       Int
+  info          String    @db.Text
+  earning_point Float     @default(0)
+  category      String    @db.VarChar(50)
+  json_params   String?   @db.Text
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
+  type          String?   @db.VarChar(30)
+
+  @@index([created_at(sort: Desc)], map: "created_at")
+  @@index([id], map: "id")
+  @@index([user_id], map: "user_id")
+}
+
+model stations {
+  id         Int       @id @default(autoincrement())
+  code       String?   @db.VarChar(15)
+  name       String    @db.VarChar(100)
+  address    String?   @db.Text
+  status     Int       @default(1) @db.TinyInt
+  created_at DateTime? @db.DateTime(0)
+  updated_at DateTime? @db.DateTime(0)
+}
+
+model stations_relation {
+  station_from_id Int
+  station_to_id   Int
+  price           Decimal? @db.Decimal(20, 6)
+  stop_station    Int?
+
+  @@id([station_from_id, station_to_id])
+}
+
+model stations_schedule {
+  station_from_id Int
+  station_to_id   Int
+  time_at         String @db.VarChar(10)
+
+  @@id([station_from_id, station_to_id, time_at])
+}
+
+model term_condition {
+  id         Int       @id
+  judul      String?   @db.VarChar(255)
+  keterangan String?   @db.Text
+  created_by String?   @db.VarChar(50)
+  created_at DateTime? @db.DateTime(0)
+}
+
+model ticket {
+  id              Int       @id @default(autoincrement())
+  ticket_id       String?   @db.VarChar(255)
+  user_id         Int?
+  total_amount    Int?
+  total_ticket    Int?
+  status          String?   @db.VarChar(255)
+  created_at      DateTime? @db.DateTime(0)
+  updated_at      DateTime? @db.DateTime(0)
+  dki_invoice_id  String?   @db.VarChar(255)
+  dki_expiry_time DateTime? @db.DateTime(0)
+  dki_url         String?   @db.VarChar(255)
+  order_id        String?   @db.VarChar(255)
+  reference_no    String    @db.VarChar(50)
+  expiry_time     DateTime? @db.DateTime(0)
+  url             String?   @db.VarChar(255)
+}
+
+model ticket_detail {
+  id               Int       @id @default(autoincrement())
+  ticket_id        String?   @db.VarChar(255)
+  qr_in            String?   @db.VarChar(255)
+  order_id         String?   @db.VarChar(255)
+  created_at       DateTime? @db.DateTime(0)
+  updated_at       DateTime? @db.DateTime(0)
+  qr_out           String?   @db.VarChar(255)
+  user_id          Int?
+  qr_status        String?   @db.VarChar(10)
+  terminal_id_in   String?   @db.VarChar(10)
+  station_name_in  String?   @db.VarChar(50)
+  terminal_id_out  String?   @db.VarChar(10)
+  station_name_out String?   @db.VarChar(50)
+  gate_uuid        String?   @db.VarChar(255)
+  datetime_in      DateTime? @db.DateTime(0)
+  datetime_out     DateTime? @db.DateTime(0)
+}
+
+model trip_history {
+  id                BigInt    @id @default(autoincrement())
+  uuid_var          String    @default("") @db.VarChar(70)
+  user_id           Int
+  terminal_in       String?   @db.VarChar(50)
+  terminal_in_code  String?   @db.VarChar(50)
+  terminal_out      String?   @db.VarChar(50)
+  terminal_out_code String?   @db.VarChar(50)
+  station_in        String?   @db.VarChar(50)
+  station_in_at     DateTime? @db.DateTime(0)
+  station_out       String?   @db.VarChar(50)
+  station_out_at    DateTime? @db.DateTime(0)
+  balance_int       BigInt?
+  card_type         String    @db.VarChar(50)
+  card_number       String    @db.VarChar(100)
+  created_at        DateTime? @db.DateTime(0)
+  updated_at        DateTime? @db.DateTime(0)
+
+  @@index([created_at(sort: Desc)], map: "created_at")
+  @@index([id(sort: Desc)], map: "id")
+  @@index([uuid_var], map: "uuid")
+}
+
+model users {
+  id                       Int       @id @default(autoincrement())
+  email                    String    @db.VarChar(100)
+  password                 String?   @db.VarChar(150)
+  created_at               DateTime? @db.DateTime(0)
+  updated_at               DateTime? @db.DateTime(0)
+  no_telepon               String?   @db.VarChar(255)
+  jenis_kelamin            String?   @db.Char(1)
+  nik                      String?   @db.VarChar(20)
+  alamat                   String?   @db.Text
+  tempat_lahir             String?   @db.VarChar(50)
+  name                     String?   @db.VarChar(255)
+  image                    String?   @db.VarChar(100)
+  status                   Int       @default(1) @db.TinyInt
+  device_token             String?   @db.VarChar(200)
+  push_notification        Int       @default(1) @db.TinyInt
+  email_notification       Int       @default(1) @db.TinyInt
+  new_content_notification Int       @default(1) @db.TinyInt
+  google_id                String?   @db.VarChar(25)
+  otp                      String?   @db.VarChar(6)
+  verified_at              DateTime? @db.Timestamp(0)
+  ecard                    String?   @db.VarChar(40)
+  ecard2                   String?   @db.VarChar(40)
+  province_id              Int?
+  regency_id               Int?
+  activation_slc           Int       @default(0) @db.TinyInt
+  activation_slc_at        DateTime? @db.DateTime(0)
+  activation_lrtjpay       Int?      @default(0) @db.TinyInt
+  activation_lrtjpay_at    DateTime? @db.DateTime(0)
+  lrtj_saldo               Decimal?  @default(0.000000) @db.Decimal(20, 6)
+  slc_point                Int       @default(0)
+  lrtjpay_pin              String?   @db.Text
+  trip_count               Int       @default(0)
+  member_level_id          Int?      @default(2)
+  birthday                 DateTime? @db.DateTime(0)
+  apple_id                 String?   @db.VarChar(40)
+  lrtj_token               String?   @db.VarChar(255)
+  guid                     String?   @unique(map: "users_guid_unique") @db.VarChar(255)
+  domain                   String?   @db.VarChar(255)
+  lrtjpay_token            String?   @db.VarChar(255)
+
+  @@index([created_at(sort: Desc)], map: "created_at")
+  @@index([ecard], map: "ecard")
+  @@index([ecard2], map: "ecard2")
+  @@index([email], map: "email")
+  @@index([id], map: "id")
+  @@index([no_telepon], map: "no_telepon")
+  @@index([slc_point], map: "slc_point")
+}
+
+model users_admin {
+  id                  BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name                String    @db.VarChar(255)
+  email               String    @unique(map: "users_admin_email_unique") @db.VarChar(255)
+  password            String?   @db.VarChar(255)
+  email_verified_at   DateTime? @db.Timestamp(0)
+  status              Boolean   @default(true)
+  created_at          DateTime? @db.Timestamp(0)
+  updated_at          DateTime? @db.Timestamp(0)
+  password_expires_at DateTime? @db.Timestamp(0)
+  username            String?   @db.VarChar(255)
+  guid                String?   @unique(map: "users_admin_guid_unique") @db.VarChar(255)
+  domain              String?   @db.VarChar(255)
+  remember_token      String?   @db.VarChar(255)
+}
+
+model users_temp {
+  id                       Int       @id @default(autoincrement())
+  email                    String    @unique(map: "email") @db.VarChar(100)
+  password                 String?   @db.VarChar(150)
+  created_at               DateTime? @db.DateTime(0)
+  updated_at               DateTime? @db.DateTime(0)
+  no_telepon               String?   @db.VarChar(12)
+  jenis_kelamin            String?   @db.Char(1)
+  nik                      String?   @db.VarChar(20)
+  alamat                   String?   @db.Text
+  tempat_lahir             String?   @db.VarChar(50)
+  name                     String?   @db.VarChar(50)
+  image                    String?   @db.VarChar(100)
+  status                   Int       @default(1) @db.TinyInt
+  device_token             String?   @db.VarChar(200)
+  push_notification        Int       @default(1) @db.TinyInt
+  email_notification       Int       @default(1) @db.TinyInt
+  new_content_notification Int       @default(1) @db.TinyInt
+  google_id                String?   @db.VarChar(25)
+  otp                      String?   @db.VarChar(6)
+  verified_at              DateTime? @db.Timestamp(0)
+  ecard                    String?   @db.VarChar(40)
+  ecard2                   String?   @db.VarChar(40)
+  province_id              Int?
+  regency_id               Int?
+  activation_slc           Int       @default(0) @db.TinyInt
+  activation_slc_at        DateTime? @db.DateTime(0)
+  activation_lrtpay        Int?      @default(0) @db.TinyInt
+  activation_lrtpay_at     DateTime? @db.DateTime(0)
+  lrtj_saldo               Decimal?  @default(0.000000) @db.Decimal(20, 6)
+  slc_point                Int       @default(0)
+  lrtjpay_pin              String?   @db.Text
+  trip_count               Int       @default(0)
+  member_level_id          Int?      @default(2)
+  birthday                 DateTime? @db.DateTime(0)
+}
+
+enum bayarind_binding_states_status {
+  pending
+  completed
+  expired
+}
+
+enum bayarind_customer_tokens_grant_type_used {
+  authorization_code
+  refresh_token
 }

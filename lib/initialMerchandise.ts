@@ -1,6 +1,7 @@
 export interface MerchandiseItem {
   id: number
   editedBy?: string
+  creator_email?: string
   name: string
   image_url: string
   points: number

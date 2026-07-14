@@ -7,15 +7,17 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      {/* Top header — fixed height */}
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      {/* Top header */}
       <Header buttonType="logout" />
 
-      {/* Body — takes remaining height, no overflow on parent */}
+      {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-6 bg-[#F5F3F0]/45">
-          {children}
+        <main className="flex-1 overflow-y-auto">
+          <div className="w-full p-6 lg:p-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>

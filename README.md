@@ -10,34 +10,6 @@ Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta**
 - **Styling:** Tailwind CSS v4
 - **Font:** Plus Jakarta Sans
 
-## Project Structure
-
-```
-├── app/
-│   ├── api/auth/[[...nextauth]]/    # NextAuth API routes
-│   ├── dashboard/                   # Protected dashboard page
-│   ├── login/                        # Login page
-│   ├── globals.css                   # Global styles with Tailwind
-│   ├── layout.tsx                    # Root layout with font configuration
-│   └── page.tsx                      # Landing page
-├── components/
-│   ├── Carousel.tsx                  # Hero banner carousel
-│   └── Navbar.tsx                    # Navigation bar
-├── lib/
-│   ├── auth.ts                       # NextAuth configuration
-│   └── prisma.ts                     # Prisma client instance
-├── prisma/
-│   ├── schema.prisma                 # Prisma schema
-│   └── prisma.config.ts              # Prisma configuration
-└── public/                           # Static assets
-```
-
-## Pages
-
-- **`/`** - Landing page with a sticky navbar, search bar, and a perfectly aligned carousel hero banner
-- **`/login`** - Login page with LRT station background and a glassmorphic floating "Kembali" back button
-- **`/dashboard`** - Protected dashboard showing welcome message (requires authentication)
-
 ## Features
 
 - ✅ Authentication with next-auth (Credentials provider)
