@@ -579,15 +579,15 @@ model membership {
 }
 
 model merchandise {
-  id             Int       @id @default(autoincrement())
-  editedBy       String?   @db.VarChar(50)
-  name           String    @db.VarChar(150)
-  image_url      String    @default("") @db.VarChar(150)
-  points         Int       @default(0) @map("redeem_point")
-  description    String    @db.Text @map("term_condition")
-  created_at     DateTime? @db.DateTime(0)
-  updated_at     DateTime? @db.DateTime(0)
-  status         Int       @default(1) @db.TinyInt
+  id          Int       @id @default(autoincrement())
+  editedBy    String?   @db.VarChar(50)
+  name        String    @db.VarChar(150)
+  image_url   String    @default("") @db.VarChar(150)
+  points      Int       @default(0) @map("redeem_point")
+  description String    @map("term_condition") @db.Text
+  createdAt   DateTime? @map("created_at") @db.DateTime(0)
+  updatedAt   DateTime? @map("updated_at") @db.DateTime(0)
+  status      Int       @default(1) @db.TinyInt
 }
 
 model merchant {

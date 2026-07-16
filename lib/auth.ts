@@ -2,6 +2,7 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET || "default-secret-change-in-production",
   providers: [
     Credentials({
@@ -28,6 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt",
   },
+  useSecureCookies: process.env.NODE_ENV === "production",
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -40,6 +42,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string
       }
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      // If the URL is relative, return it as-is to preserve the current origin
+      if (url.startsWith('/')) {
+        return url
+      }
+      // If the URL is absolute, ensure it uses the actual baseUrl from the request
+      // This prevents redirects to 0.0.0.0 when the server is bound to that address
+      if (baseUrl) {
+        return url.startsWith(baseUrl) ? url : baseUrl
+      }
+      return url
     },
   },
 })

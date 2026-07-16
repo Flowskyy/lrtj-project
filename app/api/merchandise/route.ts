@@ -26,12 +26,24 @@ export async function GET(request: NextRequest) {
     orderBy.id = 'asc';
   }
 
-  const items = await prisma.merchandise.findMany({
-    where,
-    orderBy,
-  });
+  const [items, totalCount, activeCount, inactiveCount] = await Promise.all([
+    prisma.merchandise.findMany({
+      where,
+      orderBy,
+    }),
+    prisma.merchandise.count(),
+    prisma.merchandise.count({ where: { status: 1 } }),
+    prisma.merchandise.count({ where: { status: 0 } }),
+  ]);
 
-  return NextResponse.json(items);
+  return NextResponse.json({
+    data: items,
+    meta: {
+      total: totalCount,
+      active: activeCount,
+      inactive: inactiveCount,
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
