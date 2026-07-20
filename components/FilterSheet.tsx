@@ -9,11 +9,17 @@ interface FilterSheetProps {
   onOpenChange: (open: boolean) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
+  genderFilter?: string;
+  onGenderFilterChange?: (value: string) => void;
+  verifiedFilter?: string;
+  onVerifiedFilterChange?: (value: string) => void;
   sortBy: string;
   onSortByChange: (value: string) => void;
   sortOrder: string;
   onSortOrderChange: (value: string) => void;
   statusOptions?: { value: string; label: string }[];
+  genderOptions?: { value: string; label: string }[];
+  verifiedOptions?: { value: string; label: string }[];
   sortByOptions?: { value: string; label: string }[];
 }
 
@@ -22,6 +28,10 @@ export default function FilterSheet({
   onOpenChange,
   statusFilter,
   onStatusFilterChange,
+  genderFilter = "all",
+  onGenderFilterChange,
+  verifiedFilter = "all",
+  onVerifiedFilterChange,
   sortBy,
   onSortByChange,
   sortOrder,
@@ -30,6 +40,16 @@ export default function FilterSheet({
     { value: "all", label: "All" },
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
+  ],
+  genderOptions = [
+    { value: "all", label: "All" },
+    { value: "L", label: "Laki-laki" },
+    { value: "P", label: "Perempuan" },
+  ],
+  verifiedOptions = [
+    { value: "all", label: "All" },
+    { value: "verified", label: "Verified" },
+    { value: "unverified", label: "Unverified" },
   ],
   sortByOptions = [
     { value: "id", label: "ID" },
@@ -60,6 +80,40 @@ export default function FilterSheet({
                 </SelectContent>
               </Select>
             </div>
+            {onGenderFilterChange && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-gray-700">Gender</label>
+                <Select value={genderFilter} onValueChange={(v) => onGenderFilterChange(v || 'all')}>
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {genderOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {onVerifiedFilterChange && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-gray-700">Verified</label>
+                <Select value={verifiedFilter} onValueChange={(v) => onVerifiedFilterChange(v || 'all')}>
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {verifiedOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-gray-700">Sort By</label>
               <Select value={sortBy} onValueChange={(v) => onSortByChange(v || 'id')}>

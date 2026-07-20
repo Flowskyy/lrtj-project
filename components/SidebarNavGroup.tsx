@@ -65,7 +65,7 @@ export function SidebarNavGroup({
             tooltip={isCollapsedState ? label : undefined}
           >
             {icon}
-            <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+            <span className="group-data-[collapsible=icon]:hidden text-sm font-medium">{label}</span>
           </SidebarMenuButton>
         </Link>
       </SidebarMenuItem>

@@ -12,6 +12,7 @@ export async function PUT(
     const updated = await prisma.redeem.update({
       where: { id: parseInt(id) },
       data: {
+        merchandise_id: data.merchandise_id,
         receiver_name: data.receiver_name,
         receiver_phone: data.receiver_phone,
         receiver_email: data.receiver_email,

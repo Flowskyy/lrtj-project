@@ -13,6 +13,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Filter, Plus, MoreVertical, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import MerchandiseSearchCombobox from "@/components/MerchandiseSearchCombobox";
+import UserSearchCombobox from "@/components/UserSearchCombobox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -177,6 +179,19 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     }
   };
 
+  // Handle user selection from search combobox
+  const handleUserSelect = (userId: number | null, userData?: any, textValue?: string) => {
+    setFormUserId(userId);
+    if (textValue !== undefined) {
+      setFormReceiverName(textValue);
+    }
+    if (userData) {
+      setFormReceiverPhone(userData.phone || "");
+      setFormReceiverEmail(userData.email || "");
+      setFormReceiverAddress(userData.address || "");
+    }
+  };
+
   // Edit Item
   const openEdit = (item: RedeemItem) => {
     setEditItem(item);
@@ -185,6 +200,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     setFormReceiverEmail(item.receiver_email);
     setFormReceiverAddress(item.receiver_address);
     setFormStatus(item.status);
+    setFormMerchandiseId(item.merchandise_id);
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -195,6 +211,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          merchandise_id: formMerchandiseId,
           receiver_name: formReceiverName,
           receiver_phone: formReceiverPhone,
           receiver_email: formReceiverEmail,
@@ -746,12 +763,12 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
                   Receiver Name *
                 </label>
-                <Input
-                  required
-                  value={formReceiverName}
-                  onChange={(e) => setFormReceiverName(e.target.value)}
-                  placeholder="Enter receiver name"
-                  className="min-h-[44px]"
+                <UserSearchCombobox
+                  value={formUserId}
+                  textValue={formReceiverName}
+                  onChange={handleUserSelect}
+                  placeholder="Enter receiver name or search past receivers..."
+                  source="redeem"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -794,38 +811,16 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                    Merchandise *
-                  </label>
-                  <Select value={formMerchandiseId?.toString() || ""} onValueChange={(v) => setFormMerchandiseId(v ? parseInt(v) : null)}>
-                    <SelectTrigger className="min-h-[44px]">
-                      <SelectValue placeholder="Select merchandise" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {merchandiseOptions.map((item) => (
-                        <SelectItem key={item.id} value={item.id.toString()}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                    User ID *
-                  </label>
-                  <Input
-                    required
-                    type="number"
-                    min={1}
-                    value={formUserId || ""}
-                    onChange={(e) => setFormUserId(e.target.value ? parseInt(e.target.value) : null)}
-                    placeholder="Enter user ID"
-                    className="min-h-[44px]"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                  Merchandise *
+                </label>
+                <MerchandiseSearchCombobox
+                  options={merchandiseOptions}
+                  value={formMerchandiseId}
+                  onChange={setFormMerchandiseId}
+                  placeholder="Select merchandise"
+                />
               </div>
               <div>
                 <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
@@ -863,6 +858,17 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </DialogHeader>
           <form onSubmit={handleEdit} className="flex flex-col flex-1 overflow-hidden">
             <div className="overflow-y-auto space-y-3 sm:space-y-4">
+              <div>
+                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                  Merchandise *
+                </label>
+                <MerchandiseSearchCombobox
+                  options={merchandiseOptions}
+                  value={formMerchandiseId}
+                  onChange={setFormMerchandiseId}
+                  placeholder="Select merchandise"
+                />
+              </div>
               <div>
                 <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
                   Receiver Name *
