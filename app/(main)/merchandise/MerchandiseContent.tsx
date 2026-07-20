@@ -477,12 +477,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   className="pl-9 min-h-[44px] w-full sm:w-64"
                 />
                 {searchQuery && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleSearchChange("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
               <Button

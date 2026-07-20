@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Filter, MoreVertical, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import { Filter, Plus, MoreVertical, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +51,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   // Filter and Sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("id");
-  const [sortOrder, setSortOrder] = useState<string>("desc");
+  const [sortOrder, setSortOrder] = useState<string>("asc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   
@@ -59,6 +59,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   // Modal and CRUD states
   const [editItem, setEditItem] = useState<RedeemItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<RedeemItem | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
 
   // Form states
   const [formReceiverName, setFormReceiverName] = useState("");
@@ -66,6 +67,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   const [formReceiverEmail, setFormReceiverEmail] = useState("");
   const [formReceiverAddress, setFormReceiverAddress] = useState("");
   const [formStatus, setFormStatus] = useState("process");
+  const [formMerchandiseId, setFormMerchandiseId] = useState<number | null>(null);
+  const [formUserId, setFormUserId] = useState<number | null>(null);
+  const [merchandiseOptions, setMerchandiseOptions] = useState<{id: number, name: string}[]>([]);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -107,10 +111,27 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     }
   };
 
+  // Fetch merchandise options for dropdown
+  const fetchMerchandiseOptions = async () => {
+    try {
+      const res = await fetch('/api/merchandise');
+      if (res.ok) {
+        const response = await res.json();
+        setMerchandiseOptions(response.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch merchandise options", err);
+    }
+  };
+
 
   useEffect(() => {
     fetchItems();
   }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery]);
+
+  useEffect(() => {
+    fetchMerchandiseOptions();
+  }, []);
 
   // Count active filters
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
@@ -121,6 +142,39 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     setFormReceiverEmail("");
     setFormReceiverAddress("");
     setFormStatus("process");
+    setFormMerchandiseId(null);
+    setFormUserId(null);
+  };
+
+  // Add Item
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: formUserId,
+          merchandise_id: formMerchandiseId,
+          receiver_name: formReceiverName,
+          receiver_phone: formReceiverPhone,
+          receiver_email: formReceiverEmail,
+          receiver_address: formReceiverAddress,
+          status: formStatus,
+        }),
+      });
+      if (res.ok) {
+        await fetchItems();
+        setIsAdding(false);
+        resetForm();
+        toast.success("Redeem record added successfully");
+      } else {
+        toast.error("Failed to add redeem record");
+      }
+    } catch (err) {
+      console.error("Failed to add item", err);
+      toast.error("Failed to add redeem record");
+    }
   };
 
   // Edit Item
@@ -267,7 +321,19 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       <Card>
         <CardContent className="p-4">
           <CardHeader className="px-0 pb-3">
-            <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setIsAdding(true);
+                }}
+                className="min-h-[44px] bg-primary hover:bg-primary/90 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Redeem
+              </Button>
+            </div>
           </CardHeader>
 
           {/* Table Toolbar */}
@@ -287,7 +353,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     className="pl-9 pr-8 min-h-[36px]"
                   />
                   {searchQuery && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => {
                         setSearchQuery("");
                         setCurrentPage(1);
@@ -295,7 +363,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
                     >
                       <X className="h-4 w-4" />
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -407,7 +475,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-semibold text-gray-700">Order</label>
-                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v || 'desc')}>
+                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v || 'asc')}>
                       <SelectTrigger className="min-h-[44px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -665,6 +733,127 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           )}
         </CardContent>
       </Card>
+
+      {/* Add Dialog */}
+      <Dialog open={isAdding} onOpenChange={() => setIsAdding(false)}>
+        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
+          <DialogHeader>
+            <DialogTitle>Add Redeem Record</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden">
+            <div className="overflow-y-auto space-y-3 sm:space-y-4">
+              <div>
+                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                  Receiver Name *
+                </label>
+                <Input
+                  required
+                  value={formReceiverName}
+                  onChange={(e) => setFormReceiverName(e.target.value)}
+                  placeholder="Enter receiver name"
+                  className="min-h-[44px]"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                    Receiver Phone *
+                  </label>
+                  <Input
+                    required
+                    value={formReceiverPhone}
+                    onChange={(e) => setFormReceiverPhone(e.target.value)}
+                    placeholder="Enter receiver phone"
+                    className="min-h-[44px]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                    Receiver Email *
+                  </label>
+                  <Input
+                    required
+                    type="email"
+                    value={formReceiverEmail}
+                    onChange={(e) => setFormReceiverEmail(e.target.value)}
+                    placeholder="Enter receiver email"
+                    className="min-h-[44px]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                  Receiver Address *
+                </label>
+                <textarea
+                  required
+                  value={formReceiverAddress}
+                  onChange={(e) => setFormReceiverAddress(e.target.value)}
+                  placeholder="Enter receiver address"
+                  className="w-full px-3 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[80px] resize-y"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                    Merchandise *
+                  </label>
+                  <Select value={formMerchandiseId?.toString() || ""} onValueChange={(v) => setFormMerchandiseId(v ? parseInt(v) : null)}>
+                    <SelectTrigger className="min-h-[44px]">
+                      <SelectValue placeholder="Select merchandise" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {merchandiseOptions.map((item) => (
+                        <SelectItem key={item.id} value={item.id.toString()}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                    User ID *
+                  </label>
+                  <Input
+                    required
+                    type="number"
+                    min={1}
+                    value={formUserId || ""}
+                    onChange={(e) => setFormUserId(e.target.value ? parseInt(e.target.value) : null)}
+                    placeholder="Enter user ID"
+                    className="min-h-[44px]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                  Status *
+                </label>
+                <Select value={formStatus} onValueChange={(v) => setFormStatus(v || 'process')}>
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="process">Process</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAdding(false)} className="min-h-[44px]">
+                Cancel
+              </Button>
+              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
+                Add Redeem
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editItem} onOpenChange={() => setEditItem(null)}>

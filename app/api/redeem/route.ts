@@ -161,3 +161,22 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
+export async function POST(request: NextRequest) {
+  const data = await request.json();
+  const newItem = await prisma.redeem.create({
+    data: {
+      user_id: data.user_id,
+      merchandise_id: data.merchandise_id,
+      receiver_name: data.receiver_name,
+      receiver_phone: data.receiver_phone,
+      receiver_email: data.receiver_email,
+      receiver_address: data.receiver_address,
+      status: data.status || 'process',
+      created_at: new Date(),
+      updated_at: new Date(),
+    },
+  });
+
+  return NextResponse.json(newItem);
+}
