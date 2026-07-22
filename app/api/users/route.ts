@@ -92,28 +92,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-
-export async function POST(request: NextRequest) {
-  const data = await request.json();
-  const newItem = await prisma.users.create({
-    data: {
-      name: data.nama || data.name || '',
-      email: data.email || '',
-      no_telepon: data.telepon || data.no_telepon || '',
-      alamat: data.alamat || '',
-      password: data.password || '',
-      status: data.status ?? 1,
-      created_at: new Date(),
-      updated_at: new Date(),
-      slc_point: 0,
-      trip_count: 0,
-      member_level_id: 2,
-      ecard: '',
-      ecard2: '',
-      google_id: '',
-      apple_id: '',
-    },
-  });
-
-  return NextResponse.json(newItem);
-}

@@ -4,6 +4,22 @@ Instruksi ini berlaku untuk semua AI coding agent (Devin, Cascade, Cursor, dll)
 yang bekerja di project **lrtj-project**. Wajib dibaca dan dipatuhi sebelum
 melakukan perubahan apapun.
 
+## 📁 Folder `.devin/` — WAJIB DIBACA
+
+Project ini punya folder `.devin/` di root yang isinya **skills** —
+panduan teknis spesifik tentang project ini (cara kerja fitur tertentu,
+konvensi kode, cara handle kasus-kasus khusus di codebase ini). Sebelum
+mengerjakan task apapun:
+
+1. Cek folder `.devin/` dan baca skill yang relevan dengan task yang lagi
+   dikerjakan.
+2. Kalau ada skill yang cocok dengan task ini, **ikuti panduan di skill
+   itu** — jangan diabaikan atau ditimpa dengan asumsi/cara sendiri.
+3. Kalau tidak yakin skill mana yang relevan, sebutkan skill apa saja yang
+   ada di `.devin/` dan tanya ke user sebelum lanjut, daripada menebak.
+4. Prioritas: instruksi di AGENTS.md ini > skill relevan di `.devin/` >
+   asumsi/default milik agent sendiri.
+
 ## 🚫 Aturan Database — WAJIB, TIDAK BOLEH DILANGGAR
 
 1. **JANGAN PERNAH** menjalankan perintah yang bisa menghapus data, termasuk:
@@ -91,9 +107,9 @@ melakukan perubahan apapun.
 
 ## ✅ Workflow yang Diharapkan
 
-1. Selalu investigasi/inspeksi dulu (struktur DB, atau styling existing di
-   Landing/Auth) sebelum eksekusi apapun — laporkan temuan dan opsi solusi,
-   tunggu approval user, baru jalankan.
+1. Cek dulu skill relevan di `.devin/`, lalu investigasi/inspeksi (struktur
+   DB, atau styling existing di Landing/Auth) sebelum eksekusi apapun —
+   laporkan temuan dan opsi solusi, tunggu approval user, baru jalankan.
 2. Kalau ada bug terkait database/schema, selesaikan itu dulu dan minta
    approval user sebelum lanjut ke task lain (misalnya redesign UI).
 3. Untuk redesign UI: fix shared layout (sidebar/header) dulu, baru halaman

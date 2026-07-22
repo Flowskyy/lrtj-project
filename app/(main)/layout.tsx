@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -56,7 +56,11 @@ import {
 
   SidebarProvider,
 
+  SidebarSeparator,
+
   SidebarTrigger,
+
+  useSidebar,
 
 } from "@/components/ui/sidebar"
 
@@ -99,6 +103,16 @@ const NAV_ITEMS = [
 
   {
 
+    label: "Users",
+
+    icon: <Users {...SIDEBAR_ICON_PROPS} />,
+
+    href: "/users",
+
+  },
+
+  {
+
     label: "Merchandise",
 
     icon: <ShoppingBag {...SIDEBAR_ICON_PROPS} />,
@@ -115,11 +129,17 @@ const NAV_ITEMS = [
 
   {
 
-    label: "Users",
+    label: "Daily Benefit",
 
-    icon: <Users {...SIDEBAR_ICON_PROPS} />,
+    icon: <Calendar {...SIDEBAR_ICON_PROPS} />,
 
-    href: "/users",
+    subItems: [
+
+      { href: "/daily-benefit", label: "Daily Benefit", icon: <Calendar className="h-4 w-4" strokeWidth={2} /> },
+
+      { href: "/redeem-benefit", label: "Redeem Benefit", icon: <GiftIcon className="h-4 w-4" strokeWidth={2} /> },
+
+    ],
 
   },
 
@@ -127,125 +147,95 @@ const NAV_ITEMS = [
 
 
 
-export default function DashboardLayout({
-
-  children,
-
-}: {
-
-  children: React.ReactNode
-
-}) {
-
+function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
+  const { state } = useSidebar()
   const pathname = usePathname()
-
   const { data: session } = useSession()
 
-
-
   const handleLogout = () => {
-
     signOut({ callbackUrl: "/login" })
-
   }
-
-
 
   const getUserInitials = () => {
-
     if (!session?.user?.email) return "U"
-
     const email = session.user.email
-
     const name = email.split("@")[0]
-
     return name.charAt(0).toUpperCase()
-
   }
 
-
-
   const pageMeta = pathname === "/merchandise"
-
     ? {
-
         title: "Merchandise",
-
         breadcrumb: ["Merchandise"],
-
       }
-
     : pathname === "/redeem-merchandise"
-
     ? {
-
         title: "Redeem Merchandise",
-
         breadcrumb: ["Merchandise", "Redeem Merchandise"],
-
       }
-
-    : pathname === "/users"
-
+    : pathname === "/daily-benefit"
     ? {
-
+        title: "Daily Benefit",
+        breadcrumb: ["Daily Benefit", "Daily Benefit"],
+      }
+    : pathname === "/redeem-benefit"
+    ? {
+        title: "Redeem Benefit",
+        breadcrumb: ["Daily Benefit", "Redeem Benefit"],
+      }
+    : pathname === "/users"
+    ? {
         title: "Users",
-
         breadcrumb: ["Users"],
-
       }
-
     : {
-
         title: "Dashboard",
-
         breadcrumb: ["Dashboard"],
-
       }
-
-
 
   return (
-
-    <SidebarProvider defaultOpen={true}>
-
+    <>
       <Sidebar collapsible="icon" className="border-r border-gray-100 group-data-[state=expanded]:min-w-64">
 
-        <SidebarHeader className="py-4 px-3 flex items-center justify-center group-data-[state=collapsed]:py-6 overflow-hidden">
+        <SidebarHeader className="pt-4 pb-2 flex items-center justify-center overflow-hidden">
 
           <div className="flex items-center justify-center w-full h-auto">
 
-            <Image
+            {state === "collapsed" && (
+              <Image
 
-              src="/favicon.ico"
+                src="/favicon.ico"
 
-              alt="LRT Jakarta"
+                alt="LRT Jakarta"
 
-              width={40}
+                width={40}
 
-              height={40}
+                height={40}
 
-              className="object-contain group-data-[state=expanded]:hidden"
+                className="object-contain"
 
-              priority
+                priority
 
-            />
+              />
+            )}
 
-            <Image
+            {state === "expanded" && (
+              <Image
 
-              src="/logo-lrtj.png"
+                src="/logo-lrtj.png"
 
-              alt="LRT Jakarta"
+                alt="LRT Jakarta"
 
-              width={140}
+                width={140}
 
-              height={70}
+                height={70}
 
-              className="object-contain group-data-[state=collapsed]:hidden max-w-full"
+                className="object-contain max-w-full"
 
-              priority
+                priority
 
-            />
+              />
+            )}
 
           </div>
 
@@ -253,23 +243,35 @@ export default function DashboardLayout({
 
         <SidebarContent className="px-2 group-data-[state=collapsed]:px-0">
 
+          <div className="px-3 pt-1 pb-2">
+  <div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
+</div>
+
           <SidebarMenu>
 
             {NAV_ITEMS.map((item, index) => (
 
-              <SidebarNavGroup
+              <React.Fragment key={index}>
 
-                key={index}
+                <SidebarNavGroup
 
-                label={item.label}
+                  label={item.label}
 
-                icon={item.icon}
+                  icon={item.icon}
 
-                href={item.href}
+                  href={item.href}
 
-                subItems={item.subItems}
+                  subItems={item.subItems}
 
-              />
+                />
+
+                {item.label === "Users" && (
+                  <div className="px-3 pt-1 pb-2">
+  <div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
+</div>
+                )}
+
+              </React.Fragment>
 
             ))}
 
@@ -321,6 +323,17 @@ export default function DashboardLayout({
 
           <Separator orientation="vertical" className="mr-2 h-full self-auto" />
 
+          <div className="flex items-center justify-center flex-1 sm:hidden">
+            <Image
+              src="/logo-lrtj.png"
+              alt="LRT Jakarta"
+              width={100}
+              height={50}
+              className="object-contain h-8 w-auto"
+              priority
+            />
+          </div>
+
           <Breadcrumb className="hidden sm:flex">
 
             <BreadcrumbList>
@@ -352,6 +365,18 @@ export default function DashboardLayout({
                             : item === "Users"
 
                             ? "/users"
+
+                            : item === "Daily Benefit"
+
+                            ? "/daily-benefit"
+
+                            : item === "Redeem Merchandise"
+
+                            ? "/redeem-merchandise"
+
+                            : item === "Redeem Benefit"
+
+                            ? "/redeem-benefit"
 
                             : "/redeem-merchandise"
 
@@ -468,9 +493,24 @@ export default function DashboardLayout({
         </main>
 
       </SidebarInset>
+    </>
+  )
+}
 
+export default function DashboardLayout({
+
+  children,
+
+}: {
+
+  children: React.ReactNode
+
+}) {
+
+  return (
+    <SidebarProvider defaultOpen={true}>
+      <SidebarContentWrapper>{children}</SidebarContentWrapper>
     </SidebarProvider>
-
   )
 
 }

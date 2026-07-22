@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X, Users } from "lucide-react";
-import FilterSheet from "@/components/FilterSheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +49,8 @@ interface MemberItem {
   email_notification: number;
   new_content_notification: number;
   image: string | null;
+  ecard: string | null;
+  ecard2: string | null;
 }
 
 interface UsersContentProps {
@@ -74,32 +76,15 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<MemberItem | null>(null);
-  const [editItem, setEditItem] = useState<MemberItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<MemberItem | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
   const [redeemCount, setRedeemCount] = useState(0);
 
-  // Form states
-  const [formNama, setFormNama] = useState("");
-  const [formEmail, setFormEmail] = useState("");
-  const [formTelepon, setFormTelepon] = useState("");
-  const [formAlamat, setFormAlamat] = useState("");
-  const [formGender, setFormGender] = useState<string>("");
-  const [formNik, setFormNik] = useState("");
-  const [formTempatLahir, setFormTempatLahir] = useState("");
-  const [formBirthday, setFormBirthday] = useState("");
-  const [formStatus, setFormStatus] = useState<number>(1);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
     nama: true,
     email: true,
     telepon: true,
-    status: true,
-    lrtj_saldo: true,
-    slc_point: true,
-    trip_count: true,
-    verified: true,
     created_at: true,
     actions: true,
   });
@@ -109,8 +94,6 @@ export default function UsersContent({ username }: UsersContentProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (verifiedFilter !== "all") params.set("verified", verifiedFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
@@ -135,105 +118,14 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, verifiedFilter, sortBy, sortOrder, currentPage, searchQuery]);
+  }, [sortBy, sortOrder, currentPage, searchQuery]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
 
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (verifiedFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
-
-  const resetForm = () => {
-    setFormNama("");
-    setFormEmail("");
-    setFormTelepon("");
-    setFormAlamat("");
-    setFormGender("");
-    setFormNik("");
-    setFormTempatLahir("");
-    setFormBirthday("");
-    setFormStatus(1);
-  };
-
-  // Add Item
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nama: formNama,
-          email: formEmail,
-          telepon: formTelepon,
-          alamat: formAlamat,
-          status: formStatus,
-          SYS_CREATED_BY: username,
-          SYS_MODIFIED_BY: username,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setIsAdding(false);
-        resetForm();
-        toast.success("User added successfully");
-      } else {
-        toast.error("Failed to add user");
-      }
-    } catch (err) {
-      console.error("Failed to add item", err);
-      toast.error("Failed to add user");
-    }
-  };
-
-  // Edit Item
-  const openEdit = (item: MemberItem) => {
-    setEditItem(item);
-    setFormNama(item.name || "");
-    setFormEmail(item.email);
-    setFormTelepon(item.no_telepon || "");
-    setFormAlamat(item.alamat || "");
-    setFormGender(item.jenis_kelamin || "");
-    setFormNik(item.nik || "");
-    setFormTempatLahir(item.tempat_lahir || "");
-    setFormBirthday(item.birthday ? new Date(item.birthday).toISOString().split('T')[0] : "");
-    setFormStatus(item.status);
-  };
-
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editItem) return;
-    try {
-      const res = await fetch(`/api/users/${editItem.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nama: formNama,
-          email: formEmail,
-          telepon: formTelepon,
-          alamat: formAlamat,
-          jenis_kelamin: formGender,
-          nik: formNik,
-          tempat_lahir: formTempatLahir,
-          birthday: formBirthday || null,
-          status: formStatus,
-          SYS_MODIFIED_BY: username,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setEditItem(null);
-        resetForm();
-        toast.success("User updated successfully");
-      } else {
-        toast.error("Failed to update user");
-      }
-    } catch (err) {
-      console.error("Failed to edit item", err);
-      toast.error("Failed to update user");
-    }
-  };
+  const activeFilterCount = searchQuery ? 1 : 0;
 
   // Delete Item
   const handleDelete = async () => {
@@ -439,11 +331,11 @@ export default function UsersContent({ username }: UsersContentProps) {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
+          <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -460,7 +352,7 @@ export default function UsersContent({ username }: UsersContentProps) {
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
+          <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -489,7 +381,7 @@ export default function UsersContent({ username }: UsersContentProps) {
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
+          <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -522,29 +414,17 @@ export default function UsersContent({ username }: UsersContentProps) {
       {/* Main Content Card */}
       <Card>
         <CardContent className="p-4">
-          <CardHeader className="px-0 pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <CardTitle className="text-lg">User Management</CardTitle>
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsAdding(true);
-                }}
-                className="min-h-[44px] bg-primary hover:bg-primary/90 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
-            </div>
+          <CardHeader className="p-3">
+            <CardTitle className="text-lg">User Management</CardTitle>
           </CardHeader>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search users..."
+                  placeholder="Search by name, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9 pr-8 min-h-[44px] w-full sm:w-64"
@@ -590,42 +470,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       <span>Email</span>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, telepon: !prev.telepon }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.telepon && <Check className="h-4 w-4" />}
-                      <span>Phone</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: !prev.status }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.status && <Check className="h-4 w-4" />}
-                      <span>Status</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, lrtj_saldo: !prev.lrtj_saldo }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.lrtj_saldo && <Check className="h-4 w-4" />}
-                      <span>LRTJ Saldo</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, slc_point: !prev.slc_point }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.slc_point && <Check className="h-4 w-4" />}
-                      <span>SLC Point</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, trip_count: !prev.trip_count }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.trip_count && <Check className="h-4 w-4" />}
-                      <span>Trip Count</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, verified: !prev.verified }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.verified && <Check className="h-4 w-4" />}
-                      <span>Verified</span>
-                    </div>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: !prev.created_at }))}>
                     <div className="flex items-center gap-2">
                       {visibleColumns.created_at && <Check className="h-4 w-4" />}
@@ -644,35 +488,75 @@ export default function UsersContent({ username }: UsersContentProps) {
           </div>
 
           {/* Filter Sheet */}
-          <FilterSheet
-            open={filterSheetOpen}
-            onOpenChange={setFilterSheetOpen}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            verifiedFilter={verifiedFilter}
-            onVerifiedFilterChange={setVerifiedFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-            statusOptions={[
-              { value: "all", label: "All" },
-              { value: "1", label: "Active" },
-              { value: "0", label: "Inactive" },
-            ]}
-            verifiedOptions={[
-              { value: "all", label: "All" },
-              { value: "verified", label: "Verified" },
-              { value: "unverified", label: "Unverified" },
-            ]}
-            sortByOptions={[
-              { value: "name", label: "Name" },
-              { value: "created_at", label: "Created At" },
-              { value: "lrtj_saldo", label: "LRTJ Saldo" },
-              { value: "slc_point", label: "SLC Point" },
-              { value: "trip_count", label: "Trip Count" },
-            ]}
-          />
+          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+            <SheetContent side="right" className="w-full sm:w-80 p-0">
+              <div className="h-full flex flex-col">
+                <div className="p-4 border-b border-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-900">Filter & Sort</h2>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">Status</label>
+                    <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v || 'all')}>
+                      <SelectTrigger className="min-h-[44px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="1">Active</SelectItem>
+                        <SelectItem value="0">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">Verified</label>
+                    <Select value={verifiedFilter} onValueChange={(v) => setVerifiedFilter(v || 'all')}>
+                      <SelectTrigger className="min-h-[44px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="verified">Verified</SelectItem>
+                        <SelectItem value="unverified">Unverified</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">Sort By</label>
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v || 'created_at')}>
+                      <SelectTrigger className="min-h-[44px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Name</SelectItem>
+                        <SelectItem value="created_at">Created At</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">Order</label>
+                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v || 'desc')}>
+                      <SelectTrigger className="min-h-[44px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc">Ascending</SelectItem>
+                        <SelectItem value="desc">Descending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="p-4 border-t border-gray-100">
+                  <Button
+                    onClick={() => setFilterSheetOpen(false)}
+                    className="w-full min-h-[44px] bg-primary hover:bg-primary/90 text-white"
+                  >
+                    Apply Filters
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
@@ -687,36 +571,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                   {visibleColumns.email && (
                     <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                       Email
-                    </TableHead>
-                  )}
-                  {visibleColumns.telepon && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                      Phone
-                    </TableHead>
-                  )}
-                  {visibleColumns.status && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                      Status
-                    </TableHead>
-                  )}
-                  {visibleColumns.lrtj_saldo && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-right">
-                      LRTJ Saldo
-                    </TableHead>
-                  )}
-                  {visibleColumns.slc_point && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-right">
-                      SLC Point
-                    </TableHead>
-                  )}
-                  {visibleColumns.trip_count && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-right">
-                      Trip Count
-                    </TableHead>
-                  )}
-                  {visibleColumns.verified && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                      Verified
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
@@ -738,11 +592,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.lrtj_saldo && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.slc_point && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.trip_count && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.verified && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -750,11 +599,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.lrtj_saldo && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.slc_point && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.trip_count && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.verified && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -762,11 +606,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.lrtj_saldo && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.slc_point && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.trip_count && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.verified && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -791,47 +630,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                           {item.no_telepon || "-"}
                         </TableCell>
                       )}
-                      {visibleColumns.status && (
-                        <TableCell className="px-2 py-1">
-                          {item.status === 1 ? (
-                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
-                              Inactive
-                            </Badge>
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns.lrtj_saldo && (
-                        <TableCell className="px-2 py-1 text-xs text-gray-900 text-right">
-                          {item.lrtj_saldo ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(parseFloat(item.lrtj_saldo)) : "Rp 0"}
-                        </TableCell>
-                      )}
-                      {visibleColumns.slc_point && (
-                        <TableCell className="px-2 py-1 text-xs text-gray-900 text-right">
-                          {item.slc_point.toLocaleString()}
-                        </TableCell>
-                      )}
-                      {visibleColumns.trip_count && (
-                        <TableCell className="px-2 py-1 text-xs text-gray-900 text-right">
-                          {item.trip_count.toLocaleString()}
-                        </TableCell>
-                      )}
-                      {visibleColumns.verified && (
-                        <TableCell className="px-2 py-1">
-                          {item.verified_at ? (
-                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
-                              Verified
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
-                              Unverified
-                            </Badge>
-                          )}
-                        </TableCell>
-                      )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-2 py-1 text-xs text-gray-600">
                           {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
@@ -849,10 +647,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                               }} className="text-xs h-8">
                                 <Eye className="h-3.5 w-3.5 mr-2" />
                                 View
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEdit(item)} className="text-xs h-8">
-                                <Pencil className="h-3.5 w-3.5 mr-2" />
-                                Edit
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => checkRedeemCount(item)} variant="destructive" className="text-xs h-8">
@@ -913,19 +707,9 @@ export default function UsersContent({ username }: UsersContentProps) {
                       <h3 className="text-sm font-semibold text-gray-900 truncate">{item.name || "-"}</h3>
                       <p className="text-xs text-gray-600 truncate">{item.email}</p>
                     </div>
-                    {item.status === 1 ? (
-                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px] ml-2">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px] ml-2">
-                        Inactive
-                      </Badge>
-                    )}
                   </div>
                   <div className="space-y-1 text-xs text-gray-600 mb-3">
                     <p><span className="font-medium">Phone:</span> {item.no_telepon || "-"}</p>
-                    <p className="truncate"><span className="font-medium">Address:</span> {item.alamat || "-"}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -936,15 +720,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEdit(item)}
-                      className="flex-1 min-h-[36px] text-xs"
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      Edit
                     </Button>
                     <Button
                       variant="outline"
@@ -999,61 +774,35 @@ export default function UsersContent({ username }: UsersContentProps) {
         </CardContent>
       </Card>
 
-      {/* Add Dialog */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-          {renderModalForm({
-            title: "Add New User",
-            onClose: () => setIsAdding(false),
-            onSubmit: handleAdd,
-          })}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-          {editItem && renderModalForm({
-            title: "Edit User",
-            onClose: () => setEditItem(null),
-            onSubmit: handleEdit,
-            isEdit: true,
-            item: editItem,
-          })}
-        </DialogContent>
-      </Dialog>
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+          </DialogHeader>
           {viewItem && (
-            <>
-              <DialogHeader>
-                <DialogTitle>User Details</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
+            <div className="overflow-y-auto space-y-4 rounded-b-xl">
                 {/* Basic Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">ID</label>
+                    <p className="text-sm text-gray-900">{viewItem.id}</p>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Status</label>
+                    <p className="text-sm text-gray-900">{viewItem.status === 1 ? "True" : "False"}</p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">Name</label>
                     <p className="text-sm text-gray-900">{viewItem.name || "-"}</p>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Status</label>
-                    {viewItem.status === 1 ? (
-                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
-                        Inactive
-                      </Badge>
-                    )}
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Email</label>
+                    <p className="text-sm text-gray-900 break-all">{viewItem.email}</p>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1">Email</label>
-                  <p className="text-sm text-gray-900">{viewItem.email}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1069,12 +818,12 @@ export default function UsersContent({ username }: UsersContentProps) {
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-500 mb-1">Address</label>
-                  <p className="text-sm text-gray-900">{viewItem.alamat || "-"}</p>
+                  <p className="text-sm text-gray-900 break-all">{viewItem.alamat || "-"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">NIK</label>
-                    <p className="text-sm text-gray-900">{viewItem.nik || "-"}</p>
+                    <p className="text-sm text-gray-900 break-all">{viewItem.nik || "-"}</p>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 mb-1">Birthplace</label>
@@ -1087,16 +836,18 @@ export default function UsersContent({ username }: UsersContentProps) {
                     <p className="text-sm text-gray-900">{viewItem.birthday ? new Date(viewItem.birthday).toLocaleDateString() : "-"}</p>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Verified</label>
-                    {viewItem.verified_at ? (
-                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
-                        Unverified
-                      </Badge>
-                    )}
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Image</label>
+                    <p className="text-sm text-gray-900 break-all">{viewItem.image || "-"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">ECard</label>
+                    <p className="text-sm text-gray-900 break-all">{viewItem.ecard || "-"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">ECard 2</label>
+                    <p className="text-sm text-gray-900 break-all">{viewItem.ecard2 || "-"}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1115,8 +866,26 @@ export default function UsersContent({ username }: UsersContentProps) {
                     <p className="text-sm text-gray-900">{viewItem.member_level_id || "-"}</p>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Member Since</label>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Created At</label>
                     <p className="text-sm text-gray-900">{viewItem.created_at ? new Date(viewItem.created_at).toLocaleDateString() : "-"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Updated At</label>
+                    <p className="text-sm text-gray-900">{viewItem.updated_at ? new Date(viewItem.updated_at).toLocaleDateString() : "-"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Verified</label>
+                    {viewItem.verified_at ? (
+                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
+                        Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
+                        Not Verified
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 
@@ -1147,17 +916,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-500 mb-1">SLC Activation</label>
-                      <p className="text-sm text-gray-900">
-                        {viewItem.activation_slc === 1 ? (
-                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
-                            Inactive
-                          </Badge>
-                        )}
-                      </p>
+                      <p className="text-sm text-gray-900">{viewItem.activation_slc === 1 ? "True" : "False"}</p>
                       {viewItem.activation_slc_at && (
                         <p className="text-[10px] text-gray-400 mt-1">
                           {new Date(viewItem.activation_slc_at).toLocaleDateString()}
@@ -1166,17 +925,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-500 mb-1">LRTJPay Activation</label>
-                      <p className="text-sm text-gray-900">
-                        {viewItem.activation_lrtjpay === 1 ? (
-                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
-                            Inactive
-                          </Badge>
-                        )}
-                      </p>
+                      <p className="text-sm text-gray-900">{viewItem.activation_lrtjpay === 1 ? "True" : "False"}</p>
                       {viewItem.activation_lrtjpay_at && (
                         <p className="text-[10px] text-gray-400 mt-1">
                           {new Date(viewItem.activation_lrtjpay_at).toLocaleDateString()}
@@ -1189,29 +938,22 @@ export default function UsersContent({ username }: UsersContentProps) {
                 {/* Notification Preferences */}
                 <div className="border-t border-gray-100 pt-4">
                   <h3 className="text-xs font-semibold text-gray-700 mb-3">Notification Preferences</h3>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4 pb-4">
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Push</label>
-                      <p className="text-sm text-gray-900">
-                        {viewItem.push_notification === 1 ? "On" : "Off"}
-                      </p>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Push Notification</label>
+                      <p className="text-sm text-gray-900">{viewItem.push_notification === 1 ? "True" : "False"}</p>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Email</label>
-                      <p className="text-sm text-gray-900">
-                        {viewItem.email_notification === 1 ? "On" : "Off"}
-                      </p>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Email Notification</label>
+                      <p className="text-sm text-gray-900">{viewItem.email_notification === 1 ? "True" : "False"}</p>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">New Content</label>
-                      <p className="text-sm text-gray-900">
-                        {viewItem.new_content_notification === 1 ? "On" : "Off"}
-                      </p>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">New Content Notification</label>
+                      <p className="text-sm text-gray-900">{viewItem.new_content_notification === 1 ? "True" : "False"}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            </>
           )}
         </DialogContent>
       </Dialog>

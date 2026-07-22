@@ -22,37 +22,6 @@ export async function GET(
   return NextResponse.json({ ...item, redeemCount });
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id_member: string }> }
-) {
-  const { id_member } = await params;
-  const data = await request.json();
-
-  try {
-    const updatedItem = await prisma.users.update({
-      where: { id: parseInt(id_member) },
-      data: {
-        name: data.nama || data.name,
-        email: data.email,
-        no_telepon: data.telepon || data.no_telepon,
-        alamat: data.alamat,
-        jenis_kelamin: data.jenis_kelamin,
-        nik: data.nik,
-        tempat_lahir: data.tempat_lahir,
-        birthday: data.birthday ? new Date(data.birthday) : null,
-        status: data.status,
-        updated_at: new Date(),
-      },
-    });
-
-    return NextResponse.json(updatedItem);
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
-  }
-}
-
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id_member: string }> }

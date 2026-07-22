@@ -8,13 +8,13 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    await prisma.redeem.delete({
+    await prisma.redeem_benefit.delete({
       where: { id: parseInt(id) },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting redeem:', error);
-    return NextResponse.json({ error: 'Failed to delete redeem record' }, { status: 500 });
+    console.error('Error deleting redeem benefit:', error);
+    return NextResponse.json({ error: 'Failed to delete redeem benefit record' }, { status: 500 });
   }
 }

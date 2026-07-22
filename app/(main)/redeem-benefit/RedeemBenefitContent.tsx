@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
-import MerchandiseSearchCombobox from "@/components/MerchandiseSearchCombobox";
-import UserSearchCombobox from "@/components/UserSearchCombobox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,30 +21,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface RedeemItem {
+interface RedeemBenefitItem {
   id: number;
   user_id: number;
-  merchandise_id: number;
-  merchandise_name: string;
-  receiver_name: string;
-  receiver_phone: string;
-  receiver_email: string;
-  receiver_address: string;
+  merchant_id: number;
+  name: string;
+  email: string;
   status: string;
   created_at: string | null;
   updated_at: string | null;
 }
 
-interface RedeemMerchandiseContentProps {
+interface RedeemBenefitContentProps {
   username: string;
 }
 
-export default function RedeemMerchandiseContent({ username }: RedeemMerchandiseContentProps) {
-  const [items, setItems] = useState<RedeemItem[]>([]);
+export default function RedeemBenefitContent({ username }: RedeemBenefitContentProps) {
+  const [items, setItems] = useState<RedeemBenefitItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -56,19 +50,18 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   const [sortOrder, setSortOrder] = useState<string>("asc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<RedeemItem | null>(null);
-  const [deleteItem, setDeleteItem] = useState<RedeemItem | null>(null);
-
+  const [viewItem, setViewItem] = useState<RedeemBenefitItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<RedeemBenefitItem | null>(null);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
     id: true,
     user_id: true,
-    receiver_name: true,
-    merchandise_name: true,
+    merchant_id: true,
+    name: true,
+    email: true,
     status: true,
     created_at: true,
     updated_at: true,
@@ -87,13 +80,12 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
-      const res = await fetch(`/api/redeem?${params}`);
+      const res = await fetch(`/api/redeem-benefit?${params}`);
       if (res.ok) {
         const response = await res.json();
         setItems(response.data || []);
         setTotalCount(response.meta?.total || 0);
-        setPendingCount(response.meta?.pending || 0);
-        setCompletedCount(response.meta?.completed || 0);
+        setStatusCounts(response.meta?.statusCounts || {});
         setTotalPages(response.meta?.totalPages || 1);
       }
     } catch (err) {
@@ -114,39 +106,50 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   const handleDelete = async () => {
     if (!deleteItem) return;
     try {
-      const res = await fetch(`/api/redeem/${deleteItem.id}`, {
+      const res = await fetch(`/api/redeem-benefit/${deleteItem.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
         await fetchItems();
         setDeleteItem(null);
-        toast.success("Redeem record deleted successfully");
+        toast.success("Redeem benefit record deleted successfully");
       } else {
-        toast.error("Failed to delete redeem record");
+        toast.error("Failed to delete redeem benefit record");
       }
     } catch (err) {
       console.error("Failed to delete item", err);
-      toast.error("Failed to delete redeem record");
+      toast.error("Failed to delete redeem benefit record");
     }
   };
 
   // Get status badge color
   const getStatusBadge = (status: string) => {
     const statusLower = status.toLowerCase();
-    if (statusLower === "completed") {
+    if (statusLower === "completed" || statusLower === "approved") {
       return <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">{status}</Badge>;
     } else if (statusLower === "process" || statusLower === "pending") {
       return <Badge variant="default" className="bg-yellow-50 text-yellow-700 border border-yellow-100 hover:bg-yellow-100 text-[10px]">{status}</Badge>;
-    } else if (statusLower === "rejected") {
+    } else if (statusLower === "rejected" || statusLower === "cancelled") {
       return <Badge variant="secondary" className="bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 text-[10px]">{status}</Badge>;
     }
     return <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">{status}</Badge>;
   };
 
-  // Computed values
-  const total = totalCount;
-  const pending = pendingCount;
-  const completed = completedCount;
+  // Get status badge color for stat cards
+  const getStatusCardColor = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower === "completed" || statusLower === "approved") {
+      return { bg: "bg-green-100", text: "text-green-700", svgColor: "text-green-700" };
+    } else if (statusLower === "process" || statusLower === "pending") {
+      return { bg: "bg-yellow-100", text: "text-yellow-700", svgColor: "text-yellow-700" };
+    } else if (statusLower === "rejected" || statusLower === "cancelled") {
+      return { bg: "bg-red-100", text: "text-red-700", svgColor: "text-red-700" };
+    }
+    return { bg: "bg-gray-100", text: "text-gray-500", svgColor: "text-gray-500" };
+  };
+
+  // Get unique status keys for stat cards
+  const statusKeys = Object.keys(statusCounts);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -157,10 +160,10 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Total Redeems
+                  Total
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : total}
+                  {loading ? "..." : totalCount}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -171,51 +174,37 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Pending
-                </p>
-                <p className="text-2xl font-bold text-yellow-700 mt-1">
-                  {loading ? "..." : pending}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-yellow-100 flex items-center justify-center">
-                <svg className="h-5 w-5 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Completed
-                </p>
-                <p className="text-2xl font-bold text-green-700 mt-1">
-                  {loading ? "..." : completed}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <svg className="h-5 w-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {statusKeys.slice(0, 2).map((status) => {
+          const colors = getStatusCardColor(status);
+          return (
+            <Card key={status} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      {status}
+                    </p>
+                    <p className={`text-2xl font-bold mt-1 ${colors.text}`}>
+                      {loading ? "..." : statusCounts[status]}
+                    </p>
+                  </div>
+                  <div className={`h-10 w-10 rounded-xl ${colors.bg} flex items-center justify-center`}>
+                    <svg className={`h-5 w-5 ${colors.svgColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Main Content Card */}
       <Card>
         <CardContent className="p-4">
           <CardHeader className="p-3">
-            <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
+            <CardTitle className="text-lg">Redeem Benefit</CardTitle>
           </CardHeader>
 
           {/* Table Toolbar */}
@@ -226,7 +215,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
                   <Input
                     type="text"
-                    placeholder="Search redeems..."
+                    placeholder="Search by name, email..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -279,16 +268,22 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       <span>User ID</span>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, receiver_name: !prev.receiver_name }))}>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchant_id: !prev.merchant_id }))}>
                     <div className="flex items-center gap-2">
-                      {visibleColumns.receiver_name && <Check className="h-4 w-4" />}
-                      <span>Receiver Name</span>
+                      {visibleColumns.merchant_id && <Check className="h-4 w-4" />}
+                      <span>Merchant ID</span>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchandise_name: !prev.merchandise_name }))}>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, name: !prev.name }))}>
                     <div className="flex items-center gap-2">
-                      {visibleColumns.merchandise_name && <Check className="h-4 w-4" />}
-                      <span>Merchandise</span>
+                      {visibleColumns.name && <Check className="h-4 w-4" />}
+                      <span>Name</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, email: !prev.email }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.email && <Check className="h-4 w-4" />}
+                      <span>Email</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: !prev.status }))}>
@@ -336,9 +331,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="process">Process</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
+                        {statusKeys.map((status) => (
+                          <SelectItem key={status} value={status}>{status}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -398,17 +393,19 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       User ID
                     </TableHead>
                   )}
-                  {visibleColumns.receiver_name && (
+                  {visibleColumns.merchant_id && (
                     <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                      Receiver Name
+                      Merchant ID
                     </TableHead>
                   )}
-                  {visibleColumns.merchandise_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                      <div className="flex items-center gap-1">
-                        Merchandise
-                        <ChevronDown className="h-3 w-3" />
-                      </div>
+                  {visibleColumns.name && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                      Name
+                    </TableHead>
+                  )}
+                  {visibleColumns.email && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                      Email
                     </TableHead>
                   )}
                   {visibleColumns.status && (
@@ -439,8 +436,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     <TableRow>
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
+                      {visibleColumns.name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
+                      {visibleColumns.email && <TableCell><Skeleton className="h-5 w-32" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -449,8 +447,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     <TableRow>
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
+                      {visibleColumns.name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
+                      {visibleColumns.email && <TableCell><Skeleton className="h-5 w-32" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -459,8 +458,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     <TableRow>
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
+                      {visibleColumns.name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
+                      {visibleColumns.email && <TableCell><Skeleton className="h-5 w-32" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -480,15 +480,20 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                           {item.user_id}
                         </TableCell>
                       )}
-                      {visibleColumns.receiver_name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900">
-                          {item.receiver_name}
+                      {visibleColumns.merchant_id && (
+                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
+                          {item.merchant_id}
                         </TableCell>
                       )}
-                      {visibleColumns.merchandise_name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[200px]">
-                          <span className="block truncate" title={item.merchandise_name}>
-                            {item.merchandise_name}
+                      {visibleColumns.name && (
+                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900">
+                          {item.name}
+                        </TableCell>
+                      )}
+                      {visibleColumns.email && (
+                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 max-w-[200px]">
+                          <span className="block truncate" title={item.email}>
+                            {item.email}
                           </span>
                         </TableCell>
                       )}
@@ -532,7 +537,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 ) : (
                   <TableRow>
                     <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-xs text-gray-400">
-                      No redeem records found.
+                      No redeem benefit records found.
                     </TableCell>
                   </TableRow>
                 )}
@@ -565,9 +570,10 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-gray-900 truncate">#{item.id} – {item.merchandise_name}</h3>
+                        <h3 className="text-sm font-bold text-gray-900 truncate">#{item.id} – {item.name}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">User ID: {item.user_id}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Receiver: {item.receiver_name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Merchant ID: {item.merchant_id}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Email: {item.email}</p>
                       </div>
                       {getStatusBadge(item.status)}
                     </div>
@@ -577,7 +583,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
               ))
             ) : (
               <div className="text-center py-12 text-sm text-gray-400">
-                No redeem records found.
+                No redeem benefit records found.
               </div>
             )}
           </div>
@@ -618,11 +624,11 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
+        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
           <DialogHeader>
-            <DialogTitle>View Redeem Record</DialogTitle>
+            <DialogTitle>View Redeem Benefit</DialogTitle>
           </DialogHeader>
-          <div className="overflow-y-auto space-y-4 rounded-b-xl">
+          <div className="overflow-y-auto space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">ID</label>
@@ -633,31 +639,23 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 <div className="text-sm text-gray-900">{viewItem?.user_id}</div>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Name</label>
-              <div className="text-sm text-gray-900">{viewItem?.receiver_name}</div>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Phone</label>
-                <div className="text-sm text-gray-900">{viewItem?.receiver_phone}</div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Merchant ID</label>
+                <div className="text-sm text-gray-900">{viewItem?.merchant_id}</div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Email</label>
-                <div className="text-sm text-gray-900">{viewItem?.receiver_email}</div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                <div>{getStatusBadge(viewItem?.status || '')}</div>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Address</label>
-              <div className="text-sm text-gray-900">{viewItem?.receiver_address}</div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Name</label>
+              <div className="text-sm text-gray-900">{viewItem?.name}</div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Merchandise</label>
-              <div className="text-sm text-gray-900">{viewItem?.merchandise_name}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-              <div>{getStatusBadge(viewItem?.status || '')}</div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+              <div className="text-sm text-gray-900">{viewItem?.email}</div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -671,21 +669,25 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             </div>
           </div>
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => setViewItem(null)} className="min-h-[44px]">
+            <Button
+              onClick={() => setViewItem(null)}
+              variant="outline"
+              className="min-h-[44px]"
+            >
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete AlertDialog */}
+      {/* Delete Alert Dialog */}
       <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
         <AlertDialogContent className="max-w-sm sm:max-w-md w-[calc(100%-2rem)] sm:w-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Delete Redeem Record</AlertDialogTitle>
+            <AlertDialogTitle className="text-destructive">Delete Redeem Benefit</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteItem && (
-                <>Are you sure you want to delete this redeem record for <span className="font-bold text-gray-900">"{deleteItem.receiver_name}"</span>? This action cannot be undone.</>
+                <>Are you sure you want to delete this redeem benefit record for <span className="font-bold text-gray-900">"{deleteItem.name}"</span>? This action cannot be undone.</>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>

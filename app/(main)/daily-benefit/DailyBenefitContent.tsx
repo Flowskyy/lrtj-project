@@ -22,25 +22,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface MerchandiseItem {
+interface DailyBenefitItem {
   id: number;
   editedBy?: string;
-  creator_email?: string;
   name: string;
   image_url: string;
-  points: number;
-  description: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+  redeem_point: number;
+  term_condition: string;
+  created_at: string | null;
+  updated_at: string | null;
   status: number;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: number | null;
 }
 
-interface MerchandiseContentProps {
+interface DailyBenefitContentProps {
   username: string;
 }
 
-export default function MerchandiseContent({ username }: MerchandiseContentProps) {
-  const [items, setItems] = useState<MerchandiseItem[]>([]);
+export default function DailyBenefitContent({ username }: DailyBenefitContentProps) {
+  const [items, setItems] = useState<DailyBenefitItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
@@ -54,17 +56,20 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<MerchandiseItem | null>(null);
-  const [editItem, setEditItem] = useState<MerchandiseItem | null>(null);
-  const [deleteItem, setDeleteItem] = useState<MerchandiseItem | null>(null);
+  const [viewItem, setViewItem] = useState<DailyBenefitItem | null>(null);
+  const [editItem, setEditItem] = useState<DailyBenefitItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<DailyBenefitItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   // Form states
   const [formName, setFormName] = useState("");
   const [formPoints, setFormPoints] = useState(100);
   const [formImageUrl, setFormImageUrl] = useState("");
-  const [formDescription, setFormDescription] = useState("");
+  const [formTermCondition, setFormTermCondition] = useState("");
   const [formStatus, setFormStatus] = useState<number>(1);
+  const [formStartDate, setFormStartDate] = useState("");
+  const [formEndDate, setFormEndDate] = useState("");
+  const [formIsActive, setFormIsActive] = useState<number>(1);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -72,6 +77,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     name: true,
     points: true,
     status: true,
+    is_active: true,
+    start_date: true,
+    end_date: true,
     editedBy: true,
     actions: true,
   });
@@ -85,7 +93,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
 
-      const res = await fetch(`/api/merchandise?${params}`);
+      const res = await fetch(`/api/daily-benefit?${params}`);
       if (res.ok) {
         const response = await res.json();
         setItems(response.data || []);
@@ -136,77 +144,89 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     setFormName("");
     setFormPoints(100);
     setFormImageUrl("");
-    setFormDescription("");
+    setFormTermCondition("");
     setFormStatus(1);
+    setFormStartDate("");
+    setFormEndDate("");
+    setFormIsActive(1);
   };
 
   // Add Item
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/merchandise", {
+      const res = await fetch("/api/daily-benefit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formName,
-          points: formPoints,
+          redeem_point: formPoints,
           image_url: formImageUrl,
-          description: formDescription,
+          term_condition: formTermCondition,
           editedBy: username,
           status: formStatus,
+          start_date: formStartDate || null,
+          end_date: formEndDate || null,
+          is_active: formIsActive,
         }),
       });
       if (res.ok) {
         await fetchItems();
         setIsAdding(false);
         resetForm();
-        toast.success("Merchandise added successfully");
+        toast.success("Daily Benefit added successfully");
       } else {
-        toast.error("Failed to add merchandise");
+        toast.error("Failed to add daily benefit");
       }
     } catch (err) {
       console.error("Failed to add item", err);
-      toast.error("Failed to add merchandise");
+      toast.error("Failed to add daily benefit");
     }
   };
 
   // Edit Item
-  const openEdit = (item: MerchandiseItem) => {
+  const openEdit = (item: DailyBenefitItem) => {
     setEditItem(item);
     setFormName(item.name);
-    setFormPoints(item.points);
+    setFormPoints(item.redeem_point);
     setFormImageUrl(item.image_url);
-    setFormDescription(item.description);
+    setFormTermCondition(item.term_condition);
     setFormStatus(item.status);
+    setFormStartDate(item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : "");
+    setFormEndDate(item.end_date ? new Date(item.end_date).toISOString().split('T')[0] : "");
+    setFormIsActive(item.is_active ?? 1);
   };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editItem) return;
     try {
-      const res = await fetch(`/api/merchandise/${editItem.id}`, {
+      const res = await fetch(`/api/daily-benefit/${editItem.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formName,
-          points: formPoints,
+          redeem_point: formPoints,
           image_url: formImageUrl,
-          description: formDescription,
+          term_condition: formTermCondition,
           editedBy: username,
           status: formStatus,
+          start_date: formStartDate || null,
+          end_date: formEndDate || null,
+          is_active: formIsActive,
         }),
       });
       if (res.ok) {
         await fetchItems();
         setEditItem(null);
         resetForm();
-        toast.success("Merchandise updated successfully");
+        toast.success("Daily Benefit updated successfully");
       } else {
-        toast.error("Failed to update merchandise");
+        toast.error("Failed to update daily benefit");
       }
     } catch (err) {
       console.error("Failed to edit item", err);
-      toast.error("Failed to update merchandise");
+      toast.error("Failed to update daily benefit");
     }
   };
 
@@ -214,19 +234,19 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const handleDelete = async () => {
     if (!deleteItem) return;
     try {
-      const res = await fetch(`/api/merchandise/${deleteItem.id}`, {
+      const res = await fetch(`/api/daily-benefit/${deleteItem.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
         await fetchItems();
         setDeleteItem(null);
-        toast.success("Merchandise deleted successfully");
+        toast.success("Daily Benefit deleted successfully");
       } else {
-        toast.error("Failed to delete merchandise");
+        toast.error("Failed to delete daily benefit");
       }
     } catch (err) {
       console.error("Failed to delete item", err);
-      toast.error("Failed to delete merchandise");
+      toast.error("Failed to delete daily benefit");
     }
   };
 
@@ -247,7 +267,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     onClose: () => void;
     onSubmit: (e: React.FormEvent) => void;
     isEdit?: boolean;
-    item?: MerchandiseItem | null;
+    item?: DailyBenefitItem | null;
   }) => (
     <>
       <DialogHeader>
@@ -263,7 +283,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               required
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              placeholder="Enter merchandise name"
+              placeholder="Enter daily benefit name"
               className="min-h-[44px]"
             />
           </div>
@@ -314,11 +334,49 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
               <textarea
                 rows={4}
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
+                value={formTermCondition}
+                onChange={(e) => setFormTermCondition(e.target.value)}
                 className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
               />
             </ScrollArea>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                Start Date
+              </label>
+              <Input
+                type="date"
+                value={formStartDate}
+                onChange={(e) => setFormStartDate(e.target.value)}
+                className="min-h-[44px]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+                End Date
+              </label>
+              <Input
+                type="date"
+                value={formEndDate}
+                onChange={(e) => setFormEndDate(e.target.value)}
+                className="min-h-[44px]"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+              Is Active
+            </label>
+            <Select value={formIsActive.toString()} onValueChange={(v) => setFormIsActive(parseInt(v || '1'))}>
+              <SelectTrigger className="min-h-[44px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Yes</SelectItem>
+                <SelectItem value="0">No</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           {isEdit && item && (
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -327,7 +385,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   Created
                 </label>
                 <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}
+                  {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
                 </div>
               </div>
               <div>
@@ -335,7 +393,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   Updated
                 </label>
                 <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : "-"}
+                  {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "-"}
                 </div>
               </div>
             </div>
@@ -362,7 +420,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Total Merchandise
+                  Total Daily Benefits
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : total}
@@ -451,7 +509,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
         <CardContent className="p-4">
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
-              <CardTitle className="text-lg">Merchandise Management</CardTitle>
+              <CardTitle className="text-lg">Daily Benefit Management</CardTitle>
               <Button
                 onClick={() => {
                   resetForm();
@@ -460,7 +518,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 className="min-h-[44px] bg-primary hover:bg-primary/90 text-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Merchandise
+                Add Daily Benefit
               </Button>
             </div>
           </CardHeader>
@@ -471,7 +529,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search merchandise..."
+                  placeholder="Search daily benefits..."
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9 min-h-[44px] w-full sm:w-64"
@@ -527,6 +585,24 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     <div className="flex items-center gap-2">
                       {visibleColumns.status && <Check className="h-4 w-4" />}
                       <span>Status</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, is_active: !prev.is_active }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.is_active && <Check className="h-4 w-4" />}
+                      <span>Active</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, start_date: !prev.start_date }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.start_date && <Check className="h-4 w-4" />}
+                      <span>Start Date</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, end_date: !prev.end_date }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.end_date && <Check className="h-4 w-4" />}
+                      <span>End Date</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, editedBy: !prev.editedBy }))}>
@@ -589,6 +665,21 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       Status
                     </TableHead>
                   )}
+                  {visibleColumns.is_active && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                      Active
+                    </TableHead>
+                  )}
+                  {visibleColumns.start_date && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                      Start Date
+                    </TableHead>
+                  )}
+                  {visibleColumns.end_date && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                      End Date
+                    </TableHead>
+                  )}
                   {visibleColumns.editedBy && (
                     <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                       Last Edited By
@@ -609,6 +700,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.is_active && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.start_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.end_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.editedBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -617,6 +711,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.is_active && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.start_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.end_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.editedBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -625,6 +722,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.is_active && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.start_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.end_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.editedBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -656,7 +756,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       )}
                       {visibleColumns.points && (
                         <TableCell className="px-3 py-1.5 text-xs font-semibold text-[#E5262C]">
-                          {item.points} pts
+                          {item.redeem_point} pts
                         </TableCell>
                       )}
                       {visibleColumns.status && (
@@ -670,6 +770,29 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                               Inactive
                             </Badge>
                           )}
+                        </TableCell>
+                      )}
+                      {visibleColumns.is_active && (
+                        <TableCell className="px-3 py-1.5">
+                          {item.is_active === 1 ? (
+                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
+                              Yes
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
+                              No
+                            </Badge>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns.start_date && (
+                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+                          {item.start_date ? new Date(item.start_date).toLocaleDateString() : "-"}
+                        </TableCell>
+                      )}
+                      {visibleColumns.end_date && (
+                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+                          {item.end_date ? new Date(item.end_date).toLocaleDateString() : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.editedBy && (
@@ -708,7 +831,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 ) : (
                   <TableRow>
                     <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-xs text-gray-400">
-                      No merchandise items found.
+                      No daily benefit items found.
                     </TableCell>
                   </TableRow>
                 )}
@@ -755,14 +878,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               filteredItems.map((item) => (
                 <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <div className="h-14 w-14 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 shrink-0">
+                    <div className="h-14 w-14 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0">
                       <img
                         src={`/${item.image_url}`}
                         alt={item.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                          (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
+                          (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";
                         }}
                       />
                     </div>
@@ -770,71 +893,104 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <h3 className="text-sm font-bold text-gray-900 truncate">{item.name}</h3>
-                          <p className="text-sm font-semibold text-[#E5262C] mt-0.5">{item.points} pts</p>
+                          <p className="text-xs font-semibold text-[#E5262C] mt-0.5">{item.redeem_point} pts</p>
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground p-0 flex-shrink-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setViewItem(item)} className="text-xs h-8">
+                              <Eye className="h-3.5 w-3.5 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(item)} className="text-xs h-8">
+                              <Pencil className="h-3.5 w-3.5 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
                         {item.status === 1 ? (
-                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px] px-2 py-0.5 shrink-0">
+                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
                             Active
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px] px-2 py-0.5 shrink-0">
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
+                            Inactive
+                          </Badge>
+                        )}
+                        {item.is_active === 1 ? (
+                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
                             Inactive
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 truncate">Edited by: {item.editedBy || "-"}</p>
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          onClick={() => {
-                            setViewItem(item);
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 min-h-[44px]"
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                        <Button
-                          onClick={() => openEdit(item)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => setDeleteItem(item)}
-                          variant="destructive"
-                          size="sm"
-                          className="flex-1 min-h-[44px]"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
+                      <div className="mt-2 text-xs text-gray-500">
+                        <div>Start: {item.start_date ? new Date(item.start_date).toLocaleDateString() : "-"}</div>
+                        <div>End: {item.end_date ? new Date(item.end_date).toLocaleDateString() : "-"}</div>
                       </div>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-sm text-gray-400">
-                No merchandise items found.
+              <div className="bg-white border border-gray-100 rounded-xl p-8 shadow-sm text-center">
+                <p className="text-xs text-gray-400">No daily benefit items found.</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* MODAL: VIEW */}
-      <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
+      {/* Add Dialog */}
+      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" headerPadding="py-1">
+          {renderModalForm({
+            title: "Add Daily Benefit",
+            onClose: () => {
+              setIsAdding(false);
+              resetForm();
+            },
+            onSubmit: handleAdd,
+          })}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" headerPadding="py-1">
+          {editItem && renderModalForm({
+            title: "Edit Daily Benefit",
+            onClose: () => {
+              setEditItem(null);
+              resetForm();
+            },
+            onSubmit: handleEdit,
+            isEdit: true,
+            item: editItem,
+          })}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Dialog */}
+      <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
+        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
           <DialogHeader>
             <DialogTitle>{viewItem?.name}</DialogTitle>
           </DialogHeader>
           {viewItem && (
-            <div className="overflow-y-auto space-y-4">
+            <div className="overflow-y-auto space-y-4 rounded-b-xl">
               <div className="flex gap-4 items-start">
                 <div className="h-16 w-16 sm:h-20 sm:w-20 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
                   <img
@@ -849,7 +1005,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
                   <div className="font-bold text-gray-900 text-base sm:text-lg">{viewItem.name}</div>
-                  <div className="text-[#E5262C] font-bold text-sm sm:text-base">{viewItem.points} Points</div>
+                  <div className="text-[#E5262C] font-bold text-sm sm:text-base">{viewItem.redeem_point} Points</div>
                   <div>
                     {viewItem.status === 1 ? (
                       <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100">
@@ -870,26 +1026,48 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 </div>
                 <div
                   className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: viewItem.description }}
+                  dangerouslySetInnerHTML={{ __html: viewItem.term_condition }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
                 <div>
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                    Start Date
+                  </span>
+                  {viewItem.start_date ? new Date(viewItem.start_date).toLocaleDateString() : "-"}
+                </div>
+                <div>
+                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                    End Date
+                  </span>
+                  {viewItem.end_date ? new Date(viewItem.end_date).toLocaleDateString() : "-"}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
+                <div>
+                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                    Is Active
+                  </span>
+                  {viewItem.is_active === 1 ? "Yes" : "No"}
+                </div>
+                <div>
+                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Created
                   </span>
-                  {viewItem.createdAt ? new Date(viewItem.createdAt).toLocaleDateString() : "-"}
+                  {viewItem.created_at ? new Date(viewItem.created_at).toLocaleDateString() : "-"}
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
                 <div>
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Updated
                   </span>
-                  {viewItem.updatedAt ? new Date(viewItem.updatedAt).toLocaleDateString() : "-"}
+                  {viewItem.updated_at ? new Date(viewItem.updated_at).toLocaleDateString() : "-"}
                 </div>
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               onClick={() => {
                 setViewItem(null);
@@ -911,63 +1089,18 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: ADD */}
-      <Dialog open={isAdding} onOpenChange={(open) => {
-        if (!open) {
-          setIsAdding(false);
-          resetForm();
-        }
-      }}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto" headerPadding="py-1">
-          {renderModalForm({
-            title: "Add Merchandise",
-            onClose: () => {
-              setIsAdding(false);
-              resetForm();
-            },
-            onSubmit: handleAdd,
-          })}
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL: EDIT */}
-      <Dialog open={!!editItem} onOpenChange={(open) => {
-        if (!open) {
-          setEditItem(null);
-          resetForm();
-        }
-      }}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto" headerPadding="py-1">
-          {editItem && renderModalForm({
-            title: `Edit – ${editItem.name}`,
-            onClose: () => {
-              setEditItem(null);
-              resetForm();
-            },
-            onSubmit: handleEdit,
-            isEdit: true,
-            item: editItem,
-          })}
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL: DELETE */}
-      <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
-        <AlertDialogContent className="max-w-sm sm:max-w-md w-[calc(100%-2rem)] sm:w-auto">
+      {/* Delete Alert Dialog */}
+      <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Delete Merchandise</AlertDialogTitle>
+            <AlertDialogTitle>Delete Daily Benefit</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteItem && (
-                <>Are you sure you want to delete <span className="font-bold text-gray-900">"{deleteItem.name}"</span>? This action cannot be undone.</>
-              )}
+              Are you sure you want to delete "{deleteItem?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="min-h-[44px] bg-destructive hover:bg-destructive/90"
-            >
+            <AlertDialogCancel onClick={() => setDeleteItem(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

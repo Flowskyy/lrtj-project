@@ -101,7 +101,6 @@ body {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
 }
 
-/* Custom premium transitions & animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -167,7 +166,6 @@ body {
   }
 }
 
-/* Custom sidebar active state styling for brand red */
 [data-sidebar="menu-button"][data-active="true"] {
   background-color: rgba(229, 38, 44, 0.1) !important;
   color: #E5262C !important;

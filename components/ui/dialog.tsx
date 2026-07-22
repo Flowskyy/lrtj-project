@@ -43,9 +43,11 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  headerPadding = "py-4",
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  headerPadding?: string
 }) {
   return (
     <DialogPortal>
@@ -53,28 +55,64 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 flex flex-col w-full max-w-[calc(100%-2rem)] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
       >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-2 right-2"
-                size="icon-sm"
-              />
-            }
-          >
-            <XIcon
-            />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
+        {/* Header section - fixed, contains close button */}
+        <div className={`flex items-center justify-between px-4 ${headerPadding} shrink-0`}>
+          <div className="flex-1">
+            {React.Children.map(children, (child) => {
+              if (React.isValidElement(child) && (child as any).type?.displayName === 'DialogHeader') {
+                return React.cloneElement(child as React.ReactElement, {
+                  className: cn((child as React.ReactElement).props.className, "mb-0")
+                })
+              }
+              return null
+            })}
+          </div>
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              render={
+                <Button
+                  variant="ghost"
+                  className="shrink-0 ml-2"
+                  size="icon-sm"
+                />
+              }
+            >
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </div>
+
+        {/* Body section - scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
+          <div className="space-y-4">
+            {React.Children.map(children, (child) => {
+              if (React.isValidElement(child)) {
+                const childType = (child as any).type
+                if (childType?.displayName !== 'DialogHeader' && childType?.displayName !== 'DialogFooter') {
+                  return child
+                }
+              }
+              return null
+            })}
+          </div>
+        </div>
+
+        {/* Footer section - fixed */}
+        {React.Children.map(children, (child) => {
+          if (React.isValidElement(child) && (child as any).type?.displayName === 'DialogFooter') {
+            return React.cloneElement(child as React.ReactElement, {
+              className: cn((child as React.ReactElement).props.className, "rounded-b-xl border-t bg-muted/50 px-4 py-4")
+            })
+          }
+          return null
+        })}
       </DialogPrimitive.Popup>
     </DialogPortal>
   )
@@ -84,11 +122,12 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex flex-col", className)}
       {...props}
     />
   )
 }
+DialogHeader.displayName = "DialogHeader"
 
 function DialogFooter({
   className,
@@ -102,7 +141,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -116,13 +155,14 @@ function DialogFooter({
     </div>
   )
 }
+DialogFooter.displayName = "DialogFooter"
 
 function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-heading text-base leading-none font-medium",
+        "font-heading text-base leading-tight font-medium m-0",
         className
       )}
       {...props}
