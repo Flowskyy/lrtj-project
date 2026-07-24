@@ -13,6 +13,9 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FilterSheet from "@/components/FilterSheet";
+import ImageUpload from "@/components/ImageUpload";
+import ImagePreviewDialog from "@/components/ImagePreviewDialog";
+import { getImageUrl } from "@/lib/utils";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import {
   DropdownMenu,
@@ -58,6 +61,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [editItem, setEditItem] = useState<MerchandiseItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<MerchandiseItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [previewItem, setPreviewItem] = useState<MerchandiseItem | null>(null);
 
   // Form states
   const [formName, setFormName] = useState("");
@@ -235,121 +239,88 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const active = activeCount;
   const inactive = inactiveCount;
 
-  // Render modal form content (without Dialog wrapper)
-  const renderModalForm = ({
-    title,
-    onClose,
-    onSubmit,
-    isEdit = false,
-    item = null,
-  }: {
-    title: string;
-    onClose: () => void;
-    onSubmit: (e: React.FormEvent) => void;
-    isEdit?: boolean;
-    item?: MerchandiseItem | null;
-  }) => (
+  // Render form fields (shared between Add and Edit dialogs)
+  const renderFormFields = () => (
     <>
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
-        <div className="overflow-y-auto space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Name *
-            </label>
-            <Input
-              required
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              placeholder="Enter merchandise name"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                Points *
-              </label>
-              <Input
-                required
-                type="number"
-                min={0}
-                value={formPoints}
-                onChange={(e) => setFormPoints(parseInt(e.target.value) || 0)}
-                className="min-h-[44px]"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                Status
-              </label>
-              <Select value={formStatus.toString()} onValueChange={(v) => setFormStatus(parseInt(v || '1'))}>
-                <SelectTrigger className="min-h-[44px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Active</SelectItem>
-                  <SelectItem value="0">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Image Path
-            </label>
-            <Input
-              value={formImageUrl}
-              onChange={(e) => setFormImageUrl(e.target.value)}
-              placeholder="storage/2024/..."
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Terms & Condition (HTML)
-            </label>
-            <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
-              <textarea
-                rows={4}
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
-              />
-            </ScrollArea>
-          </div>
-          {isEdit && item && (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                  Created
-                </label>
-                <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                  Updated
-                </label>
-                <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : "-"}
-                </div>
-              </div>
-            </div>
-          )}
+      <div>
+        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+          Name *
+        </label>
+        <Input
+          required
+          value={formName}
+          onChange={(e) => setFormName(e.target.value)}
+          placeholder="Enter merchandise name"
+          className="min-h-[44px]"
+        />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+            Points *
+          </label>
+          <Input
+            required
+            type="number"
+            min={0}
+            value={formPoints}
+            onChange={(e) => setFormPoints(parseInt(e.target.value) || 0)}
+            className="min-h-[44px]"
+          />
         </div>
-        <DialogFooter className="pt-4">
-          <Button type="button" variant="outline" onClick={onClose} className="min-h-[44px]">
-            Cancel
-          </Button>
-          <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-            Save
-          </Button>
-        </DialogFooter>
-      </form>
+        <div>
+          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+            Status
+          </label>
+          <Select value={formStatus.toString()} onValueChange={(v) => setFormStatus(parseInt(v || '1'))}>
+            <SelectTrigger className="min-h-[44px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Active</SelectItem>
+              <SelectItem value="0">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <ImageUpload
+        value={formImageUrl}
+        onChange={setFormImageUrl}
+        label="Image"
+      />
+      <div>
+        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+          Terms & Condition (HTML)
+        </label>
+        <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
+          <textarea
+            rows={4}
+            value={formDescription}
+            onChange={(e) => setFormDescription(e.target.value)}
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
+          />
+        </ScrollArea>
+      </div>
+      {editItem && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+              Created
+            </label>
+            <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
+              {editItem.createdAt ? new Date(editItem.createdAt).toLocaleDateString() : "-"}
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+              Updated
+            </label>
+            <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
+              {editItem.updatedAt ? new Date(editItem.updatedAt).toLocaleDateString() : "-"}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -564,12 +535,12 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.image && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
                       Image
                     </TableHead>
                   )}
                   {visibleColumns.name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[140px] max-w-[200px]">
                       <div className="flex items-center gap-1">
                         Name
                         <ChevronDown className="h-3 w-3" />
@@ -577,7 +548,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     </TableHead>
                   )}
                   {visibleColumns.points && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-20">
                       <div className="flex items-center gap-1">
                         Points
                         <ChevronDown className="h-3 w-3" />
@@ -585,17 +556,17 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.editedBy && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[120px] max-w-[140px]">
                       Last Edited By
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
                       Actions
                     </TableHead>
                   )}
@@ -605,7 +576,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -613,7 +584,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -621,7 +592,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -634,14 +605,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.image && (
                         <TableCell className="px-3 py-1.5">
-                          <div className="h-8 w-8 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100">
+                          <div className="h-16 w-20 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                             <img
-                              src={`/${item.image_url}`}
+                              src={getImageUrl(item.image_url)}
                               alt={item.name}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                                (e.target as HTMLImageElement).className = "h-4 w-auto object-contain brightness-95";
+                                (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
                               }}
                             />
                           </div>
@@ -722,7 +693,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               <>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-14 w-14 rounded-lg" />
+                    <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -737,7 +708,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 </div>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-14 w-14 rounded-lg" />
+                    <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -755,9 +726,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               filteredItems.map((item) => (
                 <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <div className="h-14 w-14 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 shrink-0">
+                    <div className="h-20 w-16 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                       <img
-                        src={`/${item.image_url}`}
+                        src={getImageUrl(item.image_url)}
                         alt={item.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
@@ -918,15 +889,23 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           resetForm();
         }
       }}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto" headerPadding="py-1">
-          {renderModalForm({
-            title: "Add Merchandise",
-            onClose: () => {
-              setIsAdding(false);
-              resetForm();
-            },
-            onSubmit: handleAdd,
-          })}
+        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-full">
+          <DialogHeader>
+            <DialogTitle>Add Merchandise</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden">
+            <div className="overflow-y-auto space-y-3 sm:space-y-4">
+              {renderFormFields()}
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => { setIsAdding(false); resetForm(); }} className="min-h-[44px]">
+                Cancel
+              </Button>
+              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -937,17 +916,23 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           resetForm();
         }
       }}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto" headerPadding="py-1">
-          {editItem && renderModalForm({
-            title: `Edit – ${editItem.name}`,
-            onClose: () => {
-              setEditItem(null);
-              resetForm();
-            },
-            onSubmit: handleEdit,
-            isEdit: true,
-            item: editItem,
-          })}
+        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-full">
+          <DialogHeader>
+            <DialogTitle>Edit Merchandise</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="flex flex-col flex-1 overflow-hidden">
+            <div className="overflow-y-auto space-y-3 sm:space-y-4">
+              {renderFormFields()}
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => { setEditItem(null); resetForm(); }} className="min-h-[44px]">
+                Cancel
+              </Button>
+              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -973,6 +958,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Preview Dialog */}
+      <ImagePreviewDialog
+        open={!!previewItem}
+        onOpenChange={() => setPreviewItem(null)}
+        imageUrl={previewItem?.image_url}
+        alt={previewItem?.name || "Merchandise image preview"}
+      />
     </div>
   );
 }

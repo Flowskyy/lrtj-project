@@ -50,8 +50,14 @@ export async function GET(request: NextRequest) {
     prisma.news.count({ where: { status: 0 } }),
   ]);
 
+  // Convert BigInt to string for JSON serialization
+  const serializedItems = items.map(item => ({
+    ...item,
+    views: item.views.toString(),
+  }));
+
   return NextResponse.json({
-    data: items,
+    data: serializedItems,
     meta: {
       total: totalCount,
       active: activeCount,

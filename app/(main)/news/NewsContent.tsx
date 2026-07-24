@@ -13,8 +13,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FilterSheet from "@/components/FilterSheet";
-import RichTextEditor from "@/components/RichTextEditor";
-import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X, Calendar } from "lucide-react";
+import ImageUpload from "@/components/ImageUpload";
+import ImagePreviewDialog from "@/components/ImagePreviewDialog";
+import { getImageUrl } from "@/lib/utils";
+import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,14 +59,13 @@ export default function NewsContent({ username }: NewsContentProps) {
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<NewsItem | null>(null);
   const [editItem, setEditItem] = useState<NewsItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<NewsItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [previewItem, setPreviewItem] = useState<NewsItem | null>(null);
 
   // Form states
   const [formTitle, setFormTitle] = useState("");
@@ -97,8 +98,6 @@ export default function NewsContent({ username }: NewsContentProps) {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
 
       const res = await fetch(`/api/news?${params}`);
       if (res.ok) {
@@ -117,7 +116,7 @@ export default function NewsContent({ username }: NewsContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [statusFilter, sortBy, sortOrder]);
 
   // Debounced search
   const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -146,15 +145,7 @@ export default function NewsContent({ username }: NewsContentProps) {
     item.title_en?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.createdBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
-
-  const resetFilters = () => {
-    setStatusFilter("all");
-    setSortBy("id");
-    setSortOrder("desc");
-    setDateFrom("");
-    setDateTo("");
-  };
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
 
   const resetForm = () => {
     setFormTitle("");
@@ -322,7 +313,7 @@ export default function NewsContent({ username }: NewsContentProps) {
               <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
                 Type
               </label>
-              <Select value={formType} onValueChange={setFormType}>
+              <Select value={formType} onValueChange={(v) => setFormType(v || 'general')}>
                 <SelectTrigger className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -360,17 +351,11 @@ export default function NewsContent({ username }: NewsContentProps) {
               className="min-h-[44px]"
             />
           </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Image Path
-            </label>
-            <Input
-              value={formImageUrl}
-              onChange={(e) => setFormImageUrl(e.target.value)}
-              placeholder="storage/2024/..."
-              className="min-h-[44px]"
-            />
-          </div>
+          <ImageUpload
+            value={formImageUrl}
+            onChange={setFormImageUrl}
+            label="Image"
+          />
           <div>
             <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
               Image Caption
@@ -383,18 +368,30 @@ export default function NewsContent({ username }: NewsContentProps) {
             />
           </div>
           <div>
-            <RichTextEditor
-              value={formContent}
-              onChange={setFormContent}
-              label="Content (Indonesian)"
-            />
+            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+              Content (HTML)
+            </label>
+            <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
+              <textarea
+                rows={4}
+                value={formContent}
+                onChange={(e) => setFormContent(e.target.value)}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
+              />
+            </ScrollArea>
           </div>
           <div>
-            <RichTextEditor
-              value={formContentEn}
-              onChange={setFormContentEn}
-              label="Content (English)"
-            />
+            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+              Content (EN - HTML)
+            </label>
+            <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
+              <textarea
+                rows={4}
+                value={formContentEn}
+                onChange={(e) => setFormContentEn(e.target.value)}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
+              />
+            </ScrollArea>
           </div>
           {isEdit && item && (
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -650,11 +647,9 @@ export default function NewsContent({ username }: NewsContentProps) {
               { value: "views", label: "Views" },
               { value: "created_at", label: "Created Date" },
             ]}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onDateFromChange={setDateFrom}
-            onDateToChange={setDateTo}
-            onReset={resetFilters}
+            showTypeFilter={true}
+            typeFilter={formType}
+            onTypeFilterChange={setFormType}
           />
 
           {/* Table - Desktop */}
@@ -663,12 +658,12 @@ export default function NewsContent({ username }: NewsContentProps) {
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.image && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
                       Image
                     </TableHead>
                   )}
                   {visibleColumns.title && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[140px] max-w-[200px]">
                       <div className="flex items-center gap-1">
                         Title
                         <ChevronDown className="h-3 w-3" />
@@ -676,32 +671,32 @@ export default function NewsContent({ username }: NewsContentProps) {
                     </TableHead>
                   )}
                   {visibleColumns.type && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
                       Type
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.publish_date && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
                       Publish Date
                     </TableHead>
                   )}
                   {visibleColumns.views && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
                       Views
                     </TableHead>
                   )}
                   {visibleColumns.createdBy && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[120px] max-w-[140px]">
                       Created By
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
                       Actions
                     </TableHead>
                   )}
@@ -711,7 +706,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
                       {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -721,7 +716,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
                       {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -731,7 +726,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
                       {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -746,14 +741,14 @@ export default function NewsContent({ username }: NewsContentProps) {
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.image && (
                         <TableCell className="px-3 py-1.5">
-                          <div className="h-8 w-8 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100">
+                          <div className="h-16 w-20 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                             <img
-                              src={`/${item.img_url}`}
+                              src={getImageUrl(item.img_url)}
                               alt={item.title || "News"}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                                (e.target as HTMLImageElement).className = "h-4 w-auto object-contain brightness-95";
+                                (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
                               }}
                             />
                           </div>
@@ -846,7 +841,7 @@ export default function NewsContent({ username }: NewsContentProps) {
               <>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-14 w-14 rounded-lg" />
+                    <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -861,7 +856,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                 </div>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-14 w-14 rounded-lg" />
+                    <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -879,14 +874,14 @@ export default function NewsContent({ username }: NewsContentProps) {
               filteredItems.map((item) => (
                 <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <div className="h-14 w-14 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0">
+                    <div className="h-20 w-16 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                       <img
-                        src={`/${item.img_url}`}
+                        src={getImageUrl(item.img_url)}
                         alt={item.title || "News"}
                         className="h-full w-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                          (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";
+                          (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
                         }}
                       />
                     </div>
@@ -910,8 +905,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                           {item.type || "general"}
                         </Badge>
                         <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {item.publish_date ? new Date(item.publish_date).toLocaleDateString() : "-"}
+                        {item.publish_date ? new Date(item.publish_date).toLocaleDateString() : "-"}
                         </span>
                         <span className="text-[10px] text-gray-500">
                           {item.views.toString()} views
@@ -996,7 +990,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                   {viewItem.img_url && (
                     <div className="rounded-lg overflow-hidden">
                       <img
-                        src={`/${viewItem.img_url}`}
+                        src={getImageUrl(viewItem.img_url)}
                         alt={viewItem.title || "News"}
                         className="w-full h-auto object-cover"
                       />
@@ -1089,6 +1083,14 @@ export default function NewsContent({ username }: NewsContentProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Preview Dialog */}
+      <ImagePreviewDialog
+        open={!!previewItem}
+        onOpenChange={() => setPreviewItem(null)}
+        imageUrl={previewItem?.img_url}
+        alt={previewItem?.title || "News image preview"}
+      />
     </div>
   );
 }
