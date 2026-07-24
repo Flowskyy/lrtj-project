@@ -57,6 +57,8 @@ export default function NewsContent({ username }: NewsContentProps) {
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<NewsItem | null>(null);
@@ -95,6 +97,8 @@ export default function NewsContent({ username }: NewsContentProps) {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
 
       const res = await fetch(`/api/news?${params}`);
       if (res.ok) {
@@ -113,7 +117,7 @@ export default function NewsContent({ username }: NewsContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder]);
+  }, [statusFilter, sortBy, sortOrder, dateFrom, dateTo]);
 
   // Debounced search
   const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -142,7 +146,15 @@ export default function NewsContent({ username }: NewsContentProps) {
     item.title_en?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.createdBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setSortBy("id");
+    setSortOrder("desc");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const resetForm = () => {
     setFormTitle("");
@@ -632,6 +644,17 @@ export default function NewsContent({ username }: NewsContentProps) {
             onSortByChange={setSortBy}
             sortOrder={sortOrder}
             onSortOrderChange={setSortOrder}
+            sortByOptions={[
+              { value: "id", label: "ID" },
+              { value: "publish_date", label: "Publish Date" },
+              { value: "views", label: "Views" },
+              { value: "created_at", label: "Created Date" },
+            ]}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            onReset={resetFilters}
           />
 
           {/* Table - Desktop */}
