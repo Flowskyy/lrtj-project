@@ -52,8 +52,8 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
 
   // Filter and Sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id");
-  const [sortOrder, setSortOrder] = useState<string>("asc");
+  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<string>("desc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -610,12 +610,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.image && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-40">
                       Image
                     </TableHead>
                   )}
                   {visibleColumns.name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[140px] max-w-[200px]">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px] max-w-[140px]">
                       <div className="flex items-center gap-1">
                         Name
                         <ChevronDown className="h-3 w-3" />
@@ -651,7 +651,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                     </TableHead>
                   )}
                   {visibleColumns.editedBy && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[120px] max-w-[140px]">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] max-w-[120px]">
                       Last Edited By
                     </TableHead>
                   )}
@@ -666,7 +666,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -677,7 +677,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -688,7 +688,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -704,7 +704,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.image && (
                         <TableCell className="px-3 py-1.5">
-                          <div className="h-16 w-20 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                          <div className="h-32 w-40 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                             <img
                               src={getImageUrl(item.image_url)}
                               alt={item.name}
@@ -718,7 +718,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                         </TableCell>
                       )}
                       {visibleColumns.name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[240px]">
+                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[140px]">
                           <span className="block truncate" title={item.name}>
                             {item.name}
                           </span>
@@ -815,7 +815,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
               <>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-20 w-16 rounded-lg" />
+                    <Skeleton className="h-32 w-24 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -830,7 +830,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                 </div>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-20 w-16 rounded-lg" />
+                    <Skeleton className="h-32 w-24 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -848,7 +848,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
               filteredItems.map((item) => (
                 <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <div className="h-20 w-16 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                    <div className="h-32 w-24 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                       <img
                         src={getImageUrl(item.image_url)}
                         alt={item.name}

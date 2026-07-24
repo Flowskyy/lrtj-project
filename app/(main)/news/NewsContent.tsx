@@ -7,16 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FilterSheet from "@/components/FilterSheet";
-import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import { getImageUrl } from "@/lib/utils";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,28 +55,17 @@ export default function NewsContent({ username }: NewsContentProps) {
 
   // Filter and Sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id");
+  const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<NewsItem | null>(null);
-  const [editItem, setEditItem] = useState<NewsItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<NewsItem | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
   const [previewItem, setPreviewItem] = useState<NewsItem | null>(null);
 
-  // Form states
-  const [formTitle, setFormTitle] = useState("");
-  const [formTitleEn, setFormTitleEn] = useState("");
-  const [formContent, setFormContent] = useState("");
-  const [formContentEn, setFormContentEn] = useState("");
-  const [formImageUrl, setFormImageUrl] = useState("");
-  const [formCaptionImage, setFormCaptionImage] = useState("");
-  const [formType, setFormType] = useState("general");
-  const [formStatus, setFormStatus] = useState<number>(1);
-  const [formPublishDate, setFormPublishDate] = useState("");
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -147,98 +136,9 @@ export default function NewsContent({ username }: NewsContentProps) {
   );
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
 
-  const resetForm = () => {
-    setFormTitle("");
-    setFormTitleEn("");
-    setFormContent("");
-    setFormContentEn("");
-    setFormImageUrl("");
-    setFormCaptionImage("");
-    setFormType("general");
-    setFormStatus(1);
-    setFormPublishDate("");
-  };
 
-  // Add Item
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/news", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formTitle,
-          title_en: formTitleEn,
-          content: formContent,
-          content_en: formContentEn,
-          img_url: formImageUrl,
-          caption_image: formCaptionImage,
-          type: formType,
-          status: formStatus,
-          publish_date: formPublishDate || null,
-          createdBy: username,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setIsAdding(false);
-        resetForm();
-        toast.success("News added successfully");
-      } else {
-        toast.error("Failed to add news");
-      }
-    } catch (err) {
-      console.error("Failed to add item", err);
-      toast.error("Failed to add news");
-    }
-  };
 
-  // Edit Item
-  const openEdit = (item: NewsItem) => {
-    setEditItem(item);
-    setFormTitle(item.title || "");
-    setFormTitleEn(item.title_en || "");
-    setFormContent(item.content || "");
-    setFormContentEn(item.content_en || "");
-    setFormImageUrl(item.img_url || "");
-    setFormCaptionImage(item.caption_image || "");
-    setFormType(item.type || "general");
-    setFormStatus(item.status);
-    setFormPublishDate(item.publish_date ? new Date(item.publish_date).toISOString().split('T')[0] : "");
-  };
 
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editItem) return;
-    try {
-      const res = await fetch(`/api/news/${editItem.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formTitle,
-          title_en: formTitleEn,
-          content: formContent,
-          content_en: formContentEn,
-          img_url: formImageUrl,
-          caption_image: formCaptionImage,
-          type: formType,
-          status: formStatus,
-          publish_date: formPublishDate || null,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setEditItem(null);
-        resetForm();
-        toast.success("News updated successfully");
-      } else {
-        toast.error("Failed to update news");
-      }
-    } catch (err) {
-      console.error("Failed to edit item", err);
-      toast.error("Failed to update news");
-    }
-  };
 
   // Delete Item
   const handleDelete = async () => {
@@ -265,166 +165,6 @@ export default function NewsContent({ username }: NewsContentProps) {
   const active = activeCount;
   const inactive = inactiveCount;
 
-  // Render modal form content (without Dialog wrapper)
-  const renderModalForm = ({
-    title,
-    onClose,
-    onSubmit,
-    isEdit = false,
-    item = null,
-  }: {
-    title: string;
-    onClose: () => void;
-    onSubmit: (e: React.FormEvent) => void;
-    isEdit?: boolean;
-    item?: NewsItem | null;
-  }) => (
-    <>
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
-        <div className="overflow-y-auto space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Title *
-            </label>
-            <Input
-              required
-              value={formTitle}
-              onChange={(e) => setFormTitle(e.target.value)}
-              placeholder="Enter news title"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Title (English)
-            </label>
-            <Input
-              value={formTitleEn}
-              onChange={(e) => setFormTitleEn(e.target.value)}
-              placeholder="Enter news title in English"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                Type
-              </label>
-              <Select value={formType} onValueChange={(v) => setFormType(v || 'general')}>
-                <SelectTrigger className="min-h-[44px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="general">General</SelectItem>
-                  <SelectItem value="promotion">Promotion</SelectItem>
-                  <SelectItem value="announcement">Announcement</SelectItem>
-                  <SelectItem value="event">Event</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                Status
-              </label>
-              <Select value={formStatus.toString()} onValueChange={(v) => setFormStatus(parseInt(v || '1'))}>
-                <SelectTrigger className="min-h-[44px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Active</SelectItem>
-                  <SelectItem value="0">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Publish Date
-            </label>
-            <Input
-              type="date"
-              value={formPublishDate}
-              onChange={(e) => setFormPublishDate(e.target.value)}
-              className="min-h-[44px]"
-            />
-          </div>
-          <ImageUpload
-            value={formImageUrl}
-            onChange={setFormImageUrl}
-            label="Image"
-          />
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Image Caption
-            </label>
-            <Input
-              value={formCaptionImage}
-              onChange={(e) => setFormCaptionImage(e.target.value)}
-              placeholder="Image caption/alt text"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Content (HTML)
-            </label>
-            <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
-              <textarea
-                rows={4}
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
-              />
-            </ScrollArea>
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Content (EN - HTML)
-            </label>
-            <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
-              <textarea
-                rows={4}
-                value={formContentEn}
-                onChange={(e) => setFormContentEn(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
-              />
-            </ScrollArea>
-          </div>
-          {isEdit && item && (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                  Views
-                </label>
-                <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.views.toString()}
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                  Created
-                </label>
-                <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <DialogFooter className="pt-4">
-          <Button type="button" variant="outline" onClick={onClose} className="min-h-[44px]">
-            Cancel
-          </Button>
-          <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-            Save
-          </Button>
-        </DialogFooter>
-      </form>
-    </>
-  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -525,16 +265,12 @@ export default function NewsContent({ username }: NewsContentProps) {
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">News Management</CardTitle>
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsAdding(true);
-                }}
-                className="min-h-[44px] bg-primary hover:bg-primary/90 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add News
-              </Button>
+              <Link href="/news/add">
+                <Button className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add News
+                </Button>
+              </Link>
             </div>
           </CardHeader>
 
@@ -648,8 +384,8 @@ export default function NewsContent({ username }: NewsContentProps) {
               { value: "created_at", label: "Created Date" },
             ]}
             showTypeFilter={true}
-            typeFilter={formType}
-            onTypeFilterChange={setFormType}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
           />
 
           {/* Table - Desktop */}
@@ -658,12 +394,12 @@ export default function NewsContent({ username }: NewsContentProps) {
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.image && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-40">
                       Image
                     </TableHead>
                   )}
                   {visibleColumns.title && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[140px] max-w-[200px]">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px] max-w-[140px]">
                       <div className="flex items-center gap-1">
                         Title
                         <ChevronDown className="h-3 w-3" />
@@ -691,7 +427,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                     </TableHead>
                   )}
                   {visibleColumns.createdBy && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[120px] max-w-[140px]">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] max-w-[120px]">
                       Created By
                     </TableHead>
                   )}
@@ -706,7 +442,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -716,7 +452,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -726,7 +462,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-16 w-20 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
@@ -741,7 +477,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.image && (
                         <TableCell className="px-3 py-1.5">
-                          <div className="h-16 w-20 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                          <div className="h-32 w-40 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                             <img
                               src={getImageUrl(item.img_url)}
                               alt={item.title || "News"}
@@ -755,7 +491,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                         </TableCell>
                       )}
                       {visibleColumns.title && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[240px]">
+                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[140px]">
                           <span className="block truncate" title={item.title || item.title_en || ""}>
                             {item.title || item.title_en || "-"}
                           </span>
@@ -809,10 +545,12 @@ export default function NewsContent({ username }: NewsContentProps) {
                                 <Eye className="h-3.5 w-3.5 mr-2" />
                                 View
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEdit(item)} className="text-xs h-8">
-                                <Pencil className="h-3.5 w-3.5 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
+                              <Link href={`/news/edit/${item.id}`}>
+                                <DropdownMenuItem className="text-xs h-8">
+                                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                              </Link>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
                                 <Trash2 className="h-3.5 w-3.5 mr-2" />
@@ -841,7 +579,7 @@ export default function NewsContent({ username }: NewsContentProps) {
               <>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-20 w-16 rounded-lg" />
+                    <Skeleton className="h-32 w-24 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -856,7 +594,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                 </div>
                 <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <Skeleton className="h-20 w-16 rounded-lg" />
+                    <Skeleton className="h-32 w-24 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <Skeleton className="h-5 w-32" />
                       <Skeleton className="h-4 w-16" />
@@ -874,7 +612,7 @@ export default function NewsContent({ username }: NewsContentProps) {
               filteredItems.map((item) => (
                 <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                   <div className="flex gap-3 items-start">
-                    <div className="h-20 w-16 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                    <div className="h-32 w-24 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                       <img
                         src={getImageUrl(item.img_url)}
                         alt={item.title || "News"}
@@ -921,15 +659,16 @@ export default function NewsContent({ username }: NewsContentProps) {
                           <Eye className="h-3 w-3 mr-1" />
                           View
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEdit(item)}
-                          className="flex-1 min-h-[36px] text-xs"
-                        >
-                          <Pencil className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
+                        <Link href={`/news/edit/${item.id}`} className="flex-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="min-h-[36px] text-xs w-full"
+                          >
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                        </Link>
                         <Button
                           size="sm"
                           variant="outline"
@@ -953,29 +692,6 @@ export default function NewsContent({ username }: NewsContentProps) {
         </CardContent>
       </Card>
 
-      {/* Add Dialog */}
-      <Dialog open={isAdding} onOpenChange={(open) => !open && setIsAdding(false)}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
-          {renderModalForm({
-            title: "Add News",
-            onClose: () => setIsAdding(false),
-            onSubmit: handleAdd,
-          })}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
-          {editItem && renderModalForm({
-            title: "Edit News",
-            onClose: () => setEditItem(null),
-            onSubmit: handleEdit,
-            isEdit: true,
-            item: editItem,
-          })}
-        </DialogContent>
-      </Dialog>
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
