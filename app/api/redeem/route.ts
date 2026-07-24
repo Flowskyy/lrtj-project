@@ -70,6 +70,19 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
+  const dateFrom = searchParams.get('dateFrom');
+  const dateTo = searchParams.get('dateTo');
+
+  if (dateFrom || dateTo) {
+    where.createdAt = {};
+    if (dateFrom) {
+      where.createdAt.gte = new Date(dateFrom);
+    }
+    if (dateTo) {
+      where.createdAt.lte = new Date(dateTo);
+    }
+  }
+
   if (search && search.trim()) {
     const searchNum = parseInt(search.trim());
     const searchConditions: any[] = [];

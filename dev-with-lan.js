@@ -23,7 +23,8 @@ let hasShownLanInfo = false;
 // Start Next.js dev server
 const devServer = spawn('npx', ['next', 'dev', '-H', '0.0.0.0'], {
   stdio: ['inherit', 'pipe', 'inherit'],
-  shell: true
+  shell: true,
+  env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' }
 });
 
 devServer.stdout.on('data', (data) => {

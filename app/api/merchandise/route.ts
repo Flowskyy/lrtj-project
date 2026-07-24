@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status');
   const sortBy = searchParams.get('sortBy');
   const order = searchParams.get('order') || 'asc';
+  const dateFrom = searchParams.get('dateFrom');
+  const dateTo = searchParams.get('dateTo');
 
   const where: any = {};
 
@@ -13,6 +15,16 @@ export async function GET(request: NextRequest) {
     where.status = 1;
   } else if (status === 'inactive') {
     where.status = 0;
+  }
+
+  if (dateFrom || dateTo) {
+    where.createdAt = {};
+    if (dateFrom) {
+      where.createdAt.gte = new Date(dateFrom);
+    }
+    if (dateTo) {
+      where.createdAt.lte = new Date(dateTo);
+    }
   }
 
   const orderBy: any = {};

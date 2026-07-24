@@ -52,10 +52,12 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
   // Filter and Sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id");
-  const [sortOrder, setSortOrder] = useState<string>("asc");
+  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<string>("desc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   
 
   // Modal and CRUD states
@@ -84,6 +86,8 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -105,10 +109,16 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery]);
+  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
 
   // Count active filters
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   // Delete Item
   const handleDelete = async () => {
@@ -153,7 +163,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -172,7 +182,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -191,7 +201,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -213,7 +223,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
           </CardHeader>
@@ -367,8 +377,33 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">From Date</label>
+                    <Input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="min-h-[44px]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">To Date</label>
+                    <Input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="min-h-[44px]"
+                    />
+                  </div>
                 </div>
-                <div className="p-4 border-t border-gray-100">
+                <div className="p-4 border-t border-gray-100 space-y-2">
+                  <Button
+                    onClick={handleResetFilters}
+                    variant="outline"
+                    className="w-full min-h-[44px]"
+                  >
+                    Reset Filters
+                  </Button>
                   <Button
                     onClick={() => setFilterSheetOpen(false)}
                     className="w-full min-h-[44px] bg-primary hover:bg-primary/90 text-white"
@@ -386,7 +421,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-16">
                       <div className="flex items-center gap-1">
                         ID
                         <ChevronDown className="h-3 w-3" />
@@ -394,17 +429,17 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     </TableHead>
                   )}
                   {visibleColumns.user_id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-16">
                       User ID
                     </TableHead>
                   )}
                   {visibleColumns.receiver_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[120px] max-w-[150px]">
                       Receiver Name
                     </TableHead>
                   )}
                   {visibleColumns.merchandise_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[140px] max-w-[180px]">
                       <div className="flex items-center gap-1">
                         Merchandise
                         <ChevronDown className="h-3 w-3" />
@@ -412,22 +447,22 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
                       Created
                     </TableHead>
                   )}
                   {visibleColumns.updated_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
                       Updated
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
                       Actions
                     </TableHead>
                   )}
@@ -439,8 +474,8 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     <TableRow>
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -449,8 +484,8 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     <TableRow>
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -459,8 +494,8 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     <TableRow>
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}

@@ -3,6 +3,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface FilterSheetProps {
   open: boolean;
@@ -13,6 +14,8 @@ interface FilterSheetProps {
   onGenderFilterChange?: (value: string) => void;
   verifiedFilter?: string;
   onVerifiedFilterChange?: (value: string) => void;
+  typeFilter?: string;
+  onTypeFilterChange?: (value: string) => void;
   sortBy: string;
   onSortByChange: (value: string) => void;
   sortOrder: string;
@@ -20,7 +23,14 @@ interface FilterSheetProps {
   statusOptions?: { value: string; label: string }[];
   genderOptions?: { value: string; label: string }[];
   verifiedOptions?: { value: string; label: string }[];
+  typeOptions?: { value: string; label: string }[];
   sortByOptions?: { value: string; label: string }[];
+  showTypeFilter?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  onDateFromChange?: (value: string) => void;
+  onDateToChange?: (value: string) => void;
+  onReset?: () => void;
 }
 
 export default function FilterSheet({
@@ -32,6 +42,8 @@ export default function FilterSheet({
   onGenderFilterChange,
   verifiedFilter = "all",
   onVerifiedFilterChange,
+  typeFilter = "all",
+  onTypeFilterChange,
   sortBy,
   onSortByChange,
   sortOrder,
@@ -51,11 +63,22 @@ export default function FilterSheet({
     { value: "verified", label: "Verified" },
     { value: "unverified", label: "Unverified" },
   ],
+  typeOptions = [
+    { value: "all", label: "All" },
+    { value: "news", label: "News" },
+    { value: "pers", label: "Press Release" },
+  ],
   sortByOptions = [
     { value: "id", label: "ID" },
     { value: "createdAt", label: "Created Date" },
     { value: "editedBy", label: "Edited By" },
   ],
+  showTypeFilter = false,
+  dateFrom = "",
+  dateTo = "",
+  onDateFromChange,
+  onDateToChange,
+  onReset,
 }: FilterSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -114,6 +137,23 @@ export default function FilterSheet({
                 </Select>
               </div>
             )}
+            {showTypeFilter && onTypeFilterChange && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-gray-700">Type</label>
+                <Select value={typeFilter} onValueChange={(v) => onTypeFilterChange(v || 'all')}>
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-gray-700">Sort By</label>
               <Select value={sortBy} onValueChange={(v) => onSortByChange(v || 'id')}>
@@ -141,8 +181,39 @@ export default function FilterSheet({
                 </SelectContent>
               </Select>
             </div>
+            {onDateFromChange && onDateToChange && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-gray-700">From Date</label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => onDateFromChange(e.target.value)}
+                    className="min-h-[44px]"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-gray-700">To Date</label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => onDateToChange(e.target.value)}
+                    className="min-h-[44px]"
+                  />
+                </div>
+              </>
+            )}
           </div>
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 space-y-2">
+            {onReset && (
+              <Button
+                onClick={onReset}
+                variant="outline"
+                className="w-full min-h-[44px]"
+              >
+                Reset Filters
+              </Button>
+            )}
             <Button
               onClick={() => onOpenChange(false)}
               className="w-full min-h-[44px] bg-primary hover:bg-primary/90 text-white"

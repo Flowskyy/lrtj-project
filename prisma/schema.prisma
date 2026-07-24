@@ -1067,6 +1067,23 @@ model users_temp {
   birthday                 DateTime? @db.DateTime(0)
 }
 
+model news {
+  id            Int       @id @default(autoincrement())
+  createdBy     String?   @db.VarChar(50)
+  img_url       String?   @db.Text
+  caption_image String?   @db.Text
+  views         BigInt    @default(0) @db.UnsignedBigInt
+  title         String?   @db.VarChar(155)
+  title_en      String?   @db.VarChar(155)
+  type          String?   @db.VarChar(50)
+  content       String?   @db.Text
+  content_en    String?   @db.Text
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
+  publish_date  DateTime? @db.DateTime(0)
+  status        Int       @default(1)
+}
+
 enum bayarind_binding_states_status {
   pending
   completed

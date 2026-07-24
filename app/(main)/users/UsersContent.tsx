@@ -73,6 +73,8 @@ export default function UsersContent({ username }: UsersContentProps) {
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<MemberItem | null>(null);
@@ -94,9 +96,13 @@ export default function UsersContent({ username }: UsersContentProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (verifiedFilter !== "all") params.set("verified", verifiedFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -118,14 +124,21 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [sortBy, sortOrder, currentPage, searchQuery]);
+  }, [statusFilter, verifiedFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
 
-  const activeFilterCount = searchQuery ? 1 : 0;
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (verifiedFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setVerifiedFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   // Delete Item
   const handleDelete = async () => {
@@ -167,175 +180,13 @@ export default function UsersContent({ username }: UsersContentProps) {
   const active = activeCount;
   const inactive = inactiveCount;
 
-  // Render modal form content (without Dialog wrapper)
-  const renderModalForm = ({
-    title,
-    onClose,
-    onSubmit,
-    isEdit = false,
-    item = null,
-  }: {
-    title: string;
-    onClose: () => void;
-    onSubmit: (e: React.FormEvent) => void;
-    isEdit?: boolean;
-    item?: MemberItem | null;
-  }) => (
-    <>
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
-        <div className="overflow-y-auto space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Name *
-            </label>
-            <Input
-              required
-              value={formNama}
-              onChange={(e) => setFormNama(e.target.value)}
-              placeholder="Enter user name"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Email *
-            </label>
-            <Input
-              required
-              type="email"
-              value={formEmail}
-              onChange={(e) => setFormEmail(e.target.value)}
-              placeholder="Enter email address"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Phone
-            </label>
-            <Input
-              value={formTelepon}
-              onChange={(e) => setFormTelepon(e.target.value)}
-              placeholder="Enter phone number"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Gender
-            </label>
-            <Select value={formGender} onValueChange={setFormGender}>
-              <SelectTrigger className="min-h-[44px]">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">-</SelectItem>
-                <SelectItem value="L">Laki-laki</SelectItem>
-                <SelectItem value="P">Perempuan</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Address
-            </label>
-            <textarea
-              rows={3}
-              value={formAlamat}
-              onChange={(e) => setFormAlamat(e.target.value)}
-              placeholder="Enter address"
-              className="w-full px-3 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[80px] resize-none"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              NIK
-            </label>
-            <Input
-              value={formNik}
-              onChange={(e) => setFormNik(e.target.value)}
-              placeholder="Enter NIK"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Birthplace
-            </label>
-            <Input
-              value={formTempatLahir}
-              onChange={(e) => setFormTempatLahir(e.target.value)}
-              placeholder="Enter birthplace"
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Birthday
-            </label>
-            <Input
-              type="date"
-              value={formBirthday}
-              onChange={(e) => setFormBirthday(e.target.value)}
-              className="min-h-[44px]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Status
-            </label>
-            <Select value={formStatus.toString()} onValueChange={(v) => setFormStatus(parseInt(v || '1'))}>
-              <SelectTrigger className="min-h-[44px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Active</SelectItem>
-                <SelectItem value="0">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {isEdit && item && (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                  Points
-                </label>
-                <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.slc_point}
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-                  Total Trips
-                </label>
-                <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-                  {item.trip_count}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} className="min-h-[44px]">
-            Cancel
-          </Button>
-          <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-            Save
-          </Button>
-        </DialogFooter>
-      </form>
-    </>
-  );
 
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -352,7 +203,7 @@ export default function UsersContent({ username }: UsersContentProps) {
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -381,7 +232,7 @@ export default function UsersContent({ username }: UsersContentProps) {
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -413,7 +264,7 @@ export default function UsersContent({ username }: UsersContentProps) {
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <CardTitle className="text-lg">User Management</CardTitle>
           </CardHeader>
@@ -545,8 +396,33 @@ export default function UsersContent({ username }: UsersContentProps) {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">From Date</label>
+                    <Input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="min-h-[44px]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-700">To Date</label>
+                    <Input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="min-h-[44px]"
+                    />
+                  </div>
                 </div>
-                <div className="p-4 border-t border-gray-100">
+                <div className="p-4 border-t border-gray-100 space-y-2">
+                  <Button
+                    onClick={handleResetFilters}
+                    variant="outline"
+                    className="w-full min-h-[44px]"
+                  >
+                    Reset Filters
+                  </Button>
                   <Button
                     onClick={() => setFilterSheetOpen(false)}
                     className="w-full min-h-[44px] bg-primary hover:bg-primary/90 text-white"
@@ -564,22 +440,22 @@ export default function UsersContent({ username }: UsersContentProps) {
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.nama && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[140px] max-w-[180px]">
                       Name
                     </TableHead>
                   )}
                   {visibleColumns.email && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[160px] max-w-[220px]">
                       Email
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
                       Created At
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center">
+                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
                       Actions
                     </TableHead>
                   )}
@@ -589,22 +465,22 @@ export default function UsersContent({ username }: UsersContentProps) {
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
+                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
+                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
+                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}

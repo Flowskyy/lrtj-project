@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -113,6 +113,16 @@ const NAV_ITEMS = [
 
   {
 
+    label: "News",
+
+    icon: <Newspaper {...SIDEBAR_ICON_PROPS} />,
+
+    href: "/news",
+
+  },
+
+  {
+
     label: "Merchandise",
 
     icon: <ShoppingBag {...SIDEBAR_ICON_PROPS} />,
@@ -168,6 +178,16 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Merchandise",
         breadcrumb: ["Merchandise"],
       }
+    : pathname === "/merchandise/add"
+    ? {
+        title: "Add Merchandise",
+        breadcrumb: ["Merchandise", "Add Merchandise"],
+      }
+    : pathname.startsWith("/merchandise/edit/")
+    ? {
+        title: "Edit Merchandise",
+        breadcrumb: ["Merchandise", "Edit Merchandise"],
+      }
     : pathname === "/redeem-merchandise"
     ? {
         title: "Redeem Merchandise",
@@ -178,6 +198,16 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Daily Benefit",
         breadcrumb: ["Daily Benefit", "Daily Benefit"],
       }
+    : pathname === "/daily-benefit/add"
+    ? {
+        title: "Add Daily Benefit",
+        breadcrumb: ["Daily Benefit", "Add Daily Benefit"],
+      }
+    : pathname.startsWith("/daily-benefit/edit/")
+    ? {
+        title: "Edit Daily Benefit",
+        breadcrumb: ["Daily Benefit", "Edit Daily Benefit"],
+      }
     : pathname === "/redeem-benefit"
     ? {
         title: "Redeem Benefit",
@@ -187,6 +217,21 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Users",
         breadcrumb: ["Users"],
+      }
+    : pathname === "/news"
+    ? {
+        title: "News",
+        breadcrumb: ["News"],
+      }
+    : pathname === "/news/add"
+    ? {
+        title: "Add News",
+        breadcrumb: ["News", "Add News"],
+      }
+    : pathname.startsWith("/news/edit/")
+    ? {
+        title: "Edit News",
+        breadcrumb: ["News", "Edit News"],
       }
     : {
         title: "Dashboard",
@@ -265,7 +310,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                 />
 
-                {item.label === "Users" && (
+                {item.label === "News" && (
                   <div className="px-3 pt-1 pb-2">
   <div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
 </div>
@@ -323,7 +368,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
           <Separator orientation="vertical" className="mr-2 h-full self-auto" />
 
-          <div className="flex items-center justify-center flex-1 sm:hidden">
+          <div className="flex items-center justify-center flex-1 md:hidden">
             <Image
               src="/logo-lrtj.png"
               alt="LRT Jakarta"
@@ -350,23 +395,51 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                     ) : (
 
-                      <BreadcrumbLink 
+                      <BreadcrumbLink
 
                         href={
 
-                          item === "Dashboard" 
+                          item === "Dashboard"
 
-                            ? "/dashboard" 
+                            ? "/dashboard"
 
-                            : item === "Merchandise" 
+                            : item === "Merchandise"
 
-                            ? "/merchandise" 
+                            ? "/merchandise"
+
+                            : item === "Add Merchandise"
+
+                            ? "/merchandise/add"
+
+                            : item === "Edit Merchandise"
+
+                            ? "/merchandise"
 
                             : item === "Users"
 
                             ? "/users"
 
+                            : item === "News"
+
+                            ? "/news"
+
+                            : item === "Add News"
+
+                            ? "/news/add"
+
+                            : item === "Edit News"
+
+                            ? "/news"
+
                             : item === "Daily Benefit"
+
+                            ? "/daily-benefit"
+
+                            : item === "Add Daily Benefit"
+
+                            ? "/daily-benefit/add"
+
+                            : item === "Edit Daily Benefit"
 
                             ? "/daily-benefit"
 
@@ -380,7 +453,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                             : "/redeem-merchandise"
 
-                        } 
+                        }
 
                         className="text-gray-600 hover:text-[#E5262C]"
 

@@ -39,6 +39,9 @@ function DialogOverlay({
   )
 }
 
+// IMPORTANT: DialogHeader/DialogTitle MUST be a direct child of DialogContent, not nested in a wrapper div.
+// If wrapped in another component or div, the title will render in the scrollable body instead of the fixed header.
+// See Merchandise/Daily Benefit View dialogs for the correct pattern.
 function DialogContent({
   className,
   children,
@@ -55,7 +58,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex flex-col w-full max-w-[calc(100%-2rem)] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 flex flex-col w-full max-w-[calc(100%-2rem)] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none overflow-hidden sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -65,8 +68,8 @@ function DialogContent({
           <div className="flex-1">
             {React.Children.map(children, (child) => {
               if (React.isValidElement(child) && (child as any).type?.displayName === 'DialogHeader') {
-                return React.cloneElement(child as React.ReactElement, {
-                  className: cn((child as React.ReactElement).props.className, "mb-0")
+                return React.cloneElement(child as React.ReactElement<any>, {
+                  className: cn((child as React.ReactElement<any>).props.className, "mb-0")
                 })
               }
               return null
@@ -107,8 +110,8 @@ function DialogContent({
         {/* Footer section - fixed */}
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child) && (child as any).type?.displayName === 'DialogFooter') {
-            return React.cloneElement(child as React.ReactElement, {
-              className: cn((child as React.ReactElement).props.className, "rounded-b-xl border-t bg-muted/50 px-4 py-4")
+            return React.cloneElement(child as React.ReactElement<any>, {
+              className: cn((child as React.ReactElement<any>).props.className, "rounded-b-xl border-t bg-muted/50 px-4 py-4")
             })
           }
           return null

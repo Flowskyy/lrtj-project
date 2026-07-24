@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const search = searchParams.get('search');
+  const dateFrom = searchParams.get('dateFrom');
+  const dateTo = searchParams.get('dateTo');
 
   const where: any = {};
 
@@ -27,6 +29,16 @@ export async function GET(request: NextRequest) {
       where.verified_at = { not: null };
     } else if (verified === 'unverified') {
       where.verified_at = null;
+    }
+  }
+
+  if (dateFrom || dateTo) {
+    where.created_at = {};
+    if (dateFrom) {
+      where.created_at.gte = new Date(dateFrom);
+    }
+    if (dateTo) {
+      where.created_at.lte = new Date(dateTo);
     }
   }
 

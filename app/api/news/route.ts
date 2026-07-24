@@ -18,34 +18,36 @@ export async function GET(request: NextRequest) {
   }
 
   if (dateFrom || dateTo) {
-    where.created_at = {};
+    where.publish_date = {};
     if (dateFrom) {
-      where.created_at.gte = new Date(dateFrom);
+      where.publish_date.gte = new Date(dateFrom);
     }
     if (dateTo) {
-      where.created_at.lte = new Date(dateTo);
+      where.publish_date.lte = new Date(dateTo);
     }
   }
 
   const orderBy: any = {};
   if (sortBy === 'id') {
     orderBy.id = order;
-  } else if (sortBy === 'createdAt') {
+  } else if (sortBy === 'publish_date') {
+    orderBy.publish_date = order;
+  } else if (sortBy === 'views') {
+    orderBy.views = order;
+  } else if (sortBy === 'created_at') {
     orderBy.created_at = order;
-  } else if (sortBy === 'editedBy') {
-    orderBy.editedBy = order;
   } else {
-    orderBy.id = 'asc';
+    orderBy.id = 'desc';
   }
 
   const [items, totalCount, activeCount, inactiveCount] = await Promise.all([
-    prisma.daily_benefit.findMany({
+    prisma.news.findMany({
       where,
       orderBy,
     }),
-    prisma.daily_benefit.count(),
-    prisma.daily_benefit.count({ where: { status: 1 } }),
-    prisma.daily_benefit.count({ where: { status: 0 } }),
+    prisma.news.count(),
+    prisma.news.count({ where: { status: 1 } }),
+    prisma.news.count({ where: { status: 0 } }),
   ]);
 
   return NextResponse.json({
@@ -60,17 +62,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  const newItem = await prisma.daily_benefit.create({
+  const newItem = await prisma.news.create({
     data: {
-      name: data.name,
-      redeem_point: data.redeem_point,
-      image_url: data.image_url || '',
-      term_condition: data.term_condition || '<p>-</p>',
-      editedBy: data.editedBy,
+      title: data.title,
+      title_en: data.title_en,
+      content: data.content || '<p>-</p>',
+      content_en: data.content_en || '<p>-</p>',
+      img_url: data.img_url || '',
+      caption_image: data.caption_image || '',
+      type: data.type || 'general',
       status: data.status ?? 1,
-      start_date: data.start_date ? new Date(data.start_date) : null,
-      end_date: data.end_date ? new Date(data.end_date) : null,
-      is_active: data.is_active ?? 1,
+      publish_date: data.publish_date ? new Date(data.publish_date) : new Date(),
+      createdBy: data.createdBy,
       created_at: new Date(),
       updated_at: new Date(),
     },
