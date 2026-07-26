@@ -12,8 +12,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
-import TableFilterSortMenu from "@/components/TableFilterSortMenu";
-import DateRangeFilter from "@/components/DateRangeFilter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,9 +49,6 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
   const [sortBy, setSortBy] = useState<string>("id");
   const [sortOrder, setSortOrder] = useState<string>("asc");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
-  const [dateField, setDateField] = useState<string>("created_at");
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<RedeemBenefitItem | null>(null);
@@ -81,9 +76,6 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
-      if (dateFrom && dateField) params.set("dateFrom", dateFrom);
-      if (dateTo && dateField) params.set("dateTo", dateTo);
-      if (dateField) params.set("dateField", dateField);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -104,16 +96,10 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo, dateField]);
+  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery]);
 
   // Count active filters
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
-
-  const handleResetFilters = () => {
-    setStatusFilter("all");
-    setDateFrom("");
-    setDateTo("");
-  };
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
   // Delete Item
   const handleDelete = async () => {
@@ -222,7 +208,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
           {/* Table Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-none">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
@@ -251,45 +237,68 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                   )}
                 </div>
               </div>
-              <TableFilterSortMenu
-                filterGroups={[
-                  {
-                    label: "Status",
-                    key: "status",
-                    options: [
-                      { label: "All Status", value: "all" },
-                      ...statusKeys.map((status) => ({ label: status, value: status })),
-                    ],
-                  },
-                ]}
-                sortOptions={[
-                  { label: "ID", value: "id" },
-                  { label: "Created Date", value: "created_at" },
-                  { label: "Updated Date", value: "updated_at" },
-                ]}
-                currentFilters={{ status: statusFilter }}
-                onFilterChange={(key, value) => {
-                  if (key === "status") setStatusFilter(value);
-                }}
-                currentSortBy={sortBy}
-                onSortByChange={setSortBy}
-                currentSortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
-                activeFilterCount={activeFilterCount}
-                onResetFilters={handleResetFilters}
-              />
-              <DateRangeFilter
-                dateField={dateField}
-                onDateFieldChange={setDateField}
-                dateFrom={dateFrom}
-                onDateFromChange={setDateFrom}
-                dateTo={dateTo}
-                onDateToChange={setDateTo}
-                dateFieldOptions={[
-                  { label: "Created Date", value: "created_at" },
-                  { label: "Updated Date", value: "updated_at" },
-                ]}
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px] relative">
+                  <Filter className="h-4 w-4" />
+                  {activeFilterCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
+                      {activeFilterCount}
+                    </Badge>
+                  )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Filter</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                    <div className="flex items-center gap-2">
+                      {statusFilter === "all" && <Check className="h-4 w-4" />}
+                      <span>All Status</span>
+                    </div>
+                  </DropdownMenuItem>
+                  {statusKeys.map((status) => (
+                    <DropdownMenuItem key={status} onClick={() => setStatusFilter(status)}>
+                      <div className="flex items-center gap-2">
+                        {statusFilter === status && <Check className="h-4 w-4" />}
+                        <span>{status}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Sort</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setSortBy("id")}>
+                    <div className="flex items-center gap-2">
+                      {sortBy === "id" && <Check className="h-4 w-4" />}
+                      <span>ID</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("created_at")}>
+                    <div className="flex items-center gap-2">
+                      {sortBy === "created_at" && <Check className="h-4 w-4" />}
+                      <span>Created Date</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("updated_at")}>
+                    <div className="flex items-center gap-2">
+                      {sortBy === "updated_at" && <Check className="h-4 w-4" />}
+                      <span>Updated Date</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setSortOrder("asc")}>
+                    <div className="flex items-center gap-2">
+                      {sortOrder === "asc" && <Check className="h-4 w-4" />}
+                      <span>Ascending</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortOrder("desc")}>
+                    <div className="flex items-center gap-2">
+                      {sortOrder === "desc" && <Check className="h-4 w-4" />}
+                      <span>Descending</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />

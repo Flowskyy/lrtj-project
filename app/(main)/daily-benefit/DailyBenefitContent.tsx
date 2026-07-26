@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
@@ -135,10 +134,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
     item.editedBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
-
-  const handleResetFilters = () => {
-    setStatusFilter("all");
-  };
 
   const resetForm = () => {
     setFormName("");
@@ -537,7 +532,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                 currentSortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
                 activeFilterCount={activeFilterCount}
-                onResetFilters={handleResetFilters}
               />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
