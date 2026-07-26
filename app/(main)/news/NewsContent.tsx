@@ -12,18 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FilterSheet from "@/components/FilterSheet";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import { getImageUrl } from "@/lib/utils";
-import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 
 interface NewsItem {
   id: number;
@@ -57,7 +50,6 @@ export default function NewsContent({ username }: NewsContentProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -128,13 +120,14 @@ export default function NewsContent({ username }: NewsContentProps) {
     };
   }, []);
 
-  // Filter items based on search query (memoized for performance)
+  // Filter items based on search query and type filter (memoized for performance)
   const filteredItems = items.filter(item =>
-    item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.title_en?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.createdBy?.toLowerCase().includes(searchQuery.toLowerCase())
+    item.createdBy?.toLowerCase().includes(searchQuery.toLowerCase())) &&
+    (typeFilter === "all" || item.type === typeFilter)
   );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
 
 
 
@@ -171,7 +164,7 @@ export default function NewsContent({ username }: NewsContentProps) {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -200,7 +193,7 @@ export default function NewsContent({ username }: NewsContentProps) {
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -229,7 +222,7 @@ export default function NewsContent({ username }: NewsContentProps) {
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -261,7 +254,7 @@ export default function NewsContent({ username }: NewsContentProps) {
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">News Management</CardTitle>
@@ -296,19 +289,44 @@ export default function NewsContent({ username }: NewsContentProps) {
                   </Button>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                filterGroups={[
+                  {
+                    label: "Status",
+                    key: "status",
+                    options: [
+                      { label: "All Status", value: "all" },
+                      { label: "Active", value: "active" },
+                      { label: "Inactive", value: "inactive" },
+                    ],
+                  },
+                  {
+                    label: "Type",
+                    key: "type",
+                    options: [
+                      { label: "All Types", value: "all" },
+                      { label: "News", value: "news" },
+                      { label: "Press Release", value: "pers" },
+                    ],
+                  },
+                ]}
+                sortOptions={[
+                  { label: "ID", value: "id" },
+                  { label: "Publish Date", value: "publish_date" },
+                  { label: "Views", value: "views" },
+                  { label: "Created Date", value: "created_at" },
+                ]}
+                currentFilters={{ status: statusFilter, type: typeFilter }}
+                onFilterChange={(key, value) => {
+                  if (key === "status") setStatusFilter(value);
+                  if (key === "type") setTypeFilter(value);
+                }}
+                currentSortBy={sortBy}
+                onSortByChange={setSortBy}
+                currentSortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                activeFilterCount={activeFilterCount}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -367,26 +385,6 @@ export default function NewsContent({ username }: NewsContentProps) {
             </div>
           </div>
 
-          {/* Filter Sheet */}
-          <FilterSheet
-            open={filterSheetOpen}
-            onOpenChange={setFilterSheetOpen}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-            sortByOptions={[
-              { value: "id", label: "ID" },
-              { value: "publish_date", label: "Publish Date" },
-              { value: "views", label: "Views" },
-              { value: "created_at", label: "Created Date" },
-            ]}
-            showTypeFilter={true}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">

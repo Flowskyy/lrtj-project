@@ -72,14 +72,15 @@ export async function GET(request: NextRequest) {
 
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const dateField = searchParams.get('dateField') || 'createdAt';
 
   if (dateFrom || dateTo) {
-    where.createdAt = {};
+    where[dateField] = {};
     if (dateFrom) {
-      where.createdAt.gte = new Date(dateFrom);
+      where[dateField].gte = new Date(dateFrom);
     }
     if (dateTo) {
-      where.createdAt.lte = new Date(dateTo);
+      where[dateField].lte = new Date(dateTo);
     }
   }
 

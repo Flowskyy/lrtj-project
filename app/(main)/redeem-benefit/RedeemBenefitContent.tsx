@@ -11,14 +11,16 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import DateRangeFilter from "@/components/DateRangeFilter";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 interface RedeemBenefitItem {
@@ -48,8 +50,10 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("id");
   const [sortOrder, setSortOrder] = useState<string>("asc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [dateField, setDateField] = useState<string>("created_at");
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<RedeemBenefitItem | null>(null);
@@ -77,6 +81,9 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (dateFrom && dateField) params.set("dateFrom", dateFrom);
+      if (dateTo && dateField) params.set("dateTo", dateTo);
+      if (dateField) params.set("dateField", dateField);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -97,10 +104,16 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery]);
+  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo, dateField]);
 
   // Count active filters
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   // Delete Item
   const handleDelete = async () => {
@@ -156,7 +169,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -178,7 +191,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
           const colors = getStatusCardColor(status);
           return (
             <Card key={status} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 pt-3">
+              <CardContent className="pt-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -202,14 +215,14 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <CardTitle className="text-lg">Redeem Benefit</CardTitle>
           </CardHeader>
 
           {/* Table Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
               <div className="relative flex-1 sm:flex-none">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
@@ -238,19 +251,45 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                   )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                filterGroups={[
+                  {
+                    label: "Status",
+                    key: "status",
+                    options: [
+                      { label: "All Status", value: "all" },
+                      ...statusKeys.map((status) => ({ label: status, value: status })),
+                    ],
+                  },
+                ]}
+                sortOptions={[
+                  { label: "ID", value: "id" },
+                  { label: "Created Date", value: "created_at" },
+                  { label: "Updated Date", value: "updated_at" },
+                ]}
+                currentFilters={{ status: statusFilter }}
+                onFilterChange={(key, value) => {
+                  if (key === "status") setStatusFilter(value);
+                }}
+                currentSortBy={sortBy}
+                onSortByChange={setSortBy}
+                currentSortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                activeFilterCount={activeFilterCount}
+                onResetFilters={handleResetFilters}
+              />
+              <DateRangeFilter
+                dateField={dateField}
+                onDateFieldChange={setDateField}
+                dateFrom={dateFrom}
+                onDateFromChange={setDateFrom}
+                dateTo={dateTo}
+                onDateToChange={setDateTo}
+                dateFieldOptions={[
+                  { label: "Created Date", value: "created_at" },
+                  { label: "Updated Date", value: "updated_at" },
+                ]}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -315,65 +354,6 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
             </div>
           </div>
 
-          {/* Filter Sheet */}
-          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-            <SheetContent side="right" className="w-full sm:w-80 p-0">
-              <div className="h-full flex flex-col">
-                <div className="p-4 border-b border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-900">Filter & Sort</h2>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Status</label>
-                    <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v || 'all')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {statusKeys.map((status) => (
-                          <SelectItem key={status} value={status}>{status}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Sort By</label>
-                    <Select value={sortBy} onValueChange={(v) => setSortBy(v || 'id')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="id">ID</SelectItem>
-                        <SelectItem value="created_at">Created Date</SelectItem>
-                        <SelectItem value="updated_at">Updated Date</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Order</label>
-                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v || 'asc')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asc">Ascending</SelectItem>
-                        <SelectItem value="desc">Descending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="p-4 border-t border-gray-100">
-                  <Button
-                    onClick={() => setFilterSheetOpen(false)}
-                    className="w-full min-h-[44px] bg-primary hover:bg-primary/90 text-white"
-                  >
-                    Apply Filters
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">

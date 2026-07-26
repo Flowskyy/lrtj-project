@@ -12,18 +12,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FilterSheet from "@/components/FilterSheet";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import { getImageUrl } from "@/lib/utils";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 
 interface MerchandiseItem {
   id: number;
@@ -53,7 +46,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modal and CRUD states
@@ -329,7 +321,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -358,7 +350,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -387,7 +379,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           </CardContent>
         </Card>
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+          <CardContent className="pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -419,7 +411,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">Merchandise Management</CardTitle>
@@ -458,19 +450,32 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   </Button>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                filterGroups={[
+                  {
+                    label: "Status",
+                    key: "status",
+                    options: [
+                      { label: "All Status", value: "all" },
+                      { label: "Active", value: "active" },
+                      { label: "Inactive", value: "inactive" },
+                    ],
+                  },
+                ]}
+                sortOptions={[
+                  { label: "Created Date", value: "createdAt" },
+                  { label: "Points", value: "points" },
+                ]}
+                currentFilters={{ status: statusFilter }}
+                onFilterChange={(key, value) => {
+                  if (key === "status") setStatusFilter(value);
+                }}
+                currentSortBy={sortBy}
+                onSortByChange={setSortBy}
+                currentSortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                activeFilterCount={activeFilterCount}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -517,17 +522,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             </div>
           </div>
 
-          {/* Filter Sheet */}
-          <FilterSheet
-            open={filterSheetOpen}
-            onOpenChange={setFilterSheetOpen}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
