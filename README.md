@@ -2,7 +2,7 @@
 
 Proyek ini adalah **prototype portal web layanan transportasi umum LRT Jakarta** (situs informasi untuk penumpang dan pengguna layanan LRT Jakarta). Aplikasi ini dikembangkan khusus sebagai bahan demonstrasi dan laporan selama masa **Praktek Kerja Lapangan (PKL)**.
 
-## Tech StackK
+## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
 - **Auth:** next-auth@beta
