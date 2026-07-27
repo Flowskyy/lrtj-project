@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
   const dateTo = searchParams.get('dateTo');
 
   if (dateFrom || dateTo) {
-    where.createdAt = {};
+    where.created_at = {};
     if (dateFrom) {
-      where.createdAt.gte = new Date(dateFrom);
+      where.created_at.gte = new Date(dateFrom);
     }
     if (dateTo) {
-      where.createdAt.lte = new Date(dateTo);
+      where.created_at.lte = new Date(dateTo);
     }
   }
 

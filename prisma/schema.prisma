@@ -786,8 +786,8 @@ model redeem {
   receiver_email   String    @default("") @db.VarChar(100)
   receiver_address String    @db.Text
   status           String    @db.VarChar(20)
-  created_at       DateTime? @db.DateTime(0)
-  updated_at       DateTime? @db.DateTime(0)
+  createdAt        DateTime? @map("created_at") @db.DateTime(0)
+  updatedAt        DateTime? @map("updated_at") @db.DateTime(0)
 
   @@index([status], map: "status")
   @@index([user_id], map: "user_id")

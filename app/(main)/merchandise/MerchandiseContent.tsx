@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FilterSheet from "@/components/FilterSheet";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import { getImageUrl } from "@/lib/utils";
@@ -53,7 +53,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modal and CRUD states
@@ -135,6 +134,12 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     item.editedBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setSortBy("createdAt");
+    setSortOrder("desc");
+  };
 
   const resetForm = () => {
     setFormName("");
@@ -419,7 +424,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">Merchandise Management</CardTitle>
@@ -458,19 +463,26 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   </Button>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                sortBy={sortBy}
+                onSortByChange={setSortBy}
+                sortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                statusOptions={[
+                  { value: "all", label: "All" },
+                  { value: "active", label: "Active" },
+                  { value: "inactive", label: "Inactive" },
+                ]}
+                sortByOptions={[
+                  { value: "createdAt", label: "Created Date" },
+                  { value: "name", label: "Name" },
+                  { value: "points", label: "Points" },
+                ]}
+                onResetFilters={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -516,18 +528,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               </DropdownMenu>
             </div>
           </div>
-
-          {/* Filter Sheet */}
-          <FilterSheet
-            open={filterSheetOpen}
-            onOpenChange={setFilterSheetOpen}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
@@ -699,9 +699,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       <Skeleton className="h-4 w-16" />
                       <Skeleton className="h-4 w-24" />
                       <div className="flex gap-2 mt-3">
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
                       </div>
                     </div>
                   </div>
@@ -714,9 +714,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       <Skeleton className="h-4 w-16" />
                       <Skeleton className="h-4 w-24" />
                       <div className="flex gap-2 mt-3">
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
                       </div>
                     </div>
                   </div>
@@ -761,28 +761,28 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                           }}
                           variant="outline"
                           size="sm"
-                          className="flex-1 min-h-[44px]"
+                          className="min-h-[44px] px-3"
+                          aria-label="View"
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           onClick={() => openEdit(item)}
                           variant="outline"
                           size="sm"
-                          className="flex-1 min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
+                          className="min-h-[44px] px-3 border-primary/30 text-primary hover:bg-primary/5"
+                          aria-label="Edit"
                         >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           onClick={() => setDeleteItem(item)}
                           variant="destructive"
                           size="sm"
-                          className="flex-1 min-h-[44px]"
+                          className="min-h-[44px] px-3"
+                          aria-label="Delete"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -800,7 +800,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
 
       {/* MODAL: VIEW */}
       <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
+        <DialogContent className="max-w-md sm:max-w-2xl md:max-w-3xl max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
           <DialogHeader>
             <DialogTitle>{viewItem?.name}</DialogTitle>
           </DialogHeader>

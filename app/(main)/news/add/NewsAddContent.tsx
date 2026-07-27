@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import TypeDropdown from "@/components/TypeDropdown";
 import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
@@ -67,23 +67,23 @@ export default function NewsAddContent({ username }: NewsAddContentProps) {
   return (
     <div className="animate-fade-in pb-24">
       {/* Page Header */}
-      <div className="mb-8 pb-6 border-b border-gray-200">
+      <div className="mb-8">
         <Link href="/news" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to News
         </Link>
-        <h1 className="text-2xl font-semibold text-gray-900">Add News</h1>
-        <p className="text-sm text-gray-500 mt-1">Create a new news article</p>
+        <h1 className="text-3xl font-semibold text-gray-900">Add News</h1>
+        <p className="text-base text-gray-500 mt-2">Create a new news article</p>
       </div>
 
       {/* Form */}
-      <form id="news-form" onSubmit={handleAdd} className="max-w-3xl">
+      <form id="news-form" onSubmit={handleAdd}>
         {/* Basic Information Section */}
-        <section className="pt-0 pb-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Basic Information</h2>
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Basic Information</h2>
           <p className="text-sm text-gray-500 mb-6">Enter the basic details for this news article</p>
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Title <span className="text-red-500">*</span>
@@ -110,17 +110,7 @@ export default function NewsAddContent({ username }: NewsAddContentProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Type
                 </label>
-                <Select value={formType} onValueChange={(v) => setFormType(v || 'general')}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="promotion">Promotion</SelectItem>
-                    <SelectItem value="announcement">Announcement</SelectItem>
-                    <SelectItem value="event">Event</SelectItem>
-                  </SelectContent>
-                </Select>
+                <TypeDropdown value={formType} onChange={setFormType} placeholder="Select type" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -141,11 +131,11 @@ export default function NewsAddContent({ username }: NewsAddContentProps) {
         </section>
 
         {/* Media Section */}
-        <section className="py-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Media</h2>
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Media</h2>
           <p className="text-sm text-gray-500 mb-6">Add an image to accompany your news article</p>
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <ImageUpload
               value={formImageUrl}
               onChange={setFormImageUrl}
@@ -165,11 +155,11 @@ export default function NewsAddContent({ username }: NewsAddContentProps) {
         </section>
 
         {/* Content Section */}
-        <section className="py-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Content</h2>
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Content</h2>
           <p className="text-sm text-gray-500 mb-6">Write the main content for your news article</p>
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content (Indonesian)
@@ -198,11 +188,11 @@ export default function NewsAddContent({ username }: NewsAddContentProps) {
         </section>
 
         {/* Publishing Section */}
-        <section className="py-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Publishing</h2>
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Publishing</h2>
           <p className="text-sm text-gray-500 mb-6">Configure when this news article should be published</p>
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Publish Date
@@ -218,8 +208,8 @@ export default function NewsAddContent({ username }: NewsAddContentProps) {
       </form>
 
       {/* Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
-        <div className="max-w-3xl mx-auto flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-50">
+        <div className="flex gap-3">
           <Link href="/news" className="flex-1">
             <Button type="button" variant="outline" className="w-full">
               Cancel

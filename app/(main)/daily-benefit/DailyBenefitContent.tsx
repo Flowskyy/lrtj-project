@@ -12,10 +12,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FilterSheet from "@/components/FilterSheet";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +55,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modal and CRUD states
@@ -142,6 +142,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
     item.editedBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setSortBy("created_at");
+    setSortOrder("desc");
+  };
 
   const resetForm = () => {
     setFormName("");
@@ -476,7 +482,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">Daily Benefit Management</CardTitle>
@@ -515,19 +521,26 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   </Button>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                sortBy={sortBy}
+                onSortByChange={setSortBy}
+                sortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                statusOptions={[
+                  { value: "all", label: "All" },
+                  { value: "1", label: "Active" },
+                  { value: "0", label: "Inactive" },
+                ]}
+                sortByOptions={[
+                  { value: "created_at", label: "Created Date" },
+                  { value: "name", label: "Name" },
+                  { value: "redeem_point", label: "Points" },
+                ]}
+                onResetFilters={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -592,21 +605,10 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
             </div>
           </div>
 
-          {/* Filter Sheet */}
-          <FilterSheet
-            open={filterSheetOpen}
-            onOpenChange={setFilterSheetOpen}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-          />
-
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.image && (
@@ -807,6 +809,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Card List - Mobile */}
@@ -969,7 +972,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
+        <DialogContent className="max-w-md sm:max-w-2xl md:max-w-3xl max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
           <DialogHeader>
             <DialogTitle>{viewItem?.name}</DialogTitle>
           </DialogHeader>

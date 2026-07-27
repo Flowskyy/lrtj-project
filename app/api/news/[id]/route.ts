@@ -14,7 +14,11 @@ export async function GET(
     return NextResponse.json({ error: 'News not found' }, { status: 404 });
   }
 
-  return NextResponse.json(item);
+  const serialized = {
+    ...item,
+    views: item.views.toString(),
+  };
+  return NextResponse.json(serialized);
 }
 
 export async function PUT(
@@ -39,7 +43,11 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json(updatedItem);
+  const serialized = {
+    ...updatedItem,
+    views: updatedItem.views.toString(),
+  };
+  return NextResponse.json(serialized);
 }
 
 export async function DELETE(

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter } from "lucide-react";
 import {
   DropdownMenu,
@@ -71,7 +71,6 @@ export default function UsersContent({ username }: UsersContentProps) {
   const [verifiedFilter, setVerifiedFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -138,6 +137,8 @@ export default function UsersContent({ username }: UsersContentProps) {
     setVerifiedFilter("all");
     setDateFrom("");
     setDateTo("");
+    setSortBy("created_at");
+    setSortOrder("desc");
   };
 
   // Delete Item
@@ -291,19 +292,33 @@ export default function UsersContent({ username }: UsersContentProps) {
                   </Button>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                verifiedFilter={verifiedFilter}
+                onVerifiedFilterChange={setVerifiedFilter}
+                sortBy={sortBy}
+                onSortByChange={setSortBy}
+                sortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                statusOptions={[
+                  { value: "all", label: "All" },
+                  { value: "1", label: "Active" },
+                  { value: "0", label: "Inactive" },
+                ]}
+                showVerifiedFilter={true}
+                sortByOptions={[
+                  { value: "name", label: "Name" },
+                  { value: "created_at", label: "Created At" },
+                ]}
+                dateFrom={dateFrom}
+                onDateFromChange={setDateFrom}
+                dateTo={dateTo}
+                onDateToChange={setDateTo}
+                showDateRange={true}
+                onResetFilters={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -337,102 +352,6 @@ export default function UsersContent({ username }: UsersContentProps) {
               </DropdownMenu>
             </div>
           </div>
-
-          {/* Filter Sheet */}
-          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-            <SheetContent side="right" className="w-full sm:w-80 p-0">
-              <div className="h-full flex flex-col">
-                <div className="p-4 border-b border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-900">Filter & Sort</h2>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Status</label>
-                    <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v || 'all')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="1">Active</SelectItem>
-                        <SelectItem value="0">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Verified</label>
-                    <Select value={verifiedFilter} onValueChange={(v) => setVerifiedFilter(v || 'all')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="verified">Verified</SelectItem>
-                        <SelectItem value="unverified">Unverified</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Sort By</label>
-                    <Select value={sortBy} onValueChange={(v) => setSortBy(v || 'created_at')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="created_at">Created At</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">Order</label>
-                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v || 'desc')}>
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asc">Ascending</SelectItem>
-                        <SelectItem value="desc">Descending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">From Date</label>
-                    <Input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                      className="min-h-[44px]"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-gray-700">To Date</label>
-                    <Input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                      className="min-h-[44px]"
-                    />
-                  </div>
-                </div>
-                <div className="p-4 border-t border-gray-100 space-y-2">
-                  <Button
-                    onClick={handleResetFilters}
-                    variant="outline"
-                    className="w-full min-h-[44px]"
-                  >
-                    Reset Filters
-                  </Button>
-                  <Button
-                    onClick={() => setFilterSheetOpen(false)}
-                    className="w-full min-h-[44px] bg-primary hover:bg-primary/90 text-white"
-                  >
-                    Apply Filters
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">

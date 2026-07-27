@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FilterSheet from "@/components/FilterSheet";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import { getImageUrl } from "@/lib/utils";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
@@ -57,7 +57,6 @@ export default function NewsContent({ username }: NewsContentProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -134,11 +133,14 @@ export default function NewsContent({ username }: NewsContentProps) {
     item.title_en?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.createdBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
 
-
-
-
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setSortBy("created_at");
+    setSortOrder("desc");
+  };
 
   // Delete Item
   const handleDelete = async () => {
@@ -261,7 +263,7 @@ export default function NewsContent({ username }: NewsContentProps) {
 
       {/* Main Content Card */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">News Management</CardTitle>
@@ -296,19 +298,29 @@ export default function NewsContent({ username }: NewsContentProps) {
                   </Button>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] relative"
-                onClick={() => setFilterSheetOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                {activeFilterCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-primary text-white text-[10px] p-0 rounded-full">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+              <TableFilterSortMenu
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                typeFilter={typeFilter}
+                onTypeFilterChange={setTypeFilter}
+                sortBy={sortBy}
+                onSortByChange={setSortBy}
+                sortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                statusOptions={[
+                  { value: "all", label: "All" },
+                  { value: "active", label: "Active" },
+                  { value: "inactive", label: "Inactive" },
+                ]}
+                showTypeFilter={true}
+                sortByOptions={[
+                  { value: "created_at", label: "Created Date" },
+                  { value: "publish_date", label: "Publish Date" },
+                  { value: "title", label: "Title" },
+                ]}
+                onResetFilters={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
                   <Columns className="h-4 w-4" />
@@ -366,27 +378,6 @@ export default function NewsContent({ username }: NewsContentProps) {
               </DropdownMenu>
             </div>
           </div>
-
-          {/* Filter Sheet */}
-          <FilterSheet
-            open={filterSheetOpen}
-            onOpenChange={setFilterSheetOpen}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-            sortByOptions={[
-              { value: "id", label: "ID" },
-              { value: "publish_date", label: "Publish Date" },
-              { value: "views", label: "Views" },
-              { value: "created_at", label: "Created Date" },
-            ]}
-            showTypeFilter={true}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
@@ -585,9 +576,9 @@ export default function NewsContent({ username }: NewsContentProps) {
                       <Skeleton className="h-4 w-16" />
                       <Skeleton className="h-4 w-24" />
                       <div className="flex gap-2 mt-3">
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
                       </div>
                     </div>
                   </div>
@@ -600,9 +591,9 @@ export default function NewsContent({ username }: NewsContentProps) {
                       <Skeleton className="h-4 w-16" />
                       <Skeleton className="h-4 w-24" />
                       <div className="flex gap-2 mt-3">
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
-                        <Skeleton className="h-10 flex-1" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
+                        <Skeleton className="h-11 w-11" />
                       </div>
                     </div>
                   </div>
@@ -654,29 +645,29 @@ export default function NewsContent({ username }: NewsContentProps) {
                           size="sm"
                           variant="outline"
                           onClick={() => setViewItem(item)}
-                          className="flex-1 min-h-[36px] text-xs"
+                          className="min-h-[44px] px-3"
+                          aria-label="View"
                         >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Link href={`/news/edit/${item.id}`} className="flex-1">
+                        <Link href={`/news/edit/${item.id}`}>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="min-h-[36px] text-xs w-full"
+                            className="min-h-[44px] px-3"
+                            aria-label="Edit"
                           >
-                            <Pencil className="h-3 w-3 mr-1" />
-                            Edit
+                            <Pencil className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => setDeleteItem(item)}
-                          className="flex-1 min-h-[36px] text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="min-h-[44px] px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          aria-label="Delete"
                         >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Delete
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -695,14 +686,12 @@ export default function NewsContent({ username }: NewsContentProps) {
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogContent className="max-w-2xl sm:max-w-3xl md:max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>News Details</DialogTitle>
+          </DialogHeader>
           {viewItem && (
-            <>
-              <DialogHeader>
-                <DialogTitle>News Details</DialogTitle>
-              </DialogHeader>
-              <ScrollArea className="max-h-[60vh] pr-4">
-                <div className="space-y-4">
+            <div className="space-y-4">
                   {viewItem.img_url && (
                     <div className="rounded-lg overflow-hidden">
                       <img
@@ -776,8 +765,6 @@ export default function NewsContent({ username }: NewsContentProps) {
                     </div>
                   )}
                 </div>
-              </ScrollArea>
-            </>
           )}
         </DialogContent>
       </Dialog>
