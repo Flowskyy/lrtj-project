@@ -1004,6 +1004,7 @@ model users {
   guid                     String?   @unique(map: "users_guid_unique") @db.VarChar(255)
   domain                   String?   @db.VarChar(255)
   lrtjpay_token            String?   @db.VarChar(255)
+  tanggal_lahir            DateTime? @db.Date
 
   @@index([created_at(sort: Desc)], map: "created_at")
   @@index([ecard], map: "ecard")

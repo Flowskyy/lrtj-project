@@ -1,17 +1,17 @@
 'use client';
 
-import { Bold, Italic, Underline, Strikethrough, Code, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, CheckSquare, Link, Table, Smile, Undo, Redo, Heading1, Heading2, Heading3, Palette, Highlighter } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, Code, AlignLeft, List, ListOrdered, Link, Table, Smile, Undo, Redo, Palette, Highlighter, Type } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ToolbarButton } from '@/components/ui/toolbar';
 import { MarkToolbarButton } from '@/components/ui/mark-toolbar-button';
-import { BulletedListToolbarButton, NumberedListToolbarButton, TodoListToolbarButton } from '@/components/ui/list-toolbar-button';
+import { BulletedListToolbarButton, NumberedListToolbarButton } from '@/components/ui/list-toolbar-button';
 import { AlignToolbarButton } from '@/components/ui/align-toolbar-button';
 import { LinkToolbarButton } from '@/components/ui/link-toolbar-button';
 import { TableToolbarButton } from '@/components/ui/table-toolbar-button';
 import { EmojiToolbarButton } from '@/components/ui/emoji-toolbar-button';
 import { FontColorToolbarButton } from '@/components/ui/font-color-toolbar-button';
+import { FontSizeToolbarButton } from '@/components/ui/font-size-toolbar-button';
 import { ToolbarGroup } from '@/components/ui/toolbar';
-import { TurnIntoToolbarButton } from '@/components/ui/turn-into-toolbar-button';
 import { UndoToolbarButton, RedoToolbarButton } from '@/components/ui/history-toolbar-button';
 
 export function NewsEditorToolbar() {
@@ -25,13 +25,6 @@ export function NewsEditorToolbar() {
         <RedoToolbarButton tooltip="Redo (Ctrl+Y)">
           <Redo className="size-4" />
         </RedoToolbarButton>
-      </ToolbarGroup>
-
-      {/* Heading Dropdown */}
-      <ToolbarGroup>
-        <TurnIntoToolbarButton tooltip="Turn into">
-          <Heading1 className="size-4" />
-        </TurnIntoToolbarButton>
       </ToolbarGroup>
 
       {/* Text Formatting */}
@@ -53,29 +46,25 @@ export function NewsEditorToolbar() {
         </MarkToolbarButton>
       </ToolbarGroup>
 
+      {/* Font Size */}
+      <ToolbarGroup>
+        <FontSizeToolbarButton />
+      </ToolbarGroup>
+
       {/* Text Color & Highlight */}
       <ToolbarGroup>
-        <FontColorToolbarButton tooltip="Text Color">
+        <FontColorToolbarButton nodeType="color" tooltip="Text Color">
           <Palette className="size-4" />
         </FontColorToolbarButton>
-        <MarkToolbarButton nodeType="highlight" tooltip="Highlight (Ctrl+Shift+H)">
+        <FontColorToolbarButton nodeType="highlight" tooltip="Highlight">
           <Highlighter className="size-4" />
-        </MarkToolbarButton>
+        </FontColorToolbarButton>
       </ToolbarGroup>
 
       {/* Text Alignment */}
       <ToolbarGroup>
-        <AlignToolbarButton value="left" tooltip="Align Left">
+        <AlignToolbarButton>
           <AlignLeft className="size-4" />
-        </AlignToolbarButton>
-        <AlignToolbarButton value="center" tooltip="Align Center">
-          <AlignCenter className="size-4" />
-        </AlignToolbarButton>
-        <AlignToolbarButton value="right" tooltip="Align Right">
-          <AlignRight className="size-4" />
-        </AlignToolbarButton>
-        <AlignToolbarButton value="justify" tooltip="Justify">
-          <AlignJustify className="size-4" />
         </AlignToolbarButton>
       </ToolbarGroup>
 
@@ -83,7 +72,6 @@ export function NewsEditorToolbar() {
       <ToolbarGroup>
         <BulletedListToolbarButton />
         <NumberedListToolbarButton />
-        <TodoListToolbarButton />
       </ToolbarGroup>
 
       {/* Link */}

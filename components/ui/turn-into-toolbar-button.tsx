@@ -8,6 +8,7 @@ import type { TElement } from 'platejs';
 import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu';
 import {
   CheckIcon,
+  ChevronDown,
   ChevronRightIcon,
   Code2,
   Columns3Icon,
@@ -156,18 +157,18 @@ export function TurnIntoToolbarButton(props: DropdownMenuProps) {
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger>
-        <ToolbarButton className="min-w-[125px]" pressed={open} tooltip="Turn into" isDropdown>
+      <DropdownMenuTrigger
+        className="inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 min-w-[125px] h-8 px-1.5 justify-between gap-1 pr-1"
+        data-pressed={open}
+      >
+        <div className="flex flex-1 items-center gap-2 whitespace-nowrap">
           {selectedItem.label}
-        </ToolbarButton>
+        </div>
+        <ChevronDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         className="ignore-click-outside/toolbar min-w-0"
-        onCloseAutoFocus={(e) => {
-          e.preventDefault();
-          editor.tf.focus();
-        }}
         align="start"
       >
         <ToolbarMenuGroup

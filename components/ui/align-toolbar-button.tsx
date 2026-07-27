@@ -11,6 +11,7 @@ import {
   AlignJustifyIcon,
   AlignLeftIcon,
   AlignRightIcon,
+  ChevronDown,
 } from 'lucide-react';
 import { useEditorPlugin, useSelectionFragmentProp } from 'platejs/react';
 
@@ -57,10 +58,12 @@ export function AlignToolbarButton(props: DropdownMenuProps) {
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger>
-        <ToolbarButton pressed={open} tooltip="Align" isDropdown>
-          <IconValue />
-        </ToolbarButton>
+      <DropdownMenuTrigger
+        className="inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 h-8 min-w-8 px-1.5 pr-1"
+        data-pressed={open}
+      >
+        <IconValue className="size-4" />
+        <ChevronDown className="size-4 text-muted-foreground" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="min-w-0" align="start">
@@ -77,7 +80,7 @@ export function AlignToolbarButton(props: DropdownMenuProps) {
               className="pl-2 data-[state=checked]:bg-accent *:first:[span]:hidden"
               value={itemValue}
             >
-              <Icon />
+              <Icon className="size-4" />
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

@@ -7,7 +7,7 @@ import {
   useIndentTodoToolBarButton,
   useIndentTodoToolBarButtonState,
 } from '@platejs/list/react';
-import { List, ListOrdered, ListTodoIcon } from 'lucide-react';
+import { ChevronDown, List, ListOrdered, ListTodoIcon } from 'lucide-react';
 import { useEditorRef, useEditorSelector } from 'platejs/react';
 
 import {
@@ -54,8 +54,11 @@ export function BulletedListToolbarButton() {
       </ToolbarSplitButtonPrimary>
 
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-        <DropdownMenuTrigger>
-          <ToolbarSplitButtonSecondary />
+        <DropdownMenuTrigger
+          className="inline-flex items-center justify-center rounded-r-md font-medium text-foreground text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 h-8 w-4 group-data-[pressed=true]:bg-accent group-data-[pressed=true]:text-accent-foreground hover:bg-muted hover:text-muted-foreground"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ChevronDown className="size-4 text-muted-foreground" />
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" alignOffset={-32}>
@@ -134,8 +137,11 @@ export function NumberedListToolbarButton() {
       </ToolbarSplitButtonPrimary>
 
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-        <DropdownMenuTrigger>
-          <ToolbarSplitButtonSecondary />
+        <DropdownMenuTrigger
+          className="inline-flex items-center justify-center rounded-r-md font-medium text-foreground text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 h-8 w-4 group-data-[pressed=true]:bg-accent group-data-[pressed=true]:text-accent-foreground hover:bg-muted hover:text-muted-foreground"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ChevronDown className="size-4 text-muted-foreground" />
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" alignOffset={-32}>
@@ -200,7 +206,7 @@ export function TodoListToolbarButton(
 
   return (
     <ToolbarButton {...props} {...buttonProps} tooltip="Todo">
-      <ListTodoIcon />
+      <ListTodoIcon className="size-4" />
     </ToolbarButton>
   );
 }

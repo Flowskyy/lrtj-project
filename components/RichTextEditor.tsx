@@ -13,9 +13,9 @@ interface RichTextEditorProps {
 
 export default function RichTextEditor({ editor, onChange, placeholder }: RichTextEditorProps) {
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
+    <div className="border border-gray-300 rounded-lg">
       <Plate editor={editor} onChange={onChange}>
-        <FixedToolbar>
+        <FixedToolbar className="top-[56px]">
           <NewsEditorToolbar />
         </FixedToolbar>
         <EditorContainer className="min-h-[300px]">

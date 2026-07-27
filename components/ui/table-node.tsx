@@ -36,6 +36,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ChevronDown,
   CombineIcon,
   EraserIcon,
   Grid2X2Icon,
@@ -924,10 +925,11 @@ function TableFloatingToolbarContent({
                 )}
 
                 <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger>
-                    <ToolbarButton tooltip="Cell borders">
-                      <Grid2X2Icon />
-                    </ToolbarButton>
+                  <DropdownMenuTrigger
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 h-8 min-w-8 px-1.5 pr-1"
+                  >
+                    <Grid2X2Icon />
+                    <ChevronDown className="size-3.5 text-muted-foreground" />
                   </DropdownMenuTrigger>
 
                   <DropdownMenuPortal>
@@ -1011,10 +1013,6 @@ function TableBordersDropdownMenuContent(
   return (
     <DropdownMenuContent
       className="min-w-[220px]"
-      onCloseAutoFocus={(e) => {
-        e.preventDefault();
-        editor.tf.focus();
-      }}
       align="start"
       side="right"
       sideOffset={0}
@@ -1104,10 +1102,12 @@ function ColorDropdownMenu({
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-      <DropdownMenuTrigger>
-        <ToolbarButton tooltip={tooltip}>
-          {children}
-        </ToolbarButton>
+      <DropdownMenuTrigger
+        className="inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 h-8 min-w-8 px-1.5 pr-1"
+        data-pressed={open}
+      >
+        {children}
+        <ChevronDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start">
