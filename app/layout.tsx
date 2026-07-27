@@ -12,8 +12,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Prototype Portal Transportasi Umum (PKL) - LRT Jakarta",
-  description: "Prototype portal web layanan transportasi umum LRT Jakarta untuk informasi penumpang dan pengguna jasa (Proyek PKL)",
+  title: "Dashboard Manajemen Aplikasi - LRT Jakarta",
+  description: "Dashboard Manajemen Aplikasi - LRT Jakarta",
 };
 
 export default function RootLayout({

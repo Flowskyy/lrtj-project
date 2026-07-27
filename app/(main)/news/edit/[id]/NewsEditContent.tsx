@@ -10,6 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { usePlateEditor } from "platejs/react";
+import { serializeHtml } from "platejs/static";
+import { type Value } from "platejs";
+import { NewsEditorKit } from "@/components/editor/plugins/news-editor-kit";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
 
 interface NewsItem {
   id: number;
@@ -50,6 +57,27 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
   const [formStatus, setFormStatus] = useState<boolean>(true);
   const [formPublishDate, setFormPublishDate] = useState("");
 
+  // PlateJS editors
+  const editorId = usePlateEditor({
+    plugins: NewsEditorKit,
+    value: formContent || '<p>-</p>',
+  });
+  const editorEn = usePlateEditor({
+    plugins: NewsEditorKit,
+    value: formContentEn || '<p>-</p>',
+  });
+
+  // Handle editor content changes
+  const handleEditorChangeId = async () => {
+    const html = await serializeHtml(editorId);
+    setFormContent(html || '<p>-</p>');
+  };
+
+  const handleEditorChangeEn = async () => {
+    const html = await serializeHtml(editorEn);
+    setFormContentEn(html || '<p>-</p>');
+  };
+
   // Fetch news item
   useEffect(() => {
     const fetchItem = async () => {
@@ -61,13 +89,24 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
           setItem(data);
           setFormTitle(data.title || "");
           setFormTitleEn(data.title_en || "");
-          setFormContent(data.content || "");
-          setFormContentEn(data.content_en || "");
           setFormImageUrl(data.img_url || "");
           setFormCaptionImage(data.caption_image || "");
           setFormType(data.type || "general");
           setFormStatus(data.status === 1);
           setFormPublishDate(data.publish_date ? new Date(data.publish_date).toISOString().split('T')[0] : "");
+          
+          // Deserialize HTML content for PlateJS editors
+          const contentHtml = data.content || '<p>-</p>';
+          const contentEnHtml = data.content_en || '<p>-</p>';
+          
+          const slateValueId = editorId.api.html.deserialize({ element: contentHtml });
+          editorId.tf.setValue(slateValueId as Value);
+
+          const slateValueEn = editorEn.api.html.deserialize({ element: contentEnHtml });
+          editorEn.tf.setValue(slateValueEn as Value);
+          
+          setFormContent(contentHtml);
+          setFormContentEn(contentEnHtml);
         } else {
           toast.error("Failed to load news item");
           router.push("/news");
@@ -82,21 +121,25 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
     };
 
     fetchItem();
-  }, [newsId, router]);
+  }, [newsId, router, editorId, editorEn]);
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!item) return;
     setIsSubmitting(true);
     try {
+      // Serialize editor content to HTML
+      const contentHtml = await serializeHtml(editorId);
+      const contentEnHtml = await serializeHtml(editorEn);
+
       const res = await fetch(`/api/news/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: formTitle,
           title_en: formTitleEn,
-          content: formContent,
-          content_en: formContentEn,
+          content: contentHtml || '<p>-</p>',
+          content_en: contentEnHtml || '<p>-</p>',
           img_url: formImageUrl,
           caption_image: formCaptionImage,
           type: formType,
@@ -238,24 +281,20 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content (Indonesian)
               </label>
-              <textarea
-                rows={8}
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
+              <RichTextEditor
+                editor={editorId}
+                onChange={handleEditorChangeId}
                 placeholder="Enter news content in Indonesian..."
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 resize-y"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content (English)
               </label>
-              <textarea
-                rows={8}
-                value={formContentEn}
-                onChange={(e) => setFormContentEn(e.target.value)}
+              <RichTextEditor
+                editor={editorEn}
+                onChange={handleEditorChangeEn}
                 placeholder="Enter news content in English..."
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 resize-y"
               />
             </div>
           </div>
