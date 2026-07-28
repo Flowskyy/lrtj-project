@@ -83,7 +83,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Popover,
-  PopoverAnchor,
   PopoverContent,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -805,7 +804,7 @@ function TableFloatingToolbar({
 
   return (
     <Popover open={isToolbarOpen} modal={false}>
-      <PopoverAnchor>{children}</PopoverAnchor>
+      {children}
       {isSingleCellToolbarOpen && (
         <SingleCellTableFloatingToolbarContent {...props} />
       )}

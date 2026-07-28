@@ -1,3 +1,0 @@
-ALTER TABLE banners 
-ADD COLUMN created_by VARCHAR(255) NULL,
-ADD COLUMN updated_by VARCHAR(255) NULL;
