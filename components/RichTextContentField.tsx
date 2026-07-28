@@ -1,0 +1,129 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { usePlateEditor } from "platejs/react";
+import { type Value } from "platejs";
+import { serializeHtml } from "platejs/static";
+import { NewsEditorKit } from "@/components/editor/plugins/news-editor-kit";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
+
+interface RichTextContentFieldProps {
+  label: string;
+  value: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  isEditMode?: boolean;
+}
+
+export default function RichTextContentField({ 
+  label, 
+  value, 
+  onChange, 
+  placeholder = "Enter content...",
+  isEditMode = false 
+}: RichTextContentFieldProps) {
+  const [isEditing, setIsEditing] = useState(isEditMode);
+  
+  // PlateJS editor
+  const editor = usePlateEditor({
+    plugins: NewsEditorKit,
+  });
+
+  // Initialize editor with value on mount or when value changes externally
+  useEffect(() => {
+    if (value && !isEditing) {
+      const slateValue = editor.api.html.deserialize({ element: value });
+      editor.tf.setValue(slateValue as Value);
+    }
+  }, [value, editor, isEditing]);
+
+  // Initialize empty state on mount for add mode
+  useEffect(() => {
+    if (!value && !isEditing) {
+      const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
+      editor.tf.setValue(emptyValue);
+    }
+  }, [editor, value, isEditing]);
+
+  // Handle content save
+  const handleSave = async () => {
+    const html = await serializeHtml(editor);
+    onChange(html || '<p>-</p>');
+    setIsEditing(false);
+  };
+
+  // Handle content cancel
+  const handleCancel = () => {
+    // Revert to last saved content
+    if (value) {
+      const slateValue = editor.api.html.deserialize({ element: value });
+      editor.tf.setValue(slateValue as Value);
+    } else {
+      const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
+      editor.tf.setValue(emptyValue);
+    }
+    setIsEditing(false);
+  };
+
+  // Strip HTML tags for preview
+  const stripHtml = (html: string) => {
+    if (typeof window === 'undefined') return html || '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+      </label>
+      {!isEditing ? (
+        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+          <div className="line-clamp-3 text-gray-600 text-sm overflow-hidden">
+            {stripHtml(value) || 'No content'}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="mt-3"
+          >
+            Edit Content
+          </Button>
+        </div>
+      ) : (
+        <div className="border border-gray-300 rounded-lg">
+          <RichTextEditor
+            editor={editor}
+            onChange={() => {}}
+            onContentChange={() => {}}
+            placeholder={placeholder}
+          />
+          <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

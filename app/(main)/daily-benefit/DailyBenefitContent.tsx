@@ -15,8 +15,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
+import RichTextContentField from "@/components/RichTextContentField";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,20 +61,8 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<DailyBenefitItem | null>(null);
-  const [editItem, setEditItem] = useState<DailyBenefitItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<DailyBenefitItem | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
   const [previewItem, setPreviewItem] = useState<DailyBenefitItem | null>(null);
-
-  // Form states
-  const [formName, setFormName] = useState("");
-  const [formPoints, setFormPoints] = useState(100);
-  const [formImageUrl, setFormImageUrl] = useState("");
-  const [formTermCondition, setFormTermCondition] = useState("");
-  const [formStatus, setFormStatus] = useState<number>(1);
-  const [formStartDate, setFormStartDate] = useState("");
-  const [formEndDate, setFormEndDate] = useState("");
-  const [formIsActive, setFormIsActive] = useState<number>(1);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -149,96 +139,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
     setSortOrder("desc");
   };
 
-  const resetForm = () => {
-    setFormName("");
-    setFormPoints(100);
-    setFormImageUrl("");
-    setFormTermCondition("");
-    setFormStatus(1);
-    setFormStartDate("");
-    setFormEndDate("");
-    setFormIsActive(1);
-  };
-
-  // Add Item
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/daily-benefit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName,
-          redeem_point: formPoints,
-          image_url: formImageUrl,
-          term_condition: formTermCondition,
-          editedBy: username,
-          status: formStatus,
-          start_date: formStartDate || null,
-          end_date: formEndDate || null,
-          is_active: formIsActive,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setIsAdding(false);
-        resetForm();
-        toast.success("Daily Benefit added successfully");
-      } else {
-        toast.error("Failed to add daily benefit");
-      }
-    } catch (err) {
-      console.error("Failed to add item", err);
-      toast.error("Failed to add daily benefit");
-    }
-  };
-
-  // Edit Item
-  const openEdit = (item: DailyBenefitItem) => {
-    setEditItem(item);
-    setFormName(item.name);
-    setFormPoints(item.redeem_point);
-    setFormImageUrl(item.image_url);
-    setFormTermCondition(item.term_condition);
-    setFormStatus(item.status);
-    setFormStartDate(item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : "");
-    setFormEndDate(item.end_date ? new Date(item.end_date).toISOString().split('T')[0] : "");
-    setFormIsActive(item.is_active ?? 1);
-  };
-
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editItem) return;
-    try {
-      const res = await fetch(`/api/daily-benefit/${editItem.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName,
-          redeem_point: formPoints,
-          image_url: formImageUrl,
-          term_condition: formTermCondition,
-          editedBy: username,
-          status: formStatus,
-          start_date: formStartDate || null,
-          end_date: formEndDate || null,
-          is_active: formIsActive,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setEditItem(null);
-        resetForm();
-        toast.success("Daily Benefit updated successfully");
-      } else {
-        toast.error("Failed to update daily benefit");
-      }
-    } catch (err) {
-      console.error("Failed to edit item", err);
-      toast.error("Failed to update daily benefit");
-    }
-  };
-
   // Delete Item
   const handleDelete = async () => {
     if (!deleteItem) return;
@@ -264,128 +164,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
   const active = activeCount;
   const inactive = inactiveCount;
 
-  // Render form fields (shared between Add and Edit dialogs)
-  const renderFormFields = () => (
-    <>
-      <div>
-        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-          Name *
-        </label>
-        <Input
-          required
-          value={formName}
-          onChange={(e) => setFormName(e.target.value)}
-          placeholder="Enter daily benefit name"
-          className="min-h-[44px]"
-        />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div>
-          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-            Points *
-          </label>
-          <Input
-            required
-            type="number"
-            min={0}
-            value={formPoints}
-            onChange={(e) => setFormPoints(parseInt(e.target.value) || 0)}
-            className="min-h-[44px]"
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-            Status
-          </label>
-          <Select value={formStatus.toString()} onValueChange={(v) => setFormStatus(parseInt(v || '1'))}>
-            <SelectTrigger className="min-h-[44px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Active</SelectItem>
-              <SelectItem value="0">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <ImageUpload
-        value={formImageUrl}
-        onChange={setFormImageUrl}
-        label="Image"
-      />
-      <div>
-        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-          Terms & Condition (HTML)
-        </label>
-        <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
-          <textarea
-            rows={4}
-            value={formTermCondition}
-            onChange={(e) => setFormTermCondition(e.target.value)}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
-          />
-        </ScrollArea>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div>
-          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-            Start Date
-          </label>
-          <Input
-            type="date"
-            value={formStartDate}
-            onChange={(e) => setFormStartDate(e.target.value)}
-            className="min-h-[44px]"
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-            End Date
-          </label>
-          <Input
-            type="date"
-            value={formEndDate}
-            onChange={(e) => setFormEndDate(e.target.value)}
-            className="min-h-[44px]"
-          />
-        </div>
-      </div>
-      <div>
-        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-          Is Active
-        </label>
-        <Select value={formIsActive.toString()} onValueChange={(v) => setFormIsActive(parseInt(v || '1'))}>
-          <SelectTrigger className="min-h-[44px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">Yes</SelectItem>
-            <SelectItem value="0">No</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      {editItem && (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Created
-            </label>
-            <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-              {editItem.created_at ? new Date(editItem.created_at).toLocaleDateString() : "-"}
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Updated
-            </label>
-            <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-              {editItem.updated_at ? new Date(editItem.updated_at).toLocaleDateString() : "-"}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -486,16 +264,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">Daily Benefit Management</CardTitle>
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsAdding(true);
-                }}
-                className="min-h-[44px] bg-primary hover:bg-primary/90 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Daily Benefit
-              </Button>
+              <Link href="/daily-benefit/add">
+                <Button className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Daily Benefit
+                </Button>
+              </Link>
             </div>
           </CardHeader>
 
@@ -785,10 +559,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                                 <Eye className="h-3.5 w-3.5 mr-2" />
                                 View
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEdit(item)} className="text-xs h-8">
-                                <Pencil className="h-3.5 w-3.5 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
+                              <Link href={`/daily-benefit/edit/${item.id}`}>
+                                <DropdownMenuItem className="text-xs h-8">
+                                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                              </Link>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
                                 <Trash2 className="h-3.5 w-3.5 mr-2" />
@@ -877,10 +653,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                               <Eye className="h-3.5 w-3.5 mr-2" />
                               View
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEdit(item)} className="text-xs h-8">
-                              <Pencil className="h-3.5 w-3.5 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
+                            <Link href={`/daily-benefit/edit/${item.id}`}>
+                              <DropdownMenuItem className="text-xs h-8">
+                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            </Link>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
                               <Trash2 className="h-3.5 w-3.5 mr-2" />
@@ -925,50 +703,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
           </div>
         </CardContent>
       </Card>
-
-      {/* Add Dialog */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-full">
-          <DialogHeader>
-            <DialogTitle>Add Daily Benefit</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden">
-            <div className="overflow-y-auto space-y-3 sm:space-y-4">
-              {renderFormFields()}
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => { setIsAdding(false); resetForm(); }} className="min-h-[44px]">
-                Cancel
-              </Button>
-              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-full">
-          <DialogHeader>
-            <DialogTitle>Edit Daily Benefit</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEdit} className="flex flex-col flex-1 overflow-hidden">
-            <div className="overflow-y-auto space-y-3 sm:space-y-4">
-              {renderFormFields()}
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => { setEditItem(null); resetForm(); }} className="min-h-[44px]">
-                Cancel
-              </Button>
-              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
@@ -1055,16 +789,17 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
             </div>
           )}
           <DialogFooter className="pt-4">
-            <Button
-              onClick={() => {
-                setViewItem(null);
-                if (viewItem) openEdit(viewItem);
-              }}
-              variant="outline"
-              className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
-            >
-              Edit
-            </Button>
+            {viewItem && (
+              <Link href={`/daily-benefit/edit/${viewItem.id}`}>
+                <Button
+                  onClick={() => setViewItem(null)}
+                  variant="outline"
+                  className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  Edit
+                </Button>
+              </Link>
+            )}
             <Button
               onClick={() => setViewItem(null)}
               variant="outline"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { usePlateEditor } from "platejs/react";
-import { type Value } from "platejs";
-import { serializeHtml } from "platejs/static";
-import { NewsEditorKit } from "@/components/editor/plugins/news-editor-kit";
-import dynamic from "next/dynamic";
-
-const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
+import RichTextContentField from "@/components/RichTextContentField";
 
 interface NewsAddContentProps {
   username: string;
@@ -38,66 +32,6 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
   const [formPublishDate, setFormPublishDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Content edit mode states
-  const [isEditingContent, setIsEditingContent] = useState(false);
-  const [isEditingContentEn, setIsEditingContentEn] = useState(false);
-
-  // PlateJS editors
-  const editorId = usePlateEditor({
-    plugins: NewsEditorKit,
-  });
-  const editorEn = usePlateEditor({
-    plugins: NewsEditorKit,
-  });
-
-  // Initialize editors with empty state on mount
-  useEffect(() => {
-    const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
-    editorId.tf.setValue(emptyValue);
-    editorEn.tf.setValue(emptyValue);
-  }, [editorId, editorEn]);
-
-  // Handle content save (Indonesian)
-  const handleSaveContent = async () => {
-    const html = await serializeHtml(editorId);
-    console.log('[NewsAddContent] Serialized HTML (Indonesian):', html);
-    setFormContent(html || '<p>-</p>');
-    setIsEditingContent(false);
-  };
-
-  // Handle content cancel (Indonesian)
-  const handleCancelContent = () => {
-    // For Add mode, revert to empty state
-    const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
-    editorId.tf.setValue(emptyValue);
-    setFormContent('');
-    setIsEditingContent(false);
-  };
-
-  // Handle content save (English)
-  const handleSaveContentEn = async () => {
-    const html = await serializeHtml(editorEn);
-    console.log('[NewsAddContent] Serialized HTML (English):', html);
-    setFormContentEn(html || '<p>-</p>');
-    setIsEditingContentEn(false);
-  };
-
-  // Handle content cancel (English)
-  const handleCancelContentEn = () => {
-    // For Add mode, revert to empty state
-    const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
-    editorEn.tf.setValue(emptyValue);
-    setFormContentEn('');
-    setIsEditingContentEn(false);
-  };
-
-  // Strip HTML tags for preview
-  const stripHtml = (html: string) => {
-    if (typeof window === 'undefined') return html || '';
-    const tmp = document.createElement('DIV');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,14 +49,12 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
       createdBy: username,
       creatorEmail: userEmail,
     };
-    console.log('[NewsAddContent] Payload to API:', payload);
     try {
       const res = await fetch("/api/news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      console.log('[NewsAddContent] API response status:', res.status);
       if (res.ok) {
         toast.success("News added successfully");
         router.push("/news");
@@ -233,102 +165,18 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
           <p className="text-sm text-gray-500 mb-6">Write the main content for your news article</p>
           
           <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Content (Indonesian)
-              </label>
-              {!isEditingContent ? (
-                <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                  <div className="line-clamp-3 text-gray-600 text-sm overflow-hidden">
-                    {stripHtml(formContent) || 'No content'}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditingContent(true)}
-                    className="mt-3"
-                  >
-                    Edit Content
-                  </Button>
-                </div>
-              ) : (
-                <div className="border border-gray-300 rounded-lg">
-                  <RichTextEditor
-                    editor={editorId}
-                    onChange={() => {}}
-                    onContentChange={setFormContent}
-                    placeholder="Enter news content in Indonesian..."
-                  />
-                  <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCancelContent}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleSaveContent}
-                      className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Content (English)
-              </label>
-              {!isEditingContentEn ? (
-                <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                  <div className="line-clamp-3 text-gray-600 text-sm overflow-hidden">
-                    {stripHtml(formContentEn) || 'No content'}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditingContentEn(true)}
-                    className="mt-3"
-                  >
-                    Edit Content
-                  </Button>
-                </div>
-              ) : (
-                <div className="border border-gray-300 rounded-lg">
-                  <RichTextEditor
-                    editor={editorEn}
-                    onChange={() => {}}
-                    onContentChange={setFormContentEn}
-                    placeholder="Enter news content in English..."
-                  />
-                  <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCancelContentEn}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleSaveContentEn}
-                      className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <RichTextContentField
+              label="Content (Indonesian)"
+              value={formContent}
+              onChange={setFormContent}
+              placeholder="Enter news content in Indonesian..."
+            />
+            <RichTextContentField
+              label="Content (English)"
+              value={formContentEn}
+              onChange={setFormContentEn}
+              placeholder="Enter news content in English..."
+            />
           </div>
         </section>
 

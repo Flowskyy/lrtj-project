@@ -588,6 +588,8 @@ model merchandise {
   createdAt   DateTime? @map("created_at") @db.DateTime(0)
   updatedAt   DateTime? @map("updated_at") @db.DateTime(0)
   status      Int       @default(1) @db.TinyInt
+  category_id Int?
+  category    merchandise_category? @relation(fields: [category_id], references: [id])
 }
 
 model merchant {
@@ -788,6 +790,7 @@ model redeem {
   status           String    @db.VarChar(20)
   createdAt        DateTime? @map("created_at") @db.DateTime(0)
   updatedAt        DateTime? @map("updated_at") @db.DateTime(0)
+  category_id      String?   @db.VarChar(50)
 
   @@index([status], map: "status")
   @@index([user_id], map: "user_id")
@@ -1083,6 +1086,15 @@ model news {
   updated_at    DateTime? @db.DateTime(0)
   publish_date  DateTime? @db.DateTime(0)
   status        Int       @default(1)
+}
+
+model merchandise_category {
+  id            Int       @id @default(autoincrement())
+  category_name String?   @db.VarChar(255)
+  status        Boolean?
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
+  merchandise   merchandise[]
 }
 
 enum bayarind_binding_states_status {

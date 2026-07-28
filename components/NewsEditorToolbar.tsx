@@ -14,7 +14,7 @@ import { FontSizeToolbarButton } from '@/components/ui/font-size-toolbar-button'
 import { ToolbarGroup } from '@/components/ui/toolbar';
 import { UndoToolbarButton, RedoToolbarButton } from '@/components/ui/history-toolbar-button';
 
-export function NewsEditorToolbar() {
+export function RichTextEditorToolbar() {
   return (
     <>
       {/* Undo/Redo */}
@@ -83,7 +83,7 @@ export function NewsEditorToolbar() {
 
       {/* Table */}
       <ToolbarGroup>
-        <TableToolbarButton tooltip="Insert Table">
+        <TableToolbarButton>
           <Table className="size-4" />
         </TableToolbarButton>
       </ToolbarGroup>

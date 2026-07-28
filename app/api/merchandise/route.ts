@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const order = searchParams.get('order') || 'asc';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const categoryId = searchParams.get('category_id');
 
   const where: any = {};
 
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
     if (dateTo) {
       where.createdAt.lte = new Date(dateTo);
     }
+  }
+
+  if (categoryId) {
+    where.category_id = parseInt(categoryId);
   }
 
   const orderBy: any = {};
@@ -60,18 +65,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  const newItem = await prisma.merchandise.create({
-    data: {
-      name: data.name,
-      points: data.points,
-      image_url: data.image_url || '',
-      description: data.description || '<p>-</p>',
-      editedBy: data.editedBy,
-      status: data.status ?? 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  });
+  try {
+    const newItem = await prisma.merchandise.create({
+      data: {
+        name: data.name,
+        points: data.points,
+        image_url: data.image_url || '',
+        description: data.description || '<p>-</p>',
+        editedBy: data.editedBy,
+        status: data.status ?? 1,
+        category_id: data.category_id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
 
-  return NextResponse.json(newItem);
+    return NextResponse.json(newItem);
+  } catch (error) {
+    console.error('Error creating merchandise:', error);
+    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+      return NextResponse.json(
+        { error: 'Invalid category selected' },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to create merchandise' },
+      { status: 500 }
+    );
+  }
 }

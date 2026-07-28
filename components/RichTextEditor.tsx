@@ -5,7 +5,7 @@ import { Plate } from "platejs/react";
 import { serializeHtml } from "platejs/static";
 import { Editor, EditorContainer } from "@/components/ui/editor";
 import { FixedToolbar } from "@/components/ui/fixed-toolbar";
-import { NewsEditorToolbar } from "@/components/NewsEditorToolbar";
+import { RichTextEditorToolbar } from "@/components/NewsEditorToolbar";
 
 interface RichTextEditorProps {
   editor: any;
@@ -34,7 +34,7 @@ export default function RichTextEditor({ editor, onChange, onContentChange, plac
     <div className="border border-gray-300 rounded-lg">
       <Plate editor={editor} onChange={onChange}>
         <FixedToolbar className="top-[56px]">
-          <NewsEditorToolbar />
+          <RichTextEditorToolbar />
         </FixedToolbar>
         <EditorContainer className="min-h-[300px]">
           <Editor placeholder={placeholder} />

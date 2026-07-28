@@ -1,0 +1,27 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function GET() {
+  try {
+    const categories = await prisma.merchandise_category.findMany({
+      where: {
+        status: true,
+      },
+      select: {
+        id: true,
+        category_name: true,
+      },
+      orderBy: {
+        category_name: 'asc',
+      },
+    });
+
+    return NextResponse.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch categories' },
+      { status: 500 }
+    );
+  }
+}

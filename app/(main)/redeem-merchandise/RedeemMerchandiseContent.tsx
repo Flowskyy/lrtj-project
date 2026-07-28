@@ -37,6 +37,11 @@ interface RedeemItem {
   updated_at: string | null;
 }
 
+interface Category {
+  id: number;
+  category_name: string | null;
+}
+
 interface RedeemMerchandiseContentProps {
   username: string;
 }
@@ -57,6 +62,8 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [categories, setCategories] = useState<Category[]>([]);
   
 
   // Modal and CRUD states
@@ -87,6 +94,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      if (categoryFilter !== "all") params.set("category_id", categoryFilter);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -108,10 +116,26 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo, categoryFilter]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/merchandise-category");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories", err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Count active filters
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
 
   const handleResetFilters = () => {
     setStatusFilter("all");
@@ -119,6 +143,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     setDateTo("");
     setSortBy("created_at");
     setSortOrder("desc");
+    setCategoryFilter("all");
   };
 
   // Delete Item
@@ -260,6 +285,21 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   )}
                 </div>
               </div>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
+                  <SelectValue placeholder="All Categories">
+                    {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                      {cat.category_name || `Category ${cat.id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <TableFilterSortMenu
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}

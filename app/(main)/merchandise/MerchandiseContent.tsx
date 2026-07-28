@@ -15,8 +15,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
+import RichTextContentField from "@/components/RichTextContentField";
 import { getImageUrl } from "@/lib/utils";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +38,12 @@ interface MerchandiseItem {
   createdAt: string | null;
   updatedAt: string | null;
   status: number;
+  category_id: number | null;
+}
+
+interface Category {
+  id: number;
+  category_name: string | null;
 }
 
 interface MerchandiseContentProps {
@@ -54,20 +62,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<MerchandiseItem | null>(null);
-  const [editItem, setEditItem] = useState<MerchandiseItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<MerchandiseItem | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
   const [previewItem, setPreviewItem] = useState<MerchandiseItem | null>(null);
-
-  // Form states
-  const [formName, setFormName] = useState("");
-  const [formPoints, setFormPoints] = useState(100);
-  const [formImageUrl, setFormImageUrl] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formStatus, setFormStatus] = useState<number>(1);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -87,6 +88,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
+      if (categoryFilter !== "all") params.set("category_id", categoryFilter);
 
       const res = await fetch(`/api/merchandise?${params}`);
       if (res.ok) {
@@ -105,7 +107,23 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder]);
+  }, [statusFilter, sortBy, sortOrder, categoryFilter]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/merchandise-category");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories", err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Debounced search
   const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -133,90 +151,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.editedBy?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
 
   const handleResetFilters = () => {
     setStatusFilter("all");
     setSortBy("createdAt");
     setSortOrder("desc");
-  };
-
-  const resetForm = () => {
-    setFormName("");
-    setFormPoints(100);
-    setFormImageUrl("");
-    setFormDescription("");
-    setFormStatus(1);
-  };
-
-  // Add Item
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/merchandise", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName,
-          points: formPoints,
-          image_url: formImageUrl,
-          description: formDescription,
-          editedBy: username,
-          status: formStatus,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setIsAdding(false);
-        resetForm();
-        toast.success("Merchandise added successfully");
-      } else {
-        toast.error("Failed to add merchandise");
-      }
-    } catch (err) {
-      console.error("Failed to add item", err);
-      toast.error("Failed to add merchandise");
-    }
-  };
-
-  // Edit Item
-  const openEdit = (item: MerchandiseItem) => {
-    setEditItem(item);
-    setFormName(item.name);
-    setFormPoints(item.points);
-    setFormImageUrl(item.image_url);
-    setFormDescription(item.description);
-    setFormStatus(item.status);
-  };
-
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editItem) return;
-    try {
-      const res = await fetch(`/api/merchandise/${editItem.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName,
-          points: formPoints,
-          image_url: formImageUrl,
-          description: formDescription,
-          editedBy: username,
-          status: formStatus,
-        }),
-      });
-      if (res.ok) {
-        await fetchItems();
-        setEditItem(null);
-        resetForm();
-        toast.success("Merchandise updated successfully");
-      } else {
-        toast.error("Failed to update merchandise");
-      }
-    } catch (err) {
-      console.error("Failed to edit item", err);
-      toast.error("Failed to update merchandise");
-    }
+    setCategoryFilter("all");
   };
 
   // Delete Item
@@ -244,90 +185,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const active = activeCount;
   const inactive = inactiveCount;
 
-  // Render form fields (shared between Add and Edit dialogs)
-  const renderFormFields = () => (
-    <>
-      <div>
-        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-          Name *
-        </label>
-        <Input
-          required
-          value={formName}
-          onChange={(e) => setFormName(e.target.value)}
-          placeholder="Enter merchandise name"
-          className="min-h-[44px]"
-        />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div>
-          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-            Points *
-          </label>
-          <Input
-            required
-            type="number"
-            min={0}
-            value={formPoints}
-            onChange={(e) => setFormPoints(parseInt(e.target.value) || 0)}
-            className="min-h-[44px]"
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-            Status
-          </label>
-          <Select value={formStatus.toString()} onValueChange={(v) => setFormStatus(parseInt(v || '1'))}>
-            <SelectTrigger className="min-h-[44px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Active</SelectItem>
-              <SelectItem value="0">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <ImageUpload
-        value={formImageUrl}
-        onChange={setFormImageUrl}
-        label="Image"
-      />
-      <div>
-        <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-          Terms & Condition (HTML)
-        </label>
-        <ScrollArea className="h-32 w-full border border-gray-200 rounded-lg">
-          <textarea
-            rows={4}
-            value={formDescription}
-            onChange={(e) => setFormDescription(e.target.value)}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-gray-900 font-mono focus:outline-none focus:border-[#E5262C] focus:ring-2 focus:ring-[#E5262C]/20 min-h-[100px] resize-none"
-          />
-        </ScrollArea>
-      </div>
-      {editItem && (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Created
-            </label>
-            <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-              {editItem.createdAt ? new Date(editItem.createdAt).toLocaleDateString() : "-"}
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
-              Updated
-            </label>
-            <div className="min-h-[44px] px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-600">
-              {editItem.updatedAt ? new Date(editItem.updatedAt).toLocaleDateString() : "-"}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -428,16 +285,12 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg">Merchandise Management</CardTitle>
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsAdding(true);
-                }}
-                className="min-h-[44px] bg-primary hover:bg-primary/90 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Merchandise
-              </Button>
+              <Link href="/merchandise/add">
+                <Button className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Merchandise
+                </Button>
+              </Link>
             </div>
           </CardHeader>
 
@@ -463,6 +316,21 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   </Button>
                 )}
               </div>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
+                  <SelectValue placeholder="All Categories">
+                    {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                      {cat.category_name || `Category ${cat.id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <TableFilterSortMenu
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
@@ -661,10 +529,12 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                                 <Eye className="h-3.5 w-3.5 mr-2" />
                                 View
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEdit(item)} className="text-xs h-8">
-                                <Pencil className="h-3.5 w-3.5 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
+                              <Link href={`/merchandise/edit/${item.id}`}>
+                                <DropdownMenuItem className="text-xs h-8">
+                                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                              </Link>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
                                 <Trash2 className="h-3.5 w-3.5 mr-2" />
@@ -766,15 +636,16 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          onClick={() => openEdit(item)}
-                          variant="outline"
-                          size="sm"
-                          className="min-h-[44px] px-3 border-primary/30 text-primary hover:bg-primary/5"
-                          aria-label="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/merchandise/edit/${item.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="min-h-[44px] px-3 border-primary/30 text-primary hover:bg-primary/5"
+                            aria-label="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         <Button
                           onClick={() => setDeleteItem(item)}
                           variant="destructive"
@@ -861,16 +732,17 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             </div>
           )}
           <DialogFooter>
-            <Button
-              onClick={() => {
-                setViewItem(null);
-                if (viewItem) openEdit(viewItem);
-              }}
-              variant="outline"
-              className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
-            >
-              Edit
-            </Button>
+            {viewItem && (
+              <Link href={`/merchandise/edit/${viewItem.id}`}>
+                <Button
+                  onClick={() => setViewItem(null)}
+                  variant="outline"
+                  className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  Edit
+                </Button>
+              </Link>
+            )}
             <Button
               onClick={() => setViewItem(null)}
               variant="outline"
@@ -879,60 +751,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               Close
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL: ADD */}
-      <Dialog open={isAdding} onOpenChange={(open) => {
-        if (!open) {
-          setIsAdding(false);
-          resetForm();
-        }
-      }}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-full">
-          <DialogHeader>
-            <DialogTitle>Add Merchandise</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAdd} className="flex flex-col flex-1 overflow-hidden">
-            <div className="overflow-y-auto space-y-3 sm:space-y-4">
-              {renderFormFields()}
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => { setIsAdding(false); resetForm(); }} className="min-h-[44px]">
-                Cancel
-              </Button>
-              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL: EDIT */}
-      <Dialog open={!!editItem} onOpenChange={(open) => {
-        if (!open) {
-          setEditItem(null);
-          resetForm();
-        }
-      }}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] flex flex-col w-[calc(100%-2rem)] sm:w-full">
-          <DialogHeader>
-            <DialogTitle>Edit Merchandise</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEdit} className="flex flex-col flex-1 overflow-hidden">
-            <div className="overflow-y-auto space-y-3 sm:space-y-4">
-              {renderFormFields()}
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => { setEditItem(null); resetForm(); }} className="min-h-[44px]">
-                Cancel
-              </Button>
-              <Button type="submit" className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
         </DialogContent>
       </Dialog>
 

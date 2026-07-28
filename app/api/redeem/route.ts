@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
 
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const categoryId = searchParams.get('category_id');
 
   if (dateFrom || dateTo) {
     where.createdAt = {};
@@ -80,6 +81,27 @@ export async function GET(request: NextRequest) {
     }
     if (dateTo) {
       where.createdAt.lte = new Date(dateTo);
+    }
+  }
+
+  if (categoryId) {
+    // Filter by merchandise category_id
+    const matchingMerchandiseIds = await prisma.merchandise.findMany({
+      where: {
+        category_id: parseInt(categoryId),
+      },
+      select: {
+        id: true,
+      },
+    });
+    
+    if (matchingMerchandiseIds.length > 0) {
+      where.merchandise_id = {
+        in: matchingMerchandiseIds.map(m => m.id),
+      };
+    } else {
+      // No merchandise in this category, return empty results
+      where.merchandise_id = -1;
     }
   }
 
