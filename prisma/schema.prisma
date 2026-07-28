@@ -153,6 +153,8 @@ model banners {
   sequence    Int
   created_at  DateTime? @db.DateTime(0)
   updated_at  DateTime? @db.DateTime(0)
+  created_by  String?   @db.VarChar(255)
+  updated_by  String?   @db.VarChar(255)
 }
 
 model bayarind_binding_states {
@@ -1094,7 +1096,7 @@ model merchandise_category {
   id            Int           @id @default(autoincrement())
   category_name String?       @db.VarChar(255)
   status        Boolean?
-  created_at    DateTime?     @default(now()) @db.DateTime(0)
+  created_at    DateTime?     @db.DateTime(0)
   updated_at    DateTime?     @updatedAt @db.DateTime(0)
   updated_by    String?       @db.VarChar(255)
   merchandise   merchandise[]

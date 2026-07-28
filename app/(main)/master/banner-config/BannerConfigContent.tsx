@@ -4,14 +4,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2, GripVertical, Image as ImageIcon } from "lucide-react";
-import ImageUpload from "@/components/ImageUpload";
 import { getImageUrl } from "@/lib/utils";
+import Link from "next/link";
 import {
   DndContext,
   closestCenter,
@@ -37,13 +34,15 @@ interface Banner {
   sequence: number;
   created_at: string | null;
   updated_at: string | null;
+  created_by: string | null;
+  updated_by: string | null;
 }
 
 interface BannerConfigContentProps {
   username: string;
 }
 
-function SortableBannerCard({ banner, onEdit, onDelete }: { banner: Banner; onEdit: (banner: Banner) => void; onDelete: (banner: Banner) => void }) {
+function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (banner: Banner) => void }) {
   const {
     attributes,
     listeners,
@@ -93,17 +92,19 @@ function SortableBannerCard({ banner, onEdit, onDelete }: { banner: Banner; onEd
               <p className="text-xs text-gray-400 mt-0.5 truncate" title={banner.image_url}>
                 {banner.image_url}
               </p>
+              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                <span>Created: {banner.created_by || "-"}</span>
+                <span>Updated: {banner.updated_by || "-"}</span>
+              </div>
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEdit(banner)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <Link href={`/master/banner-config/edit/${banner.id}`}>
+                <Button variant="ghost" size="sm">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"
@@ -124,17 +125,9 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal states
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<Banner | null>(null);
-
-  // Form states
-  const [formData, setFormData] = useState({
-    description: "",
-    image_url: "",
-  });
 
   // DnD sensors
   const sensors = useSensors(
@@ -205,63 +198,6 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
     }
   };
 
-  const handleAdd = async () => {
-    if (!formData.image_url.trim()) {
-      toast.error("Image is required");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/banners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        toast.success("Banner created successfully");
-        setAddDialogOpen(false);
-        setFormData({ description: "", image_url: "" });
-        fetchBanners();
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to create banner");
-      }
-    } catch (err) {
-      console.error("Failed to create banner", err);
-      toast.error("Failed to create banner");
-    }
-  };
-
-  const handleEdit = async () => {
-    if (!selectedBanner || !formData.image_url.trim()) {
-      toast.error("Image is required");
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/banners/${selectedBanner.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        toast.success("Banner updated successfully");
-        setEditDialogOpen(false);
-        setSelectedBanner(null);
-        setFormData({ description: "", image_url: "" });
-        fetchBanners();
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to update banner");
-      }
-    } catch (err) {
-      console.error("Failed to update banner", err);
-      toast.error("Failed to update banner");
-    }
-  };
-
   const handleDelete = async () => {
     if (!selectedBanner) return;
 
@@ -285,15 +221,6 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
     }
   };
 
-  const openEditDialog = (banner: Banner) => {
-    setSelectedBanner(banner);
-    setFormData({
-      description: banner.description || "",
-      image_url: banner.image_url,
-    });
-    setEditDialogOpen(true);
-  };
-
   const openDeleteDialog = (banner: Banner) => {
     setSelectedBanner(banner);
     setDeleteDialogOpen(true);
@@ -307,145 +234,49 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
           <h1 className="text-2xl font-bold text-gray-900">Banner Config</h1>
           <p className="text-sm text-gray-500 mt-1">Manage banner images and their display order</p>
         </div>
-        <Button
-          onClick={() => setAddDialogOpen(true)}
-          className="bg-[#E5262C] hover:bg-[#c41e22] text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Banner
-        </Button>
+        <Link href="/master/banner-config/add">
+          <Button className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Banner
+          </Button>
+        </Link>
       </div>
 
-      {/* Stats Card */}
-      <Card className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4 pt-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Total Banners
-              </p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {loading ? "..." : banners.length}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <ImageIcon className="h-5 w-5 text-primary" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Banners List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Banners</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      ) : banners.length === 0 ? (
+        <div className="text-center py-12">
+          <ImageIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">No banners found</p>
+          <p className="text-sm text-gray-400 mt-1">Add your first banner to get started</p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={banners.map((b) => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
             <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full" />
+              {banners.map((banner) => (
+                <SortableBannerCard
+                  key={banner.id}
+                  banner={banner}
+                  onDelete={openDeleteDialog}
+                />
               ))}
             </div>
-          ) : banners.length === 0 ? (
-            <div className="text-center py-12">
-              <ImageIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No banners found</p>
-              <p className="text-sm text-gray-400 mt-1">Add your first banner to get started</p>
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={banners.map((b) => b.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-3">
-                  {banners.map((banner) => (
-                    <SortableBannerCard
-                      key={banner.id}
-                      banner={banner}
-                      onEdit={openEditDialog}
-                      onDelete={openDeleteDialog}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Add Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add Banner</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter banner description (optional)"
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-            <ImageUpload
-              value={formData.image_url}
-              onChange={(value) => setFormData({ ...formData, image_url: value })}
-              label="Banner Image"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAdd} className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
-              Add Banner
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Banner</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter banner description (optional)"
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-            <ImageUpload
-              value={formData.image_url}
-              onChange={(value) => setFormData({ ...formData, image_url: value })}
-              label="Banner Image"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SortableContext>
+        </DndContext>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

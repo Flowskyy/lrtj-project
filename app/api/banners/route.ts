@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
     const body = await request.json();
     const { description, image_url } = body;
 
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
         sequence: nextSequence,
         created_at: new Date(),
         updated_at: new Date(),
+        created_by: session?.user?.name || null,
       },
     });
 
