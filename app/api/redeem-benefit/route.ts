@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const search = searchParams.get('search');
   const debug = searchParams.get('debug');
+  const exportMode = searchParams.get('export') === 'true';
 
   // Debug mode: return distinct status values
   if (debug === 'status') {
@@ -75,8 +76,8 @@ export async function GET(request: NextRequest) {
     prisma.redeem_benefit.findMany({
       where,
       orderBy,
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: exportMode ? 0 : (page - 1) * limit,
+      take: exportMode ? 10000 : limit,
     }),
     prisma.redeem_benefit.count({ where }),
   ]);

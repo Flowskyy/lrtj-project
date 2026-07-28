@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search');
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const exportMode = searchParams.get('export') === 'true';
 
   const where: any = {};
 
@@ -80,8 +81,8 @@ export async function GET(request: NextRequest) {
     prisma.users.findMany({
       where,
       orderBy,
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: exportMode ? 0 : (page - 1) * limit,
+      take: exportMode ? 10000 : limit,
     }),
     prisma.users.count({ where }),
     prisma.users.count({ where: { status: 1 } }),

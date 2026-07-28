@@ -12,7 +12,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
-import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import ExportDialog from "@/components/ExportDialog";
+import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
+import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +60,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
+    select: true,
     id: false,
     user_id: false,
     merchant_id: false,
@@ -68,6 +71,11 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
     updated_at: false,
     actions: true,
   });
+
+  // Row selection states
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Fetch items
   const fetchItems = async () => {
@@ -162,6 +170,105 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
   // Get unique status keys for stat cards
   const statusKeys = Object.keys(statusCounts);
 
+  // Handle row selection
+  const handleSelectRow = (id: number) => {
+    setSelectedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedRows.size === items.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(items.map(item => item.id)));
+    }
+  };
+
+  // Export handlers
+  const handleExport = async (scope: "full" | "preview") => {
+    setExporting(true);
+    try {
+      let dataToExport: RedeemBenefitItem[];
+      
+      if (selectedRows.size > 0) {
+        // Export only checked rows
+        dataToExport = items.filter(item => selectedRows.has(item.id));
+      } else {
+        // Fetch all filtered data
+        const params = new URLSearchParams();
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        if (sortBy) params.set("sortBy", sortBy);
+        if (sortOrder) params.set("order", sortOrder);
+        if (searchQuery.trim()) params.set("search", searchQuery.trim());
+        if (dateFrom) params.set("dateFrom", dateFrom);
+        if (dateTo) params.set("dateTo", dateTo);
+        params.set("export", "true");
+
+        const res = await fetch(`/api/redeem-benefit?${params}`);
+        if (res.ok) {
+          const response = await res.json();
+          dataToExport = response.data || [];
+        } else {
+          dataToExport = [];
+        }
+      }
+
+      let columns: ExportColumn[];
+      if (scope === "full") {
+        columns = [
+          { key: "id", label: "ID" },
+          { key: "user_id", label: "User ID" },
+          { key: "merchant_id", label: "Merchant ID" },
+          { key: "name", label: "Name" },
+          { key: "email", label: "Email" },
+          { key: "status", label: "Status" },
+          { key: "created_at", label: "Created At" },
+          { key: "updated_at", label: "Updated At" },
+        ];
+      } else {
+        // Dynamic columns based on visibleColumns
+        columns = [];
+        if (visibleColumns.name) columns.push({ key: "name", label: "Name" });
+        if (visibleColumns.email) columns.push({ key: "email", label: "Email" });
+        if (visibleColumns.created_at) columns.push({ key: "created_at", label: "Created" });
+        if (visibleColumns.status) columns.push({ key: "status", label: "Status" });
+        if (visibleColumns.id) columns.push({ key: "id", label: "ID" });
+        if (visibleColumns.user_id) columns.push({ key: "user_id", label: "User ID" });
+        if (visibleColumns.merchant_id) columns.push({ key: "merchant_id", label: "Merchant ID" });
+        if (visibleColumns.updated_at) columns.push({ key: "updated_at", label: "Updated" });
+      }
+
+      exportToExcel(dataToExport, columns, "redeem-benefit-export");
+      setExportDialogOpen(false);
+    } catch (err) {
+      console.error("Export failed", err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Get field lists for export dialog
+  const fullDataFields = ["ID", "User ID", "Merchant ID", "Name", "Email", "Status", "Created At", "Updated At"];
+  const getPreviewFields = () => {
+    const fields: string[] = [];
+    if (visibleColumns.name) fields.push("Name");
+    if (visibleColumns.email) fields.push("Email");
+    if (visibleColumns.created_at) fields.push("Created");
+    if (visibleColumns.status) fields.push("Status");
+    if (visibleColumns.id) fields.push("ID");
+    if (visibleColumns.user_id) fields.push("User ID");
+    if (visibleColumns.merchant_id) fields.push("Merchant ID");
+    if (visibleColumns.updated_at) fields.push("Updated");
+    return fields;
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
@@ -221,6 +328,13 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
           {/* Table Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => setExportDialogOpen(true)}
+                className="bg-primary hover:bg-primary/90 text-white min-h-[44px]"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
               <div className="relative flex-1 sm:flex-none">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
@@ -342,6 +456,20 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
             <Table>
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
+                  {visibleColumns.select && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-10">
+                      <button
+                        onClick={handleSelectAll}
+                        className="flex items-center justify-center"
+                      >
+                        {selectedRows.size === items.length && items.length > 0 ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                      </button>
+                    </TableHead>
+                  )}
                   {visibleColumns.id && (
                     <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
                       <div className="flex items-center gap-1">
@@ -396,6 +524,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                 {loading ? (
                   <>
                     <TableRow>
+                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
@@ -407,6 +536,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
+                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
@@ -418,6 +548,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
+                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
                       {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
@@ -432,6 +563,20 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                 ) : items.length > 0 ? (
                   items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                      {visibleColumns.select && (
+                        <TableCell className="px-3 py-1.5">
+                          <button
+                            onClick={() => handleSelectRow(item.id)}
+                            className="flex items-center justify-center"
+                          >
+                            {selectedRows.has(item.id) ? (
+                              <CheckSquare className="h-4 w-4" />
+                            ) : (
+                              <Square className="h-4 w-4" />
+                            )}
+                          </button>
+                        </TableCell>
+                      )}
                       {visibleColumns.id && (
                         <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
                           #{item.id}
@@ -664,6 +809,18 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        onExport={handleExport}
+        loading={exporting}
+        fullDataFields={fullDataFields}
+        previewDataFields={getPreviewFields()}
+        selectedCount={selectedRows.size}
+        totalFilteredCount={totalCount}
+      />
     </div>
   );
 }
