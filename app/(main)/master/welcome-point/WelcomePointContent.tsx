@@ -130,12 +130,12 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="flex flex-col space-y-3 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome Point</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage welcome point configuration</p>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Welcome Point</h1>
+          <p className="text-xs text-gray-500 mt-0">Manage welcome point configuration</p>
         </div>
         <Button
           onClick={openEditDialog}
@@ -148,104 +148,106 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
       </div>
 
       {/* Premium Single-Record Display */}
-      {loading ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <div className="space-y-6">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-24 w-full" />
+      <div>
+        {loading ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+            <div className="space-y-2">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
           </div>
-        </div>
-      ) : welcomePoint ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Hero Section - Large Point Display */}
-          <div className="bg-gradient-to-br from-gray-50 to-white p-8 sm:p-12 border-b border-gray-100">
-            <div className="max-w-2xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-12 w-12 rounded-2xl bg-[#E5262C]/10 flex items-center justify-center">
-                  <Star className="h-6 w-6 text-[#E5262C]" />
+        ) : welcomePoint ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+            {/* Hero Section - Large Point Display */}
+            <div className="bg-gradient-to-br from-gray-50 to-white p-4 border-b border-gray-100 flex-shrink-0">
+              <div className="max-w-2xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-xl bg-[#E5262C]/10 flex items-center justify-center">
+                    <Star className="h-5 w-5 text-[#E5262C]" />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Current Point Value</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Current Point Value</span>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-0">
+                  {welcomePoint.point}
+                </div>
+                <p className="text-gray-500 text-xs">Points awarded to new members</p>
               </div>
-              <div className="text-7xl sm:text-8xl font-bold text-gray-900 tracking-tight mb-2">
-                {welcomePoint.point}
-              </div>
-              <p className="text-gray-500 text-lg">Points awarded to new members</p>
             </div>
-          </div>
 
-          {/* Active Window Section */}
-          <div className="p-8 sm:p-12 border-b border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-blue-600" />
+            {/* Active Window Section */}
+            <div className="p-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-6 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                </div>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Time Window</span>
               </div>
-              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Active Time Window</span>
-            </div>
-            {welcomePoint.active_from || welcomePoint.active_to ? (
-              <div className="bg-gray-50 rounded-xl p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">From</p>
-                    <p className="text-gray-900 font-medium">{formatDate(welcomePoint.active_from)}</p>
-                  </div>
-                  <div className="hidden sm:block text-gray-300">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">To</p>
-                    <p className="text-gray-900 font-medium">{formatDate(welcomePoint.active_to)}</p>
+              {welcomePoint.active_from || welcomePoint.active_to ? (
+                <div className="bg-gray-50 rounded-lg p-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">From</p>
+                      <p className="text-gray-900 font-medium text-xs">{formatDate(welcomePoint.active_from)}</p>
+                    </div>
+                    <div className="hidden sm:block text-gray-300">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">To</p>
+                      <p className="text-gray-900 font-medium text-xs">{formatDate(welcomePoint.active_to)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                <span className="text-green-700 font-semibold">Always Active</span>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                  <span className="text-green-700 font-semibold text-xs">Always Active</span>
+                </div>
+              )}
+            </div>
 
-          {/* Metadata Footer */}
-          <div className="bg-gray-50/50 p-6 sm:p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Created At</p>
-                <p className="text-sm text-gray-700">{formatDate(welcomePoint.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated At</p>
-                <p className="text-sm text-gray-700">{formatDate(welcomePoint.updated_at)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated By</p>
-                <p className="text-sm text-gray-700">{welcomePoint.updated_by || "-"}</p>
+            {/* Metadata Footer */}
+            <div className="bg-gray-50/50 p-4 flex-shrink-0">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">Created At</p>
+                  <p className="text-xs text-gray-700">{formatDate(welcomePoint.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">Updated At</p>
+                  <p className="text-xs text-gray-700">{formatDate(welcomePoint.updated_at)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">Updated By</p>
+                  <p className="text-xs text-gray-700">{welcomePoint.updated_by || "-"}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="h-16 w-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
-            <Star className="h-8 w-8 text-gray-300" />
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+            <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-2">
+              <Star className="h-5 w-5 text-gray-300" />
+            </div>
+            <p className="text-gray-500 text-xs">No welcome point configuration found</p>
           </div>
-          <p className="text-gray-500 text-lg">No welcome point configuration found</p>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg rounded-2xl">
-          <DialogHeader className="pb-4">
-            <DialogTitle className="text-xl font-semibold">Edit Welcome Point Configuration</DialogTitle>
+        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[calc(100dvh-100px)] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-3 flex-shrink-0">
+            <DialogTitle className="text-lg font-semibold">Edit Welcome Point Configuration</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 min-h-0">
             {/* Time Range Option */}
             <div>
-              <label className="text-sm font-semibold text-gray-700 mb-3 block">Active Time Window</label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">Active Time Window</label>
+              <div className="space-y-1.5">
+                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
                   <input
                     type="radio"
                     name="timeRangeOption"
@@ -256,7 +258,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                   />
                   <span className="text-sm text-gray-700">Default (Always Active)</span>
                 </label>
-                <label className="flex items-center space-x-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
                   <input
                     type="radio"
                     name="timeRangeOption"
@@ -272,9 +274,9 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
 
             {/* Custom Date Time Pickers */}
             {timeRangeOption === "custom" && (
-              <div className="space-y-4 p-5 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Active From</label>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Active From</label>
                   <DateTimePicker
                     value={activeFrom}
                     onChange={setActiveFrom}
@@ -283,7 +285,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Active To</label>
+                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Active To</label>
                   <DateTimePicker
                     value={activeTo}
                     onChange={setActiveTo}
@@ -296,18 +298,18 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
 
             {/* Point Value */}
             <div>
-              <label className="text-sm font-semibold text-gray-700 mb-2 block">Point Value</label>
+              <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Point Value</label>
               <Input
                 type="number"
                 min="0"
                 value={point}
                 onChange={(e) => setPoint(parseInt(e.target.value) || 0)}
                 placeholder="Enter point value"
-                className="w-full text-lg font-semibold"
+                className="w-full text-base font-semibold"
               />
             </div>
           </div>
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-3 flex-shrink-0">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSubmitting} className="rounded-xl">
               Cancel
             </Button>
