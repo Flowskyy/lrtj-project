@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -153,6 +153,20 @@ const NAV_ITEMS = [
 
   },
 
+  {
+
+    label: "Master",
+
+    icon: <Settings {...SIDEBAR_ICON_PROPS} />,
+
+    subItems: [
+
+      { href: "/master/merchandise-category", label: "Merchandise Category", icon: <Package className="h-4 w-4" strokeWidth={2} /> },
+
+    ],
+
+  },
+
 ]
 
 
@@ -212,6 +226,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Redeem Benefit",
         breadcrumb: ["Daily Benefit", "Redeem Benefit"],
+      }
+    : pathname === "/master/merchandise-category"
+    ? {
+        title: "Merchandise Category",
+        breadcrumb: ["Master", "Merchandise Category"],
       }
     : pathname === "/users"
     ? {
@@ -450,6 +469,14 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             : item === "Redeem Benefit"
 
                             ? "/redeem-benefit"
+
+                            : item === "Master"
+
+                            ? "/master/merchandise-category"
+
+                            : item === "Merchandise Category"
+
+                            ? "/master/merchandise-category"
 
                             : "/redeem-merchandise"
 
