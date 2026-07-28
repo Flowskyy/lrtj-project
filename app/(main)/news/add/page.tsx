@@ -10,6 +10,7 @@ export default async function NewsAddPage() {
   }
 
   const username = session.user.email?.split("@")[0] || "Admin";
+  const userEmail = session.user.email || null;
 
-  return <NewsAddContent username={username} />;
+  return <NewsAddContent username={username} userEmail={userEmail} />;
 }

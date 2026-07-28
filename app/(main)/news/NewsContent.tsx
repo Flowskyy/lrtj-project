@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +28,7 @@ import {
 interface NewsItem {
   id: number;
   createdBy?: string;
+  creatorEmail?: string | null;
   img_url?: string;
   caption_image?: string;
   views: bigint;
@@ -64,6 +65,7 @@ export default function NewsContent({ username }: NewsContentProps) {
   const [viewItem, setViewItem] = useState<NewsItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<NewsItem | null>(null);
   const [previewItem, setPreviewItem] = useState<NewsItem | null>(null);
+  const [loadingViewItem, setLoadingViewItem] = useState(false);
 
 
   // Column visibility states
@@ -160,6 +162,32 @@ export default function NewsContent({ username }: NewsContentProps) {
       console.error("Failed to delete item", err);
       toast.error("Failed to delete news");
     }
+  };
+
+  // View Item - fetch full data including creator email
+  const handleViewItem = async (item: NewsItem) => {
+    setLoadingViewItem(true);
+    try {
+      const res = await fetch(`/api/news/${item.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setViewItem(data);
+      } else {
+        toast.error("Failed to fetch news details");
+      }
+    } catch (err) {
+      console.error("Failed to fetch item", err);
+      toast.error("Failed to fetch news details");
+    } finally {
+      setLoadingViewItem(false);
+    }
+  };
+
+  // Helper to check if HTML content is actually empty
+  const isHtmlContentEmpty = (html: string | undefined | null): boolean => {
+    if (!html) return true;
+    const text = html.replace(/<[^>]*>/g, '').trim();
+    return text === '' || text === '-';
   };
 
   // Computed values
@@ -531,7 +559,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => {
-                                setViewItem(item);
+                                handleViewItem(item);
                               }} className="text-xs h-8">
                                 <Eye className="h-3.5 w-3.5 mr-2" />
                                 View
@@ -644,7 +672,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setViewItem(item)}
+                          onClick={() => handleViewItem(item)}
                           className="min-h-[44px] px-3"
                           aria-label="View"
                         >
@@ -686,86 +714,152 @@ export default function NewsContent({ username }: NewsContentProps) {
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="max-w-2xl sm:max-w-3xl md:max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-md sm:max-w-2xl md:max-w-3xl max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
           <DialogHeader>
             <DialogTitle>News Details</DialogTitle>
           </DialogHeader>
           {viewItem && (
-            <div className="space-y-4">
-                  {viewItem.img_url && (
-                    <div className="rounded-lg overflow-hidden">
-                      <img
-                        src={getImageUrl(viewItem.img_url)}
-                        alt={viewItem.title || "News"}
-                        className="w-full h-auto object-cover"
-                      />
-                      {viewItem.caption_image && (
-                        <p className="text-xs text-gray-500 mt-2 italic">{viewItem.caption_image}</p>
-                      )}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Title (Indonesian)</h3>
-                    <p className="text-sm text-gray-700">{viewItem.title || "-"}</p>
-                  </div>
-                  {viewItem.title_en && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Title (English)</h3>
-                      <p className="text-sm text-gray-700">{viewItem.title_en}</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Type</h3>
-                      <Badge variant="outline" className="text-[10px] capitalize">
-                        {viewItem.type || "general"}
-                      </Badge>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Status</h3>
-                      {viewItem.status === 1 ? (
-                        <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
-                          Inactive
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Publish Date</h3>
-                      <p className="text-sm text-gray-700">{viewItem.publish_date ? new Date(viewItem.publish_date).toLocaleDateString() : "-"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Views</h3>
-                      <p className="text-sm text-gray-700">{viewItem.views.toString()}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Created By</h3>
-                    <p className="text-sm text-gray-700">{viewItem.createdBy || "-"}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Content (Indonesian)</h3>
-                    <div 
-                      className="text-sm text-gray-700 prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: viewItem.content || "-" }}
+            <div className="overflow-y-auto space-y-4 rounded-b-xl">
+              {/* Featured Image */}
+              {viewItem.img_url && (
+                <div className="flex justify-center">
+                  <div className="rounded-lg overflow-hidden max-w-lg w-full">
+                    <img
+                      src={getImageUrl(viewItem.img_url)}
+                      alt={viewItem.title || "News"}
+                      className="w-full h-auto object-cover"
                     />
+                    {viewItem.caption_image && (
+                      <p className="text-xs text-gray-500 mt-2 italic px-1">{viewItem.caption_image}</p>
+                    )}
                   </div>
-                  {viewItem.content_en && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Content (English)</h3>
-                      <div 
-                        className="text-sm text-gray-700 prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: viewItem.content_en }}
-                      />
-                    </div>
+                </div>
+              )}
+              {/* Title as H1 */}
+              {(viewItem.title || viewItem.title_en) && (
+                <h1 className="text-[12px] sm:text-[18px] font-bold text-gray-900 leading-tight">
+                  {viewItem.title || viewItem.title_en}
+                </h1>
+              )}
+              {/* Type and Status */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
+                {viewItem.type && (
+                  <div>
+                    <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                      Type
+                    </span>
+                    <Badge variant="outline" className="text-[10px] capitalize">
+                      {viewItem.type}
+                    </Badge>
+                  </div>
+                )}
+                <div>
+                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                    Status
+                  </span>
+                  {viewItem.status === 1 ? (
+                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
+                      Inactive
+                    </Badge>
                   )}
                 </div>
+              </div>
+              {/* Publish Date and Views */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
+                {viewItem.publish_date && (
+                  <div>
+                    <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                      Publish Date
+                    </span>
+                    {new Date(viewItem.publish_date).toLocaleDateString()}
+                  </div>
+                )}
+                <div>
+                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                    Views
+                  </span>
+                  {viewItem.views.toString()}
+                </div>
+              </div>
+              {/* Created By */}
+              {viewItem.createdBy && (
+                <div className="text-xs sm:text-sm text-gray-700">
+                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
+                    Created By
+                  </span>
+                  <div>
+                    <div className="font-medium">{viewItem.createdBy}</div>
+                    {viewItem.creatorEmail && (
+                      <div className="text-gray-500 text-xs">{viewItem.creatorEmail}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Title (Indonesian) - only if different from main title */}
+              {viewItem.title && viewItem.title_en && (
+                <div>
+                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
+                    Title (Indonesian)
+                  </div>
+                  <div className="text-sm text-gray-700">{viewItem.title}</div>
+                </div>
+              )}
+              {/* Title (English) - only if different from main title */}
+              {viewItem.title_en && viewItem.title && (
+                <div>
+                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
+                    Title (English)
+                  </div>
+                  <div className="text-sm text-gray-700">{viewItem.title_en}</div>
+                </div>
+              )}
+              {/* Content (Indonesian) */}
+              {!isHtmlContentEmpty(viewItem.content) && (
+                <div>
+                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
+                    Content (Indonesian)
+                  </div>
+                  <div
+                    className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
+                    dangerouslySetInnerHTML={{ __html: viewItem.content }}
+                  />
+                </div>
+              )}
+              {/* Content (English) */}
+              {!isHtmlContentEmpty(viewItem.content_en) && (
+                <div>
+                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
+                    Content (English)
+                  </div>
+                  <div
+                    className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
+                    dangerouslySetInnerHTML={{ __html: viewItem.content_en }}
+                  />
+                </div>
+              )}
+            </div>
           )}
+          <DialogFooter className="pt-4">
+            <Link href={`/news/edit/${viewItem?.id}`}>
+              <Button
+                variant="outline"
+                className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
+              >
+                Edit
+              </Button>
+            </Link>
+            <Button
+              onClick={() => setViewItem(null)}
+              variant="outline"
+              className="min-h-[44px]"
+            >
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

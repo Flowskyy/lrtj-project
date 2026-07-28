@@ -14,9 +14,20 @@ export async function GET(
     return NextResponse.json({ error: 'News not found' }, { status: 404 });
   }
 
+  // Fetch creator email if createdBy exists
+  let creatorEmail = null;
+  if (item.createdBy) {
+    const creator = await prisma.auth_users.findFirst({
+      where: { name: item.createdBy },
+      select: { email: true },
+    });
+    creatorEmail = creator?.email || null;
+  }
+
   const serialized = {
     ...item,
     views: item.views.toString(),
+    creatorEmail: creatorEmail || null,
   };
   return NextResponse.json(serialized);
 }

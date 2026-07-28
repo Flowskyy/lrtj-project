@@ -40,7 +40,7 @@ export function BulletedListToolbarButton() {
   );
 
   return (
-    <ToolbarSplitButton pressed={open}>
+    <ToolbarSplitButton>
       <ToolbarSplitButtonPrimary
         className="data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
         onClick={() => {
@@ -55,11 +55,16 @@ export function BulletedListToolbarButton() {
 
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger
-          className="inline-flex items-center justify-center rounded-r-md font-medium text-foreground text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 h-8 w-4 group-data-[pressed=true]:bg-accent group-data-[pressed=true]:text-accent-foreground hover:bg-muted hover:text-muted-foreground"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ChevronDown className="size-4 text-muted-foreground" />
-        </DropdownMenuTrigger>
+          render={
+            <button
+              className="inline-flex items-center justify-center rounded-r-md font-medium text-foreground text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 h-8 w-4 group-data-[pressed=true]:bg-accent group-data-[pressed=true]:text-accent-foreground hover:bg-muted hover:text-muted-foreground"
+              onClick={(e) => e.stopPropagation()}
+              type="button"
+            >
+              <ChevronDown className="size-4 text-muted-foreground" />
+            </button>
+          }
+        />
 
         <DropdownMenuContent align="start" alignOffset={-32}>
           <DropdownMenuGroup>
@@ -123,7 +128,7 @@ export function NumberedListToolbarButton() {
   );
 
   return (
-    <ToolbarSplitButton pressed={open}>
+    <ToolbarSplitButton>
       <ToolbarSplitButtonPrimary
         className="data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
         onClick={() =>
@@ -138,11 +143,16 @@ export function NumberedListToolbarButton() {
 
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger
-          className="inline-flex items-center justify-center rounded-r-md font-medium text-foreground text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 h-8 w-4 group-data-[pressed=true]:bg-accent group-data-[pressed=true]:text-accent-foreground hover:bg-muted hover:text-muted-foreground"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ChevronDown className="size-4 text-muted-foreground" />
-        </DropdownMenuTrigger>
+          render={
+            <button
+              className="inline-flex items-center justify-center rounded-r-md font-medium text-foreground text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 h-8 w-4 group-data-[pressed=true]:bg-accent group-data-[pressed=true]:text-accent-foreground hover:bg-muted hover:text-muted-foreground"
+              onClick={(e) => e.stopPropagation()}
+              type="button"
+            >
+              <ChevronDown className="size-4 text-muted-foreground" />
+            </button>
+          }
+        />
 
         <DropdownMenuContent align="start" alignOffset={-32}>
           <DropdownMenuGroup>

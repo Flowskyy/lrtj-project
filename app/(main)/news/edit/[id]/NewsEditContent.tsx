@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { usePlateEditor } from "platejs/react";
 import { type Value } from "platejs";
+import { serializeHtml } from "platejs/static";
 import { NewsEditorKit } from "@/components/editor/plugins/news-editor-kit";
 import dynamic from "next/dynamic";
 
@@ -63,52 +64,31 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
   // PlateJS editors
   const editorId = usePlateEditor({
     plugins: NewsEditorKit,
-    value: formContent || '<p>-</p>',
   });
   const editorEn = usePlateEditor({
     plugins: NewsEditorKit,
-    value: formContentEn || '<p>-</p>',
   });
 
-  // Handle editor content changes
-  const handleEditorChangeId = async () => {
-    const html = editorId.api.html.serialize();
-    setFormContent(html || '<p>-</p>');
-  };
-
-  const handleEditorChangeEn = async () => {
-    const html = editorEn.api.html.serialize();
-    setFormContentEn(html || '<p>-</p>');
-  };
-
   // Handle content save (Indonesian)
-  const handleSaveContent = () => {
-    console.log('[DEBUG] Save button clicked - handler firing');
-    console.log('[DEBUG] Editor instance:', editorId);
-    console.log('[DEBUG] Editor value before serialize:', editorId.children);
-    const html = editorId.api.html.serialize();
-    console.log('[DEBUG] Serialized HTML result:', html);
-    console.log('[DEBUG] About to set formContent to:', html || '<p>-</p>');
+  const handleSaveContent = async () => {
+    const html = await serializeHtml(editorId);
+    console.log('[NewsEditContent] Serialized HTML (Indonesian):', html);
     setFormContent(html || '<p>-</p>');
-    console.log('[DEBUG] formContent state updated');
-    console.log('[DEBUG] About to close editor mode');
     setIsEditingContent(false);
-    console.log('[DEBUG] Editor mode closed');
   };
 
   // Handle content cancel (Indonesian)
   const handleCancelContent = () => {
-    console.log('Cancel clicked - reverting content...');
     // Revert to last saved content
     const slateValueId = editorId.api.html.deserialize({ element: formContent });
     editorId.tf.setValue(slateValueId as Value);
     setIsEditingContent(false);
-    console.log('Content reverted, editor closed');
   };
 
   // Handle content save (English)
-  const handleSaveContentEn = () => {
-    const html = editorEn.api.html.serialize();
+  const handleSaveContentEn = async () => {
+    const html = await serializeHtml(editorEn);
+    console.log('[NewsEditContent] Serialized HTML (English):', html);
     setFormContentEn(html || '<p>-</p>');
     setIsEditingContentEn(false);
   };
@@ -177,26 +157,25 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
     e.preventDefault();
     if (!item) return;
     setIsSubmitting(true);
+    const payload = {
+      title: formTitle,
+      title_en: formTitleEn,
+      content: formContent || '<p>-</p>',
+      content_en: formContentEn || '<p>-</p>',
+      img_url: formImageUrl,
+      caption_image: formCaptionImage,
+      type: formType,
+      status: formStatus ? 1 : 0,
+      publish_date: formPublishDate || null,
+    };
+    console.log('[NewsEditContent] Payload to API:', payload);
     try {
-      // Serialize editor content to HTML
-      const contentHtml = editorId.api.html.serialize();
-      const contentEnHtml = editorEn.api.html.serialize();
-
       const res = await fetch(`/api/news/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formTitle,
-          title_en: formTitleEn,
-          content: contentHtml || '<p>-</p>',
-          content_en: contentEnHtml || '<p>-</p>',
-          img_url: formImageUrl,
-          caption_image: formCaptionImage,
-          type: formType,
-          status: formStatus ? 1 : 0,
-          publish_date: formPublishDate || null,
-        }),
+        body: JSON.stringify(payload),
       });
+      console.log('[NewsEditContent] API response status:', res.status);
       if (res.ok) {
         toast.success("News updated successfully");
         router.push("/news");
@@ -350,7 +329,8 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
                 <div className="border border-gray-300 rounded-lg">
                   <RichTextEditor
                     editor={editorId}
-                    onChange={handleEditorChangeId}
+                    onChange={() => {}}
+                    onContentChange={setFormContent}
                     placeholder="Enter news content in Indonesian..."
                   />
                   <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">
@@ -397,7 +377,8 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
                 <div className="border border-gray-300 rounded-lg">
                   <RichTextEditor
                     editor={editorEn}
-                    onChange={handleEditorChangeEn}
+                    onChange={() => {}}
+                    onContentChange={setFormContentEn}
                     placeholder="Enter news content in English..."
                   />
                   <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">

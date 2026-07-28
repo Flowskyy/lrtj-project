@@ -85,5 +85,10 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json(newItem);
+  const serialized = {
+    ...newItem,
+    views: newItem.views.toString(),
+    creatorEmail: data.creatorEmail || null,
+  };
+  return NextResponse.json(serialized);
 }

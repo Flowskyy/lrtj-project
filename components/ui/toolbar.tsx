@@ -180,10 +180,11 @@ export const ToolbarButton = withTooltip(function ToolbarButton({
 export function ToolbarSplitButton({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<typeof ToolbarButton>) {
+}: React.ComponentProps<'div'>) {
   return (
-    <ToolbarButton
-      className={cn('group flex gap-0 px-0 hover:bg-transparent', className)}
+    <div
+      className={cn('group flex gap-0', className)}
+      role="group"
       {...props}
     />
   );
@@ -203,7 +204,7 @@ export function ToolbarSplitButtonPrimary({
   ...props
 }: ToolbarSplitButtonPrimaryProps) {
   return (
-    <span
+    <ToolbarPrimitive.Button
       className={cn(
         toolbarButtonVariants({
           size,
@@ -216,7 +217,7 @@ export function ToolbarSplitButtonPrimary({
       {...props}
     >
       {children}
-    </span>
+    </ToolbarPrimitive.Button>
   );
 }
 
@@ -314,9 +315,7 @@ function withTooltip<T extends React.ElementType>(Component: T) {
     if (tooltip && mounted) {
       return (
         <Tooltip {...tooltipProps}>
-          <TooltipTrigger {...tooltipTriggerProps}>
-            {component}
-          </TooltipTrigger>
+          <TooltipTrigger render={component} {...tooltipTriggerProps} />
 
           <TooltipContent {...tooltipContentProps}>{tooltip}</TooltipContent>
         </Tooltip>
