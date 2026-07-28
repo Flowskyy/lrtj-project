@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -163,6 +163,10 @@ const NAV_ITEMS = [
 
       { href: "/master/merchandise-category", label: "Merchandise Category", icon: <Package className="h-4 w-4" strokeWidth={2} /> },
 
+      { href: "/master/welcome-point", label: "Welcome Point", icon: <Star className="h-4 w-4" strokeWidth={2} /> },
+
+      { href: "/master/banner-config", label: "Banner Config", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
+
     ],
 
   },
@@ -231,6 +235,16 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Merchandise Category",
         breadcrumb: ["Master", "Merchandise Category"],
+      }
+    : pathname === "/master/welcome-point"
+    ? {
+        title: "Welcome Point",
+        breadcrumb: ["Master", "Welcome Point"],
+      }
+    : pathname === "/master/banner-config"
+    ? {
+        title: "Banner Config",
+        breadcrumb: ["Master", "Banner Config"],
       }
     : pathname === "/users"
     ? {
@@ -477,6 +491,14 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             : item === "Merchandise Category"
 
                             ? "/master/merchandise-category"
+
+                            : item === "Welcome Point"
+
+                            ? "/master/welcome-point"
+
+                            : item === "Banner Config"
+
+                            ? "/master/banner-config"
 
                             : "/redeem-merchandise"
 

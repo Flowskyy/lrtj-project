@@ -579,17 +579,19 @@ model membership {
 }
 
 model merchandise {
-  id          Int       @id @default(autoincrement())
-  editedBy    String?   @db.VarChar(50)
-  name        String    @db.VarChar(150)
-  image_url   String    @default("") @db.VarChar(150)
-  points      Int       @default(0) @map("redeem_point")
-  description String    @map("term_condition") @db.Text
-  createdAt   DateTime? @map("created_at") @db.DateTime(0)
-  updatedAt   DateTime? @map("updated_at") @db.DateTime(0)
-  status      Int       @default(1) @db.TinyInt
+  id          Int                   @id @default(autoincrement())
+  editedBy    String?               @db.VarChar(50)
+  name        String                @db.VarChar(150)
+  image_url   String                @default("") @db.VarChar(150)
+  points      Int                   @default(0) @map("redeem_point")
+  description String                @map("term_condition") @db.Text
+  createdAt   DateTime?             @map("created_at") @db.DateTime(0)
+  updatedAt   DateTime?             @map("updated_at") @db.DateTime(0)
+  status      Int                   @default(1) @db.TinyInt
   category_id Int?
-  category    merchandise_category? @relation(fields: [category_id], references: [id])
+  category    merchandise_category? @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "merchandise_merchandise_category_FK")
+
+  @@index([category_id], map: "merchandise_merchandise_category_FK")
 }
 
 model merchant {
@@ -1089,12 +1091,23 @@ model news {
 }
 
 model merchandise_category {
-  id            Int       @id @default(autoincrement())
-  category_name String?   @db.VarChar(255)
+  id            Int           @id @default(autoincrement())
+  category_name String?       @db.VarChar(255)
   status        Boolean?
-  created_at    DateTime? @db.DateTime(0)
-  updated_at    DateTime? @db.DateTime(0)
+  created_at    DateTime?     @default(now()) @db.DateTime(0)
+  updated_at    DateTime?     @updatedAt @db.DateTime(0)
+  updated_by    String?       @db.VarChar(255)
   merchandise   merchandise[]
+}
+
+model welcome_point {
+  id          Int       @id @default(autoincrement())
+  point       Int
+  created_at  DateTime  @db.DateTime(0)
+  updated_at  DateTime  @db.DateTime(0)
+  updated_by  String    @db.VarChar(100)
+  active_from DateTime? @db.DateTime(0)
+  active_to   DateTime? @db.DateTime(0)
 }
 
 enum bayarind_binding_states_status {

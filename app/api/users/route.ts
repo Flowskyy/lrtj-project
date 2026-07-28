@@ -19,18 +19,18 @@ export async function GET(request: NextRequest) {
 
   if (status && status !== 'all') {
     where.status = parseInt(status);
+  } else {
+    // Default to active users only
+    where.status = 1;
   }
 
   if (gender && gender !== 'all') {
     where.jenis_kelamin = gender;
   }
 
-  if (verified && verified !== 'all') {
-    if (verified === 'verified') {
-      where.verified_at = { not: null };
-    } else if (verified === 'unverified') {
-      where.verified_at = null;
-    }
+  const activationSlc = searchParams.get('activation_slc');
+  if (activationSlc && activationSlc !== 'all') {
+    where.activation_slc = parseInt(activationSlc);
   }
 
   if (dateFrom || dateTo) {
@@ -77,28 +77,24 @@ export async function GET(request: NextRequest) {
     orderBy.id = 'desc';
   }
 
-  const [users, total, activeCount, inactiveCount, verifiedCount, unverifiedCount] = await Promise.all([
+  const [users, total, activeSlcCount, inactiveSlcCount] = await Promise.all([
     prisma.users.findMany({
       where,
       orderBy,
       skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? 10000 : limit,
+      take: exportMode ? undefined : limit,
     }),
     prisma.users.count({ where }),
-    prisma.users.count({ where: { status: 1 } }),
-    prisma.users.count({ where: { status: 0 } }),
-    prisma.users.count({ where: { verified_at: { not: null } } }),
-    prisma.users.count({ where: { verified_at: null } }),
+    prisma.users.count({ where: { status: 1, activation_slc: 1 } }),
+    prisma.users.count({ where: { status: 1, activation_slc: 0 } }),
   ]);
 
   return NextResponse.json({
     data: users,
     meta: {
       total,
-      active: activeCount,
-      inactive: inactiveCount,
-      verified: verifiedCount,
-      unverified: unverifiedCount,
+      activeSlc: activeSlcCount,
+      inactiveSlc: inactiveSlcCount,
       page,
       limit,
       totalPages: Math.ceil(total / limit),

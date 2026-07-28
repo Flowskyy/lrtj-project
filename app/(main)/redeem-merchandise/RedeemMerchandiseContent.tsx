@@ -35,8 +35,8 @@ interface RedeemItem {
   receiver_email: string;
   receiver_address: string;
   status: string;
-  created_at: string | null;
-  updated_at: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 interface Category {
@@ -52,7 +52,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   const [items, setItems] = useState<RedeemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -111,7 +110,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
         const response = await res.json();
         setItems(response.data || []);
         setTotalCount(response.meta?.total || 0);
-        setPendingCount(response.meta?.pending || 0);
         setCompletedCount(response.meta?.completed || 0);
         setTotalPages(response.meta?.totalPages || 1);
       }
@@ -179,8 +177,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     const statusLower = status.toLowerCase();
     if (statusLower === "completed") {
       return <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">{status}</Badge>;
-    } else if (statusLower === "process" || statusLower === "pending") {
-      return <Badge variant="default" className="bg-yellow-50 text-yellow-700 border border-yellow-100 hover:bg-yellow-100 text-[10px]">{status}</Badge>;
     } else if (statusLower === "rejected") {
       return <Badge variant="secondary" className="bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 text-[10px]">{status}</Badge>;
     }
@@ -189,7 +185,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
   // Computed values
   const total = totalCount;
-  const pending = pendingCount;
   const completed = completedCount;
 
   // Handle row selection
@@ -255,19 +250,19 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           { key: "receiver_email", label: "Receiver Email" },
           { key: "receiver_address", label: "Receiver Address" },
           { key: "status", label: "Status" },
-          { key: "created_at", label: "Created At" },
-          { key: "updated_at", label: "Updated At" },
+          { key: "createdAt", label: "Created At" },
+          { key: "updatedAt", label: "Updated At" },
         ];
       } else {
         // Dynamic columns based on visibleColumns
         columns = [];
         if (visibleColumns.receiver_name) columns.push({ key: "receiver_name", label: "Receiver Name" });
         if (visibleColumns.merchandise_name) columns.push({ key: "merchandise_name", label: "Merchandise" });
-        if (visibleColumns.created_at) columns.push({ key: "created_at", label: "Created" });
+        if (visibleColumns.created_at) columns.push({ key: "createdAt", label: "Created" });
         if (visibleColumns.status) columns.push({ key: "status", label: "Status" });
         if (visibleColumns.id) columns.push({ key: "id", label: "ID" });
         if (visibleColumns.user_id) columns.push({ key: "user_id", label: "User ID" });
-        if (visibleColumns.updated_at) columns.push({ key: "updated_at", label: "Updated" });
+        if (visibleColumns.updated_at) columns.push({ key: "updatedAt", label: "Updated" });
       }
 
       exportToExcel(dataToExport, columns, "redeem-merchandise-export");
@@ -296,58 +291,39 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Total Redeems
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : total}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent>
+        <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Pending
-                </p>
-                <p className="text-2xl font-bold text-yellow-700 mt-1">
-                  {loading ? "..." : pending}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-yellow-100 flex items-center justify-center">
-                <svg className="h-5 w-5 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Completed
                 </p>
-                <p className="text-2xl font-bold text-green-700 mt-1">
+                <p className="text-3xl font-bold text-green-700 mt-2">
                   {loading ? "..." : completed}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <svg className="h-5 w-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
+                <svg className="h-6 w-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -357,25 +333,25 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       </div>
 
       {/* Main Content Card */}
-      <Card>
-        <CardContent>
-          <CardHeader className="p-3">
-            <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
+      <Card className="border border-gray-200 shadow-sm">
+        <CardContent className="p-6">
+          <CardHeader className="px-0 pt-0 pb-4">
+            <CardTitle className="text-xl font-semibold text-gray-900">Redeem Merchandise</CardTitle>
           </CardHeader>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <Button
                 onClick={() => setExportDialogOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-white min-h-[44px]"
+                className="bg-primary hover:bg-primary/90 text-white h-10 px-4"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download
               </Button>
               <div className="relative flex-1 sm:flex-none">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     type="text"
                     placeholder="Search redeems..."
@@ -384,7 +360,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       setSearchQuery(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="pl-9 pr-8 min-h-[36px]"
+                    className="pl-10 pr-9 h-10 border-gray-200"
                   />
                   {searchQuery && (
                     <Button
@@ -394,7 +370,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                         setSearchQuery("");
                         setCurrentPage(1);
                       }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -402,7 +378,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 </div>
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
+                <SelectTrigger className="w-full sm:w-48 h-10 border-gray-200">
                   <SelectValue placeholder="All Categories">
                     {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
                   </SelectValue>
@@ -425,7 +401,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 onSortOrderChange={setSortOrder}
                 statusOptions={[
                   { value: "all", label: "All" },
-                  { value: "process", label: "Process" },
                   { value: "completed", label: "Completed" },
                   { value: "rejected", label: "Rejected" },
                 ]}
@@ -443,8 +418,8 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
-                  <Columns className="h-4 w-4" />
+                <DropdownMenuTrigger className="h-10 px-3 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
+                  <Columns className="h-4 w-4 text-gray-600" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: !prev.id }))}>
@@ -501,12 +476,12 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </div>
 
           {/* Table - Desktop */}
-          <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
+          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
+              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
                 <TableRow>
                   {visibleColumns.select && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-10">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
                       <button
                         onClick={handleSelectAll}
                         className="flex items-center justify-center"
@@ -520,48 +495,42 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                     </TableHead>
                   )}
                   {visibleColumns.id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-16">
-                      <div className="flex items-center gap-1">
-                        ID
-                        <ChevronDown className="h-3 w-3" />
-                      </div>
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">
+                      ID
                     </TableHead>
                   )}
                   {visibleColumns.user_id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-16">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">
                       User ID
                     </TableHead>
                   )}
                   {visibleColumns.receiver_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[120px] max-w-[150px]">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
                       Receiver Name
                     </TableHead>
                   )}
                   {visibleColumns.merchandise_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[140px] max-w-[180px]">
-                      <div className="flex items-center gap-1">
-                        Merchandise
-                        <ChevronDown className="h-3 w-3" />
-                      </div>
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
+                      Merchandise
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Created
                     </TableHead>
                   )}
                   {visibleColumns.updated_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Updated
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
@@ -608,7 +577,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.select && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-4 py-3">
                           <button
                             onClick={() => handleSelectRow(item.id)}
                             className="flex items-center justify-center"
@@ -622,56 +591,56 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                         </TableCell>
                       )}
                       {visibleColumns.id && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
+                        <TableCell className="px-4 py-3 text-sm text-gray-600 font-medium">
                           #{item.id}
                         </TableCell>
                       )}
                       {visibleColumns.user_id && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
+                        <TableCell className="px-4 py-3 text-sm text-gray-600 font-medium">
                           {item.user_id}
                         </TableCell>
                       )}
                       {visibleColumns.receiver_name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900">
+                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900">
                           {item.receiver_name}
                         </TableCell>
                       )}
                       {visibleColumns.merchandise_name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[200px]">
+                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[220px]">
                           <span className="block truncate" title={item.merchandise_name}>
                             {item.merchandise_name}
                           </span>
                         </TableCell>
                       )}
                       {visibleColumns.status && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-4 py-3">
                           {getStatusBadge(item.status)}
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+                        <TableCell className="px-4 py-3 text-sm text-gray-600">
                           {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.updated_at && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+                        <TableCell className="px-4 py-3 text-sm text-gray-600">
                           {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-3 py-1.5 text-center">
+                        <TableCell className="px-4 py-3 text-center">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground p-0">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 hover:text-gray-700 p-0 transition-colors">
+                              <MoreVertical className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setViewItem(item)} className="text-xs h-8">
-                                <Eye className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => setViewItem(item)} className="text-sm h-9">
+                                <Eye className="h-4 w-4 mr-2" />
                                 View
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-sm h-9">
+                                <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -682,7 +651,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-xs text-gray-400">
+                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-6 py-12 text-center text-sm text-gray-500">
                       No redeem records found.
                     </TableCell>
                   </TableRow>
@@ -722,7 +691,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       </div>
                       {getStatusBadge(item.status)}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Created: {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}</p>
+                    <p className="text-xs text-gray-400 mt-1">Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}</p>
                   </div>
                 </div>
               ))
@@ -813,11 +782,11 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{viewItem?.created_at ? new Date(viewItem.created_at).toLocaleString() : '-'}</div>
+                <div className="text-sm text-gray-900">{viewItem?.createdAt ? new Date(viewItem.createdAt).toLocaleString() : '-'}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{viewItem?.updated_at ? new Date(viewItem.updated_at).toLocaleString() : '-'}</div>
+                <div className="text-sm text-gray-900">{viewItem?.updatedAt ? new Date(viewItem.updatedAt).toLocaleString() : '-'}</div>
               </div>
             </div>
           </div>

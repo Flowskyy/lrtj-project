@@ -151,17 +151,18 @@ export async function GET(request: NextRequest) {
     orderBy.id = 'desc';
   }
 
-  const [redeems, total, pendingCount, completedCount] = await Promise.all([
+  const [redeems, total, completedCount] = await Promise.all([
     prisma.redeem.findMany({
       where,
       orderBy,
       skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? 10000 : limit,
+      take: exportMode ? undefined : limit,
     }),
     prisma.redeem.count({ where }),
-    prisma.redeem.count({ where: { status: 'process' } }),
     prisma.redeem.count({ where: { status: 'completed' } }),
   ]);
+
+  const pendingCount = 0;
 
   // Get merchandise names for manual join
   const merchandiseIds = redeems.map(r => r.merchandise_id).filter(Boolean);
@@ -179,9 +180,11 @@ export async function GET(request: NextRequest) {
     merchandiseItems.map(m => [m.id, m.name])
   );
 
-  // Merge merchandise names into redeems
+  // Merge merchandise names into redeems and map field names
   const redeemsWithMerchandise = redeems.map(redeem => ({
     ...redeem,
+    created_at: redeem.createdAt,
+    updated_at: redeem.updatedAt,
     merchandise_name: merchandiseMap.get(redeem.merchandise_id) || 'Unknown',
   }));
 

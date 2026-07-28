@@ -19,15 +19,20 @@ interface TableFilterSortMenuProps {
   onGenderFilterChange?: (value: string) => void;
   verifiedFilter?: string;
   onVerifiedFilterChange?: (value: string) => void;
+  activationSlcFilter?: string;
+  onActivationSlcFilterChange?: (value: string) => void;
   typeFilter?: string;
   onTypeFilterChange?: (value: string) => void;
   statusOptions?: { value: string; label: string }[];
   genderOptions?: { value: string; label: string }[];
   verifiedOptions?: { value: string; label: string }[];
+  activationSlcOptions?: { value: string; label: string }[];
   typeOptions?: { value: string; label: string }[];
   showTypeFilter?: boolean;
   showGenderFilter?: boolean;
   showVerifiedFilter?: boolean;
+  showActivationSlcFilter?: boolean;
+  showStatusFilter?: boolean;
   
   // Sort props
   sortBy: string;
@@ -55,6 +60,8 @@ export default function TableFilterSortMenu({
   onGenderFilterChange,
   verifiedFilter = "all",
   onVerifiedFilterChange,
+  activationSlcFilter = "all",
+  onActivationSlcFilterChange,
   typeFilter = "all",
   onTypeFilterChange,
   sortBy,
@@ -76,6 +83,11 @@ export default function TableFilterSortMenu({
     { value: "verified", label: "Verified" },
     { value: "unverified", label: "Unverified" },
   ],
+  activationSlcOptions = [
+    { value: "all", label: "All" },
+    { value: "1", label: "Active SLC" },
+    { value: "0", label: "Inactive SLC" },
+  ],
   typeOptions = [
     { value: "all", label: "All" },
     { value: "news", label: "News" },
@@ -89,6 +101,8 @@ export default function TableFilterSortMenu({
   showTypeFilter = false,
   showGenderFilter = false,
   showVerifiedFilter = false,
+  showActivationSlcFilter = false,
+  showStatusFilter = true,
   dateFrom = "",
   onDateFromChange,
   dateTo = "",
@@ -111,23 +125,27 @@ export default function TableFilterSortMenu({
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
-          <div className="px-2 py-1.5">
-            <label className="text-xs font-semibold text-gray-700">Status</label>
-          </div>
-          <div className="px-2 pb-2">
-            <Select value={statusFilter} onValueChange={(v) => onStatusFilterChange(v || 'all')}>
-              <SelectTrigger className="h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {showStatusFilter && (
+            <>
+              <div className="px-2 py-1.5">
+                <label className="text-xs font-semibold text-gray-700">Status</label>
+              </div>
+              <div className="px-2 pb-2">
+                <Select value={statusFilter} onValueChange={(v) => onStatusFilterChange(v || 'all')}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           
           {showGenderFilter && onGenderFilterChange && (
             <>
@@ -165,6 +183,29 @@ export default function TableFilterSortMenu({
                   </SelectTrigger>
                   <SelectContent>
                     {verifiedOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {showActivationSlcFilter && onActivationSlcFilterChange && (
+            <>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5">
+                <label className="text-xs font-semibold text-gray-700">Activation SLC</label>
+              </div>
+              <div className="px-2 pb-2">
+                <Select value={activationSlcFilter} onValueChange={(v) => onActivationSlcFilterChange(v || 'all')}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activationSlcOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>

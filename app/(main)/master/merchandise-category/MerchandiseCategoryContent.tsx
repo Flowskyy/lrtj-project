@@ -27,7 +27,6 @@ interface MerchandiseCategoryContentProps {
 export default function MerchandiseCategoryContent({ username }: MerchandiseCategoryContentProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal states
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -61,9 +60,6 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     fetchCategories();
   }, []);
 
-  const filteredCategories = categories.filter(cat =>
-    cat.category_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleAdd = async () => {
     if (!formData.category_name.trim()) {
@@ -266,18 +262,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
       {/* Table Card */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle>Categories</CardTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search categories..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full sm:w-64"
-              />
-            </div>
-          </div>
+          <CardTitle>Categories</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -291,7 +276,6 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20">ID</TableHead>
                     <TableHead>Category Name</TableHead>
                     <TableHead className="w-32">Status</TableHead>
                     <TableHead className="w-40">Created At</TableHead>
@@ -300,16 +284,15 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCategories.length === 0 ? (
+                  {categories.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                         No categories found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredCategories.map((category) => (
+                    categories.map((category) => (
                       <TableRow key={category.id}>
-                        <TableCell className="font-medium">{category.id}</TableCell>
                         <TableCell>{category.category_name || "-"}</TableCell>
                         <TableCell>
                           <Switch

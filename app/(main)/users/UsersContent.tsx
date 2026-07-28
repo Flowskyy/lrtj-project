@@ -63,14 +63,13 @@ export default function UsersContent({ username }: UsersContentProps) {
   const [items, setItems] = useState<MemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [activeCount, setActiveCount] = useState(0);
-  const [inactiveCount, setInactiveCount] = useState(0);
+  const [activeSlcCount, setActiveSlcCount] = useState(0);
+  const [inactiveSlcCount, setInactiveSlcCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   // Filter and Sort states
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [verifiedFilter, setVerifiedFilter] = useState<string>("all");
+  const [activationSlcFilter, setActivationSlcFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -88,7 +87,6 @@ export default function UsersContent({ username }: UsersContentProps) {
     select: true,
     nama: true,
     email: true,
-    telepon: true,
     created_at: true,
     actions: true,
   });
@@ -103,8 +101,7 @@ export default function UsersContent({ username }: UsersContentProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (verifiedFilter !== "all") params.set("verified", verifiedFilter);
+      if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
@@ -118,8 +115,8 @@ export default function UsersContent({ username }: UsersContentProps) {
         const response = await res.json();
         setItems(response.data || []);
         setTotalCount(response.meta?.total || 0);
-        setActiveCount(response.meta?.active || 0);
-        setInactiveCount(response.meta?.inactive || 0);
+        setActiveSlcCount(response.meta?.activeSlc || 0);
+        setInactiveSlcCount(response.meta?.inactiveSlc || 0);
         setTotalPages(response.meta?.totalPages || 1);
       }
     } catch (err) {
@@ -131,18 +128,17 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, verifiedFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [activationSlcFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
 
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (verifiedFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const handleResetFilters = () => {
-    setStatusFilter("all");
-    setVerifiedFilter("all");
+    setActivationSlcFilter("all");
     setDateFrom("");
     setDateTo("");
     setSortBy("created_at");
@@ -186,8 +182,8 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   // Computed values
   const total = totalCount;
-  const active = activeCount;
-  const inactive = inactiveCount;
+  const activeSlc = activeSlcCount;
+  const inactiveSlc = inactiveSlcCount;
 
   // Handle row selection
   const handleSelectRow = (id: number) => {
@@ -222,8 +218,7 @@ export default function UsersContent({ username }: UsersContentProps) {
       } else {
         // Fetch all filtered data
         const params = new URLSearchParams();
-        if (statusFilter !== "all") params.set("status", statusFilter);
-        if (verifiedFilter !== "all") params.set("verified", verifiedFilter);
+        if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
         if (sortBy) params.set("sortBy", sortBy);
         if (sortOrder) params.set("order", sortOrder);
         if (searchQuery.trim()) params.set("search", searchQuery.trim());
@@ -265,7 +260,6 @@ export default function UsersContent({ username }: UsersContentProps) {
         columns = [];
         if (visibleColumns.nama) columns.push({ key: "name", label: "Name" });
         if (visibleColumns.email) columns.push({ key: "email", label: "Email" });
-        if (visibleColumns.telepon) columns.push({ key: "no_telepon", label: "Phone" });
         if (visibleColumns.created_at) columns.push({ key: "created_at", label: "Created At" });
       }
 
@@ -284,7 +278,6 @@ export default function UsersContent({ username }: UsersContentProps) {
     const fields: string[] = [];
     if (visibleColumns.nama) fields.push("Name");
     if (visibleColumns.email) fields.push("Email");
-    if (visibleColumns.telepon) fields.push("Phone");
     if (visibleColumns.created_at) fields.push("Created At");
     return fields;
   };
@@ -316,10 +309,10 @@ export default function UsersContent({ username }: UsersContentProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Active
+                  Active SLC Users
                 </p>
                 <p className="text-2xl font-bold text-green-700 mt-1">
-                  {loading ? "..." : active}
+                  {loading ? "..." : activeSlc}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
@@ -345,10 +338,10 @@ export default function UsersContent({ username }: UsersContentProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Inactive
+                  Inactive SLC Users
                 </p>
                 <p className="text-2xl font-bold text-gray-500 mt-1">
-                  {loading ? "..." : inactive}
+                  {loading ? "..." : inactiveSlc}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
@@ -408,20 +401,16 @@ export default function UsersContent({ username }: UsersContentProps) {
                 )}
               </div>
               <TableFilterSortMenu
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
-                verifiedFilter={verifiedFilter}
-                onVerifiedFilterChange={setVerifiedFilter}
+                statusFilter="all"
+                onStatusFilterChange={() => {}}
+                activationSlcFilter={activationSlcFilter}
+                onActivationSlcFilterChange={setActivationSlcFilter}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                statusOptions={[
-                  { value: "all", label: "All" },
-                  { value: "1", label: "Active" },
-                  { value: "0", label: "Inactive" },
-                ]}
-                showVerifiedFilter={true}
+                showStatusFilter={false}
+                showActivationSlcFilter={true}
                 sortByOptions={[
                   { value: "name", label: "Name" },
                   { value: "created_at", label: "Created At" },
@@ -516,7 +505,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -524,7 +512,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -532,7 +519,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.telepon && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -564,11 +550,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.email && (
                         <TableCell className="px-2 py-1 text-xs text-gray-600 truncate max-w-[160px]" title={item.email || ""}>
                           {item.email}
-                        </TableCell>
-                      )}
-                      {visibleColumns.telepon && (
-                        <TableCell className="px-2 py-1 text-xs text-gray-600 truncate max-w-[120px]" title={item.no_telepon || ""}>
-                          {item.no_telepon || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
@@ -648,9 +629,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                       <h3 className="text-sm font-semibold text-gray-900 truncate">{item.name || "-"}</h3>
                       <p className="text-xs text-gray-600 truncate">{item.email}</p>
                     </div>
-                  </div>
-                  <div className="space-y-1 text-xs text-gray-600 mb-3">
-                    <p><span className="font-medium">Phone:</span> {item.no_telepon || "-"}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button

@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       where,
       orderBy,
       skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? 10000 : limit,
+      take: exportMode ? undefined : limit,
     }),
     prisma.redeem_benefit.count({ where }),
   ]);
