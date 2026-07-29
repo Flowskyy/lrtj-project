@@ -42,6 +42,19 @@ interface BannerConfigContentProps {
   username: string;
 }
 
+const formatDateWithTime = (dateString: string | null) => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jakarta",
+  });
+};
+
 function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (banner: Banner) => void }) {
   const {
     attributes,
@@ -89,12 +102,13 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
               <p className="text-xs text-gray-500 mt-1">
                 Sequence: {banner.sequence}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5 truncate" title={banner.image_url}>
-                {banner.image_url}
-              </p>
-              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                <span>Created: {banner.created_by || "-"}</span>
-                <span>Updated: {banner.updated_by || "-"}</span>
+              <div className="mt-2 space-y-1">
+                <div className="text-xs text-gray-500">
+                  <span className="font-medium">Created:</span> {formatDateWithTime(banner.created_at)} by {banner.created_by || "-"}
+                </div>
+                <div className="text-xs text-gray-500">
+                  <span className="font-medium">Updated:</span> {formatDateWithTime(banner.updated_at)} by {banner.updated_by || "-"}
+                </div>
               </div>
             </div>
 
@@ -231,7 +245,7 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Banner Config</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Banner</h1>
           <p className="text-sm text-gray-500 mt-1">Manage banner images and their display order</p>
         </div>
         <Link href="/master/banner-config/add">

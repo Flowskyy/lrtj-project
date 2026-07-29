@@ -165,7 +165,7 @@ const NAV_ITEMS = [
 
       { href: "/master/welcome-point", label: "Welcome Point", icon: <Star className="h-4 w-4" strokeWidth={2} /> },
 
-      { href: "/master/banner-config", label: "Banner Config", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/master/banner-config", label: "Banner", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
 
     ],
 
@@ -243,8 +243,8 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       }
     : pathname === "/master/banner-config"
     ? {
-        title: "Banner Config",
-        breadcrumb: ["Master", "Banner Config"],
+        title: "Banner",
+        breadcrumb: ["Master", "Banner"],
       }
     : pathname === "/users"
     ? {
@@ -496,7 +496,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                             ? "/master/welcome-point"
 
-                            : item === "Banner Config"
+                            : item === "Banner"
 
                             ? "/master/banner-config"
 
@@ -606,7 +606,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 bg-gray-50/50 min-w-0">
 
-          <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+          <div className="container mx-auto max-w-7xl pt-2 px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
 
             {children}
 

@@ -67,6 +67,7 @@ export async function PUT(request: Request) {
         active_from: active_from ? active_from.toString() : null,
         active_to: active_to ? active_to.toString() : null,
         updated_by: updated_by,
+        updated_at: new Date(),
       },
     });
 

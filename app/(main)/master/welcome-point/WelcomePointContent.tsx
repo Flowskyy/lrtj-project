@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
-import { Pencil, Star, Clock, Calendar, User } from "lucide-react";
+import { Pencil, Star, Clock, Calendar, User, Activity } from "lucide-react";
 
 interface WelcomePoint {
   id: number;
@@ -29,6 +29,14 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Countdown state
+  const [countdown, setCountdown] = useState<string>("");
+  const [isActive, setIsActive] = useState(false);
+  const [isStartingSoon, setIsStartingSoon] = useState(false);
+
+  // Live WIB clock state
+  const [currentTime, setCurrentTime] = useState<string>("");
 
   // Form states
   const [timeRangeOption, setTimeRangeOption] = useState<"default" | "custom">("default");
@@ -62,6 +70,93 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     fetchWelcomePoint();
   }, []);
 
+  // Live WIB clock
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+          timeZone: "Asia/Jakarta",
+        })
+      );
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Countdown logic
+  useEffect(() => {
+    if (!welcomePoint || !welcomePoint.active_from || !welcomePoint.active_to) {
+      setCountdown("");
+      setIsActive(false);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = new Date();
+      // Use raw UTC dates for comparison - JS Date handles timezone internally
+      const from = new Date(welcomePoint.active_from!);
+      const to = new Date(welcomePoint.active_to!);
+
+      // Check if currently within active window
+      const currentlyActive = now >= from && now <= to;
+      const currentlyStartingSoon = now < from;
+      setIsActive(currentlyActive);
+      setIsStartingSoon(currentlyStartingSoon);
+
+      let targetDate: Date;
+      let label: string;
+
+      if (now < from) {
+        targetDate = from;
+        label = "Starts in";
+      } else if (now >= from && now <= to) {
+        targetDate = to;
+        label = "Ends in";
+      } else {
+        setCountdown("Expired");
+        setIsActive(false);
+        setIsStartingSoon(false);
+        return;
+      }
+
+      const diff = targetDate.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setCountdown(label === "Starts in" ? "Starting now" : "Ended");
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      let timeString = "";
+      if (days > 0) timeString += `${days}d `;
+      if (hours > 0 || days > 0) timeString += `${hours}h `;
+      if (minutes > 0 || hours > 0 || days > 0) timeString += `${minutes}m `;
+      timeString += `${seconds}s`;
+
+      setCountdown(`${label}: ${timeString.trim()}`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [welcomePoint]);
+
   const handleEdit = async () => {
     if (!point || point < 0) {
       toast.error("Point value must be a positive number");
@@ -71,6 +166,10 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     if (timeRangeOption === "custom") {
       if (!activeFrom) {
         toast.error("Active From is required for custom time range");
+        return;
+      }
+      if (!activeTo) {
+        toast.error("Active To is required for custom time range");
         return;
       }
     }
@@ -117,6 +216,14 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     }
   };
 
+  // Helper to convert UTC string to WIB Date for comparison
+  const toWIBDate = (dateString: string | null): Date => {
+    if (!dateString) return new Date();
+    const utcDate = new Date(dateString);
+    // Convert to WIB by adding 7 hours (UTC+7)
+    return new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleString("en-US", {
@@ -125,17 +232,18 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
       timeZone: "Asia/Jakarta",
     });
   };
 
   return (
-    <div className="flex flex-col space-y-3 animate-fade-in">
+    <div className="flex flex-col space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Welcome Point</h1>
-          <p className="text-xs text-gray-500 mt-0">Manage welcome point configuration</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome Point</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage welcome point configuration</p>
         </div>
         <Button
           onClick={openEditDialog}
@@ -150,44 +258,91 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
       {/* Premium Single-Record Display */}
       <div>
         {loading ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
-            <div className="space-y-2">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full" />
               <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-14 w-full" />
             </div>
           </div>
         ) : welcomePoint ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
             {/* Hero Section - Large Point Display */}
-            <div className="bg-gradient-to-br from-gray-50 to-white p-4 border-b border-gray-100 flex-shrink-0">
-              <div className="max-w-2xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-8 w-8 rounded-xl bg-[#E5262C]/10 flex items-center justify-center">
-                    <Star className="h-5 w-5 text-[#E5262C]" />
+            <div className="bg-gradient-to-br from-gray-50 to-white p-6 border-b border-gray-100 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+                <div className="max-w-2xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-xl bg-[#E5262C]/10 flex items-center justify-center">
+                      <Star className="h-6 w-6 text-[#E5262C]" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Current Point Value</span>
                   </div>
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Current Point Value</span>
+                  <div className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight mb-1">
+                    {welcomePoint.point}
+                  </div>
+                  <p className="text-gray-500 text-sm">Points awarded to new members</p>
                 </div>
-                <div className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight mb-0">
-                  {welcomePoint.point}
+                <div className="flex-shrink-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Current Time (WIB)</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-700">{currentTime}</p>
                 </div>
-                <p className="text-gray-500 text-xs">Points awarded to new members</p>
               </div>
             </div>
 
             {/* Active Window Section */}
-            <div className="p-4 border-b border-gray-100 flex-shrink-0">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-6 w-6 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Clock className="h-4 w-4 text-blue-600" />
+            <div
+              className={`p-6 border-b border-gray-100 flex-shrink-0 transition-all duration-300 ${
+                isActive ? 'bg-red-50/50 border-l-4 border-l-[#E5262C]' : ''
+              } ${
+                isStartingSoon ? 'bg-amber-50/50 border-l-4 border-l-amber-500' : ''
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${
+                  isActive ? 'bg-[#E5262C]/10' : isStartingSoon ? 'bg-amber-500/10' : 'bg-blue-50'
+                }`}>
+                  <Clock className={`h-4 w-4 ${isActive ? 'text-[#E5262C]' : isStartingSoon ? 'text-amber-600' : 'text-blue-600'}`} />
                 </div>
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Time Window</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Active Time Window</span>
+                  {isActive && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-[#E5262C] animate-pulse" />
+                      <span className="text-xs font-semibold text-[#E5262C] uppercase tracking-wider">Live</span>
+                    </div>
+                  )}
+                  {isStartingSoon && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Starting Soon</span>
+                    </div>
+                  )}
+                </div>
               </div>
               {welcomePoint.active_from || welcomePoint.active_to ? (
-                <div className="bg-gray-50 rounded-lg p-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className={`rounded-lg p-4 transition-all duration-300 ${
+                  isActive ? 'bg-white border border-[#E5262C]/20 shadow-sm' : isStartingSoon ? 'bg-white border border-amber-500/20 shadow-sm' : 'bg-gray-50'
+                }`}>
+                  {/* Countdown Display */}
+                  {countdown && (
+                    <div className={`mb-3 pb-3 border-b ${
+                      isActive ? 'border-[#E5262C]/10' : isStartingSoon ? 'border-amber-500/10' : 'border-gray-200'
+                    }`}>
+                      <div className={`flex items-center gap-2 ${
+                        isActive ? 'text-[#E5262C]' : isStartingSoon ? 'text-amber-600' : 'text-gray-700'
+                      }`}>
+                        <Activity className={`h-4 w-4 ${isActive ? 'animate-pulse' : isStartingSoon ? 'animate-pulse' : ''}`} />
+                        <span className="font-semibold text-sm">{countdown}</span>
+                      </div>
+                    </div>
+                  )}
+                  {/* Time Range Display */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">From</p>
-                      <p className="text-gray-900 font-medium text-xs">{formatDate(welcomePoint.active_from)}</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">From</p>
+                      <p className="text-gray-900 font-medium text-sm">{formatDate(welcomePoint.active_from)}</p>
                     </div>
                     <div className="hidden sm:block text-gray-300">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,43 +350,39 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">To</p>
-                      <p className="text-gray-900 font-medium text-xs">{formatDate(welcomePoint.active_to)}</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">To</p>
+                      <p className="text-gray-900 font-medium text-sm">{formatDate(welcomePoint.active_to)}</p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-green-700 font-semibold text-xs">Always Active</span>
+                  <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
+                  <span className="text-green-700 font-semibold text-sm">Always Active</span>
                 </div>
               )}
             </div>
 
             {/* Metadata Footer */}
-            <div className="bg-gray-50/50 p-4 flex-shrink-0">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-gray-50/50 p-6 flex-shrink-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">Created At</p>
-                  <p className="text-xs text-gray-700">{formatDate(welcomePoint.created_at)}</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated At</p>
+                  <p className="text-sm text-gray-700">{formatDate(welcomePoint.updated_at)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">Updated At</p>
-                  <p className="text-xs text-gray-700">{formatDate(welcomePoint.updated_at)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0">Updated By</p>
-                  <p className="text-xs text-gray-700">{welcomePoint.updated_by || "-"}</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated By</p>
+                  <p className="text-sm text-gray-700">{welcomePoint.updated_by || "-"}</p>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
-            <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-2">
-              <Star className="h-5 w-5 text-gray-300" />
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+            <div className="h-12 w-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3">
+              <Star className="h-6 w-6 text-gray-300" />
             </div>
-            <p className="text-gray-500 text-xs">No welcome point configuration found</p>
+            <p className="text-gray-500 text-sm">No welcome point configuration found</p>
           </div>
         )}
       </div>
@@ -303,7 +454,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                 type="number"
                 min="0"
                 value={point}
-                onChange={(e) => setPoint(parseInt(e.target.value) || 0)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPoint(parseInt(e.target.value) || 0)}
                 placeholder="Enter point value"
                 className="w-full text-base font-semibold"
               />
