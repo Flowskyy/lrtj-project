@@ -69,21 +69,45 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
+
+    if (force) {
+      // Force delete with atomic transaction
+      await prisma.$transaction(async (tx) => {
+        // First delete all merchandise items referencing this category
+        await tx.merchandise.deleteMany({
+          where: { category_id: parseInt(id) },
+        });
+        // Then delete the category itself
+        await tx.merchandise_category.delete({
+          where: { id: parseInt(id) },
+        });
+      });
+      return NextResponse.json({ success: true, forceDeleted: true });
+    }
+
+    // Normal delete attempt
     try {
       await prisma.merchandise_category.delete({
         where: { id: parseInt(id) },
       });
       return NextResponse.json({ success: true });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2003') {
-          return NextResponse.json(
-            { 
-              error: 'This category is still used by existing merchandise items and cannot be deleted. Remove or reassign those items first.' 
-            },
-            { status: 400 }
-          );
-        }
+    } catch (error: any) {
+      if (error.code === 'P2003') {
+        // Query affected merchandise items
+        const affectedItems = await prisma.merchandise.findMany({
+          where: { category_id: parseInt(id) },
+          select: { id: true, name: true },
+        });
+
+        return NextResponse.json(
+          {
+            error: 'This category is still used by existing merchandise items and cannot be deleted. Remove or reassign those items first.',
+            affectedItems: affectedItems.map(item => ({ id: item.id, name: item.name })),
+          },
+          { status: 400 }
+        );
       }
       throw error;
     }

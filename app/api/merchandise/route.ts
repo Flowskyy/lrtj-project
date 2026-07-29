@@ -47,6 +47,9 @@ export async function GET(request: NextRequest) {
     prisma.merchandise.findMany({
       where,
       orderBy,
+      include: {
+        category: true,
+      },
     }),
     prisma.merchandise.count(),
     prisma.merchandise.count({ where: { status: 1 } }),

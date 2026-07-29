@@ -39,6 +39,10 @@ interface MerchandiseItem {
   updatedAt: string | null;
   status: number;
   category_id: number | null;
+  merchandise_category?: {
+    id: number;
+    category_name: string | null;
+  } | null;
 }
 
 interface Category {
@@ -74,6 +78,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [visibleColumns, setVisibleColumns] = useState({
     image: true,
     name: true,
+    category: true,
     points: true,
     status: true,
     editedBy: true,
@@ -368,6 +373,12 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       <span>Name</span>
                     </div>
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: !prev.category }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.category && <Check className="h-4 w-4" />}
+                      <span>Category</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, points: !prev.points }))}>
                     <div className="flex items-center gap-2">
                       {visibleColumns.points && <Check className="h-4 w-4" />}
@@ -415,6 +426,11 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       </div>
                     </TableHead>
                   )}
+                  {visibleColumns.category && (
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] max-w-[140px]">
+                      Category
+                    </TableHead>
+                  )}
                   {visibleColumns.points && (
                     <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-20">
                       <div className="flex items-center gap-1">
@@ -446,6 +462,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     <TableRow>
                       {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                       {visibleColumns.editedBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -454,6 +471,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     <TableRow>
                       {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                       {visibleColumns.editedBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -462,6 +480,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     <TableRow>
                       {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                       {visibleColumns.editedBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
@@ -491,6 +510,11 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                           <span className="block truncate" title={item.name}>
                             {item.name}
                           </span>
+                        </TableCell>
+                      )}
+                      {visibleColumns.category && (
+                        <TableCell className="px-3 py-1.5 text-xs text-gray-600 truncate max-w-[140px]" title={item.category?.category_name || "Uncategorized"}>
+                          {item.category?.category_name || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.points && (

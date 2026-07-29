@@ -1112,6 +1112,17 @@ model welcome_point {
   active_to   DateTime? @db.DateTime(0)
 }
 
+model popups {
+  id          Int       @id @default(autoincrement())
+  description String?   @db.Text
+  image_url   String    @db.Text
+  sequence    Int
+  created_at  DateTime? @db.DateTime(0)
+  updated_at  DateTime? @db.DateTime(0)
+  created_by  String?   @db.VarChar(255)
+  updated_by  String?   @db.VarChar(255)
+}
+
 enum bayarind_binding_states_status {
   pending
   completed

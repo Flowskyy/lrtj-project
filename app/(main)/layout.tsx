@@ -167,6 +167,8 @@ const NAV_ITEMS = [
 
       { href: "/master/banner-config", label: "Banner", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
 
+      { href: "/master/popups", label: "Popups", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
+
     ],
 
   },
@@ -245,6 +247,21 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Banner",
         breadcrumb: ["Master", "Banner"],
+      }
+    : pathname === "/master/popups"
+    ? {
+        title: "Popups",
+        breadcrumb: ["Master", "Popups"],
+      }
+    : pathname === "/master/popups/add"
+    ? {
+        title: "Add Popup",
+        breadcrumb: ["Master", "Popups", "Add Popup"],
+      }
+    : pathname.startsWith("/master/popups/edit/")
+    ? {
+        title: "Edit Popup",
+        breadcrumb: ["Master", "Popups", "Edit Popup"],
       }
     : pathname === "/users"
     ? {

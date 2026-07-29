@@ -32,7 +32,10 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cascadeDeleteDialogOpen, setCascadeDeleteDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [affectedItems, setAffectedItems] = useState<{ id: number; name: string }[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -131,6 +134,16 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
         setDeleteDialogOpen(false);
         setSelectedCategory(null);
         fetchCategories();
+      } else if (res.status === 400) {
+        const error = await res.json();
+        if (error.affectedItems && error.affectedItems.length > 0) {
+          // Show cascade delete confirmation dialog
+          setAffectedItems(error.affectedItems);
+          setDeleteDialogOpen(false);
+          setCascadeDeleteDialogOpen(true);
+        } else {
+          toast.error(error.error || "Failed to delete category");
+        }
       } else {
         const error = await res.json();
         toast.error(error.error || "Failed to delete category");
@@ -138,6 +151,34 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     } catch (err) {
       console.error("Failed to delete category", err);
       toast.error("Failed to delete category");
+    }
+  };
+
+  const handleForceDelete = async () => {
+    if (!selectedCategory) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/merchandise-category/${selectedCategory.id}?force=true`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Category and ${affectedItems.length} merchandise item(s) deleted successfully`);
+        setCascadeDeleteDialogOpen(false);
+        setSelectedCategory(null);
+        setAffectedItems([]);
+        fetchCategories();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to delete category");
+      }
+    } catch (err) {
+      console.error("Failed to force delete category", err);
+      toast.error("Failed to delete category");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -417,6 +458,44 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cascade Delete Confirmation Dialog */}
+      <AlertDialog open={cascadeDeleteDialogOpen} onOpenChange={setCascadeDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Category in Use - Force Delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              This category is used by the following merchandise item(s):
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 px-4">
+            <ul className="list-disc list-inside space-y-1 text-sm font-medium">
+              {affectedItems.map((item) => (
+                <li key={item.id}>{item.name}</li>
+              ))}
+            </ul>
+            <p className="text-red-600 font-semibold pt-2 text-sm">
+              Deleting this category will also permanently delete the following merchandise item(s): {affectedItems.map(i => i.name).join(", ")}. This action cannot be undone.
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setCascadeDeleteDialogOpen(false);
+              setSelectedCategory(null);
+              setAffectedItems([]);
+            }}>
+              Never Mind
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleForceDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Deleting..." : "Just Do It"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
