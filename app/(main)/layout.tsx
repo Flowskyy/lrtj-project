@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -165,9 +165,11 @@ const NAV_ITEMS = [
 
       { href: "/master/welcome-point", label: "Welcome Point", icon: <Star className="h-4 w-4" strokeWidth={2} /> },
 
-      { href: "/master/banner-config", label: "Banner", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/master/banner", label: "Banner", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
 
       { href: "/master/popups", label: "Popups", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
+
+      { href: "/master/membership", label: "Membership", icon: <Award className="h-4 w-4" strokeWidth={2} /> },
 
     ],
 
@@ -243,10 +245,20 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Welcome Point",
         breadcrumb: ["Master", "Welcome Point"],
       }
-    : pathname === "/master/banner-config"
+    : pathname === "/master/banner"
     ? {
         title: "Banner",
         breadcrumb: ["Master", "Banner"],
+      }
+    : pathname === "/master/banner/add"
+    ? {
+        title: "Add Banner",
+        breadcrumb: ["Master", "Banner", "Add Banner"],
+      }
+    : pathname.startsWith("/master/banner/edit/")
+    ? {
+        title: "Edit Banner",
+        breadcrumb: ["Master", "Banner", "Edit Banner"],
       }
     : pathname === "/master/popups"
     ? {
@@ -263,10 +275,20 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Edit Popup",
         breadcrumb: ["Master", "Popups", "Edit Popup"],
       }
+    : pathname === "/master/membership"
+    ? {
+        title: "Membership",
+        breadcrumb: ["Master", "Membership"],
+      }
     : pathname === "/users"
     ? {
         title: "Users",
         breadcrumb: ["Users"],
+      }
+    : pathname.startsWith("/users/")
+    ? {
+        title: "View User",
+        breadcrumb: ["Users", "View User"],
       }
     : pathname === "/news"
     ? {
@@ -360,7 +382,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                 />
 
-                {item.label === "News" && (
+                {item.label === "Daily Benefit" && (
                   <div className="px-3 pt-1 pb-2">
   <div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
 </div>
@@ -469,6 +491,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                             ? "/users"
 
+                            : item === "View User"
+
+                            ? "/users"
+
                             : item === "News"
 
                             ? "/news"
@@ -515,7 +541,15 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                             : item === "Banner"
 
-                            ? "/master/banner-config"
+                            ? "/master/banner"
+
+                            : item === "Add Banner"
+
+                            ? "/master/banner/add"
+
+                            : item === "Edit Banner"
+
+                            ? "/master/banner"
 
                             : "/redeem-merchandise"
 

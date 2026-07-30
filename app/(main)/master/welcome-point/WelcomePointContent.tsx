@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +14,7 @@ import { Pencil, Star, Clock, Calendar, User, Activity } from "lucide-react";
 interface WelcomePoint {
   id: number;
   point: number;
+  default_point: number;
   created_at: string;
   updated_at: string;
   updated_by: string;
@@ -40,6 +42,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
 
   // Form states
   const [timeRangeOption, setTimeRangeOption] = useState<"default" | "custom">("default");
+  const [pointMode, setPointMode] = useState<"custom" | "default">("custom");
   const [point, setPoint] = useState<number>(0);
   const [activeFrom, setActiveFrom] = useState<string>("");
   const [activeTo, setActiveTo] = useState<string>("");
@@ -55,6 +58,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
         setActiveFrom(data.active_from || "");
         setActiveTo(data.active_to || "");
         setTimeRangeOption(data.active_from || data.active_to ? "custom" : "default");
+        setPointMode(data.point === data.default_point ? "default" : "custom");
       } else {
         toast.error("Failed to fetch welcome point configuration");
       }
@@ -104,7 +108,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
 
     const updateCountdown = () => {
       const now = new Date();
-      // Use raw UTC dates for comparison - JS Date handles timezone internally
+      // DB values are stored as UTC, parse them for comparison
       const from = new Date(welcomePoint.active_from!);
       const to = new Date(welcomePoint.active_to!);
 
@@ -177,7 +181,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     setIsSubmitting(true);
 
     const payload = {
-      point: point,
+      point: pointMode === "default" ? 100 : point,
       active_from: timeRangeOption === "default" ? null : activeFrom,
       active_to: timeRangeOption === "default" ? null : activeTo,
       updated_by: username,
@@ -206,26 +210,21 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     }
   };
 
+
   const openEditDialog = () => {
     if (welcomePoint) {
       setPoint(welcomePoint.point);
       setActiveFrom(welcomePoint.active_from || "");
       setActiveTo(welcomePoint.active_to || "");
       setTimeRangeOption(welcomePoint.active_from || welcomePoint.active_to ? "custom" : "default");
+      setPointMode(welcomePoint.point === welcomePoint.default_point ? "default" : "custom");
       setEditDialogOpen(true);
     }
   };
 
-  // Helper to convert UTC string to WIB Date for comparison
-  const toWIBDate = (dateString: string | null): Date => {
-    if (!dateString) return new Date();
-    const utcDate = new Date(dateString);
-    // Convert to WIB by adding 7 hours (UTC+7)
-    return new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
-  };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
+    // DB value is UTC, convert to WIB for display
     return new Date(dateString).toLocaleString("en-US", {
       year: "numeric",
       month: "short",
@@ -447,18 +446,55 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
               </div>
             )}
 
-            {/* Point Value */}
+            {/* Point Mode Selection */}
             <div>
-              <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Point Value</label>
-              <Input
-                type="number"
-                min="0"
-                value={point}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPoint(parseInt(e.target.value) || 0)}
-                placeholder="Enter point value"
-                className="w-full text-base font-semibold"
-              />
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">Point Value</label>
+              <div className="space-y-1.5">
+                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="pointMode"
+                    value="custom"
+                    checked={pointMode === "custom"}
+                    onChange={(e) => setPointMode(e.target.value as "custom" | "default")}
+                    className="w-4 h-4 text-[#E5262C] border-gray-300 focus:ring-[#E5262C]"
+                  />
+                  <span className="text-sm text-gray-700">Custom Points</span>
+                </label>
+                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="pointMode"
+                    value="default"
+                    checked={pointMode === "default"}
+                    onChange={(e) => setPointMode(e.target.value as "custom" | "default")}
+                    className="w-4 h-4 text-[#E5262C] border-gray-300 focus:ring-[#E5262C]"
+                  />
+                  <span className="text-sm text-gray-700">Default Point (100)</span>
+                </label>
+              </div>
             </div>
+
+            {/* Point Value Input */}
+            {pointMode === "custom" && (
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Custom Point Value</label>
+                <NumberInput
+                  min="0"
+                  value={point}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPoint(parseInt(e.target.value) || 0)}
+                  placeholder="Enter custom point value"
+                  className="w-full text-base font-semibold"
+                />
+              </div>
+            )}
+            {pointMode === "default" && (
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-sm font-semibold text-gray-700 mb-1">Default Point Value</p>
+                <p className="text-3xl font-bold text-[#E5262C]">100</p>
+                <p className="text-xs text-gray-500 mt-1">Fixed default value - not editable</p>
+              </div>
+            )}
           </div>
           <DialogFooter className="pt-3 flex-shrink-0">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSubmitting} className="rounded-xl">

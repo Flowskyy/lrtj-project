@@ -21,17 +21,21 @@ interface TableFilterSortMenuProps {
   onVerifiedFilterChange?: (value: string) => void;
   activationSlcFilter?: string;
   onActivationSlcFilterChange?: (value: string) => void;
+  tierFilter?: string;
+  onTierFilterChange?: (value: string) => void;
   typeFilter?: string;
   onTypeFilterChange?: (value: string) => void;
   statusOptions?: { value: string; label: string }[];
   genderOptions?: { value: string; label: string }[];
   verifiedOptions?: { value: string; label: string }[];
   activationSlcOptions?: { value: string; label: string }[];
+  tierOptions?: { value: string; label: string }[];
   typeOptions?: { value: string; label: string }[];
   showTypeFilter?: boolean;
   showGenderFilter?: boolean;
   showVerifiedFilter?: boolean;
   showActivationSlcFilter?: boolean;
+  showTierFilter?: boolean;
   showStatusFilter?: boolean;
   
   // Sort props
@@ -62,6 +66,8 @@ export default function TableFilterSortMenu({
   onVerifiedFilterChange,
   activationSlcFilter = "all",
   onActivationSlcFilterChange,
+  tierFilter = "all",
+  onTierFilterChange,
   typeFilter = "all",
   onTypeFilterChange,
   sortBy,
@@ -88,6 +94,12 @@ export default function TableFilterSortMenu({
     { value: "1", label: "Active SLC" },
     { value: "0", label: "Inactive SLC" },
   ],
+  tierOptions = [
+    { value: "all", label: "All" },
+    { value: "1", label: "Silver" },
+    { value: "2", label: "Gold" },
+    { value: "3", label: "Platinum" },
+  ],
   typeOptions = [
     { value: "all", label: "All" },
     { value: "news", label: "News" },
@@ -102,6 +114,7 @@ export default function TableFilterSortMenu({
   showGenderFilter = false,
   showVerifiedFilter = false,
   showActivationSlcFilter = false,
+  showTierFilter = false,
   showStatusFilter = true,
   dateFrom = "",
   onDateFromChange,
@@ -124,15 +137,15 @@ export default function TableFilterSortMenu({
             </span>
           )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent align="start" className="w-72 rounded-xl shadow-lg border-gray-200">
           {showStatusFilter && (
             <>
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">Status</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Select value={statusFilter} onValueChange={(v) => onStatusFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-8">
+                  <SelectTrigger className="h-9 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -150,12 +163,12 @@ export default function TableFilterSortMenu({
           {showGenderFilter && onGenderFilterChange && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">Gender</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Gender</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Select value={genderFilter} onValueChange={(v) => onGenderFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-8">
+                  <SelectTrigger className="h-9 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -173,12 +186,12 @@ export default function TableFilterSortMenu({
           {showVerifiedFilter && onVerifiedFilterChange && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">Verified</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Verified</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Select value={verifiedFilter} onValueChange={(v) => onVerifiedFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-8">
+                  <SelectTrigger className="h-9 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -196,12 +209,12 @@ export default function TableFilterSortMenu({
           {showActivationSlcFilter && onActivationSlcFilterChange && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">Activation SLC</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Activation SLC</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Select value={activationSlcFilter} onValueChange={(v) => onActivationSlcFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-8">
+                  <SelectTrigger className="h-9 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -215,16 +228,39 @@ export default function TableFilterSortMenu({
               </div>
             </>
           )}
-          
+
+          {showTierFilter && onTierFilterChange && (
+            <>
+              <DropdownMenuSeparator />
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Tier</label>
+              </div>
+              <div className="px-3 pb-3">
+                <Select value={tierFilter} onValueChange={(v) => onTierFilterChange(v || 'all')}>
+                  <SelectTrigger className="h-9 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tierOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
           {showTypeFilter && onTypeFilterChange && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">Type</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Type</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Select value={typeFilter} onValueChange={(v) => onTypeFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-8">
+                  <SelectTrigger className="h-9 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -242,26 +278,26 @@ export default function TableFilterSortMenu({
           {showDateRange && onDateFromChange && onDateToChange && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">From Date</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">From Date</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => onDateFromChange(e.target.value)}
-                  className="h-8"
+                  className="h-9 rounded-lg"
                 />
               </div>
-              <div className="px-2 py-1.5">
-                <label className="text-xs font-semibold text-gray-700">To Date</label>
+              <div className="px-3 py-2">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">To Date</label>
               </div>
-              <div className="px-2 pb-2">
+              <div className="px-3 pb-3">
                 <Input
                   type="date"
                   value={dateTo}
                   onChange={(e) => onDateToChange(e.target.value)}
-                  className="h-8"
+                  className="h-9 rounded-lg"
                 />
               </div>
             </>
@@ -270,7 +306,7 @@ export default function TableFilterSortMenu({
           {onResetFilters && activeFilterCount > 0 && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onResetFilters} className="text-red-600">
+              <DropdownMenuItem onClick={onResetFilters} className="text-red-600 font-medium">
                 Reset Filters
               </DropdownMenuItem>
             </>
@@ -284,13 +320,13 @@ export default function TableFilterSortMenu({
           <ArrowUpDown className="h-4 w-4 mr-2" />
           Sort
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          <div className="px-2 py-1.5">
-            <label className="text-xs font-semibold text-gray-700">Sort By</label>
+        <DropdownMenuContent align="start" className="w-72 rounded-xl shadow-lg border-gray-200">
+          <div className="px-3 py-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sort By</label>
           </div>
-          <div className="px-2 pb-2">
+          <div className="px-3 pb-3">
             <Select value={sortBy} onValueChange={(v) => onSortByChange(v || 'id')}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-9 rounded-lg">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -303,12 +339,12 @@ export default function TableFilterSortMenu({
             </Select>
           </div>
           <DropdownMenuSeparator />
-          <div className="px-2 py-1.5">
-            <label className="text-xs font-semibold text-gray-700">Order</label>
+          <div className="px-3 py-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Order</label>
           </div>
-          <div className="px-2 pb-2">
+          <div className="px-3 pb-3">
             <Select value={sortOrder} onValueChange={(v) => onSortOrderChange(v || 'asc')}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-9 rounded-lg">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

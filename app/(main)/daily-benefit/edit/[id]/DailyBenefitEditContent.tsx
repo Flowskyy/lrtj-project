@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
 import RichTextContentField from "@/components/RichTextContentField";
@@ -164,9 +165,8 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Points <span className="text-red-500">*</span>
                 </label>
-                <Input
+                <NumberInput
                   required
-                  type="number"
                   min={0}
                   value={formPoints}
                   onChange={(e) => setFormPoints(parseInt(e.target.value) || 0)}

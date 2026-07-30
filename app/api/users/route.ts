@@ -33,6 +33,11 @@ export async function GET(request: NextRequest) {
     where.activation_slc = parseInt(activationSlc);
   }
 
+  const tier = searchParams.get('tier');
+  if (tier && tier !== 'all') {
+    where.member_level_id = parseInt(tier);
+  }
+
   if (dateFrom || dateTo) {
     where.created_at = {};
     if (dateFrom) {
@@ -89,8 +94,24 @@ export async function GET(request: NextRequest) {
     prisma.users.count({ where: { status: 1, activation_slc: 0 } }),
   ]);
 
+  // Manual join for membership only (no FK constraint per business decision)
+  const usersWithMembership = await Promise.all(
+    users.map(async (user) => {
+      let membership = null;
+      if (user.member_level_id) {
+        membership = await prisma.membership.findUnique({
+          where: { id: user.member_level_id },
+        });
+      }
+      return {
+        ...user,
+        membership_name: membership?.name || null,
+      };
+    })
+  );
+
   return NextResponse.json({
-    data: users,
+    data: usersWithMembership,
     meta: {
       total,
       activeSlc: activeSlcCount,

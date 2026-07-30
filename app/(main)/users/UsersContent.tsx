@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +14,7 @@ import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ExportDialog from "@/components/ExportDialog";
 import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
 import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter, Download, CheckSquare, Square } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +47,7 @@ interface MemberItem {
   activation_lrtjpay: number | null;
   activation_lrtjpay_at: string | null;
   member_level_id: number | null;
+  membership_name: string | null;
   push_notification: number;
   email_notification: number;
   new_content_notification: number;
@@ -60,6 +61,7 @@ interface UsersContentProps {
 }
 
 export default function UsersContent({ username }: UsersContentProps) {
+  const router = useRouter();
   const [items, setItems] = useState<MemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -70,6 +72,7 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   // Filter and Sort states
   const [activationSlcFilter, setActivationSlcFilter] = useState<string>("all");
+  const [tierFilter, setTierFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -77,7 +80,6 @@ export default function UsersContent({ username }: UsersContentProps) {
   const [dateTo, setDateTo] = useState<string>("");
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<MemberItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<MemberItem | null>(null);
   const [redeemCount, setRedeemCount] = useState(0);
 
@@ -87,6 +89,7 @@ export default function UsersContent({ username }: UsersContentProps) {
     select: true,
     nama: true,
     email: true,
+    tier: true,
     created_at: true,
     actions: true,
   });
@@ -102,6 +105,7 @@ export default function UsersContent({ username }: UsersContentProps) {
     try {
       const params = new URLSearchParams();
       if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
+      if (tierFilter !== "all") params.set("tier", tierFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
@@ -128,17 +132,18 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [activationSlcFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
 
-  const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const handleResetFilters = () => {
     setActivationSlcFilter("all");
+    setTierFilter("all");
     setDateFrom("");
     setDateTo("");
     setSortBy("created_at");
@@ -219,6 +224,7 @@ export default function UsersContent({ username }: UsersContentProps) {
         // Fetch all filtered data
         const params = new URLSearchParams();
         if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
+        if (tierFilter !== "all") params.set("tier", tierFilter);
         if (sortBy) params.set("sortBy", sortBy);
         if (sortOrder) params.set("order", sortOrder);
         if (searchQuery.trim()) params.set("search", searchQuery.trim());
@@ -260,6 +266,7 @@ export default function UsersContent({ username }: UsersContentProps) {
         columns = [];
         if (visibleColumns.nama) columns.push({ key: "name", label: "Name" });
         if (visibleColumns.email) columns.push({ key: "email", label: "Email" });
+        if (visibleColumns.tier) columns.push({ key: "membership_name", label: "Tier" });
         if (visibleColumns.created_at) columns.push({ key: "created_at", label: "Created At" });
       }
 
@@ -278,8 +285,30 @@ export default function UsersContent({ username }: UsersContentProps) {
     const fields: string[] = [];
     if (visibleColumns.nama) fields.push("Name");
     if (visibleColumns.email) fields.push("Email");
+    if (visibleColumns.tier) fields.push("Tier");
     if (visibleColumns.created_at) fields.push("Created At");
     return fields;
+  };
+
+  // Helper function to get badge color based on membership name
+  const getTierBadgeColor = (membershipName: string | null) => {
+    if (!membershipName) {
+      return "bg-gray-100 text-gray-600";
+    }
+    const nameLower = membershipName.toLowerCase();
+    if (nameLower.includes("silver")) {
+      return "bg-gray-100 text-gray-700 border border-gray-300";
+    } else if (nameLower.includes("gold")) {
+      return "bg-amber-50 text-amber-700 border border-amber-300";
+    } else if (nameLower.includes("platinum")) {
+      return "bg-slate-100 text-slate-700 border border-slate-300";
+    }
+    return "bg-gray-100 text-gray-600";
+  };
+
+  const getTierDisplay = (membershipName: string | null) => {
+    if (!membershipName) return "-";
+    return membershipName;
   };
 
 
@@ -405,12 +434,15 @@ export default function UsersContent({ username }: UsersContentProps) {
                 onStatusFilterChange={() => {}}
                 activationSlcFilter={activationSlcFilter}
                 onActivationSlcFilterChange={setActivationSlcFilter}
+                tierFilter={tierFilter}
+                onTierFilterChange={setTierFilter}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
                 showStatusFilter={false}
                 showActivationSlcFilter={true}
+                showTierFilter={true}
                 sortByOptions={[
                   { value: "name", label: "Name" },
                   { value: "created_at", label: "Created At" },
@@ -438,6 +470,12 @@ export default function UsersContent({ username }: UsersContentProps) {
                     <div className="flex items-center gap-2">
                       {visibleColumns.email && <Check className="h-4 w-4" />}
                       <span>Email</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, tier: !prev.tier }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.tier && <Check className="h-4 w-4" />}
+                      <span>Tier</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: !prev.created_at }))}>
@@ -486,6 +524,11 @@ export default function UsersContent({ username }: UsersContentProps) {
                       Email
                     </TableHead>
                   )}
+                  {visibleColumns.tier && (
+                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
+                      Tier
+                    </TableHead>
+                  )}
                   {visibleColumns.created_at && (
                     <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
                       Created At
@@ -505,6 +548,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
+                      {visibleColumns.tier && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -512,6 +556,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
+                      {visibleColumns.tier && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -519,6 +564,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                       {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
                       {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
+                      {visibleColumns.tier && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
@@ -552,6 +598,13 @@ export default function UsersContent({ username }: UsersContentProps) {
                           {item.email}
                         </TableCell>
                       )}
+                      {visibleColumns.tier && (
+                        <TableCell className="px-2 py-1">
+                          <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getTierBadgeColor(item.membership_name)}`}>
+                            {getTierDisplay(item.membership_name)}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-2 py-1 text-xs text-gray-600">
                           {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
@@ -564,9 +617,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                               <MoreVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                setViewItem(item);
-                              }} className="text-xs h-8">
+                              <DropdownMenuItem onClick={() => router.push(`/users/${item.id}`)} className="text-xs h-8">
                                 <Eye className="h-3.5 w-3.5 mr-2" />
                                 View
                               </DropdownMenuItem>
@@ -628,13 +679,20 @@ export default function UsersContent({ username }: UsersContentProps) {
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-gray-900 truncate">{item.name || "-"}</h3>
                       <p className="text-xs text-gray-600 truncate">{item.email}</p>
+                      {visibleColumns.tier && (
+                        <div className="mt-2">
+                          <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getTierBadgeColor(item.membership_name)}`}>
+                            {getTierDisplay(item.membership_name)}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setViewItem(item)}
+                      onClick={() => router.push(`/users/${item.id}`)}
                       className="flex-1 min-h-[36px] text-xs"
                     >
                       <Eye className="h-3 w-3 mr-1" />
@@ -693,189 +751,6 @@ export default function UsersContent({ username }: UsersContentProps) {
         </CardContent>
       </Card>
 
-
-      {/* View Dialog */}
-      <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="sm:max-w-[600px] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>User Details</DialogTitle>
-          </DialogHeader>
-          {viewItem && (
-            <div className="overflow-y-auto space-y-4 rounded-b-xl">
-                {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">ID</label>
-                    <p className="text-sm text-gray-900">{viewItem.id}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Status</label>
-                    <p className="text-sm text-gray-900">{viewItem.status === 1 ? "True" : "False"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Name</label>
-                    <p className="text-sm text-gray-900">{viewItem.name || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Email</label>
-                    <p className="text-sm text-gray-900 break-all">{viewItem.email}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Phone</label>
-                    <p className="text-sm text-gray-900">{viewItem.no_telepon || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Gender</label>
-                    <p className="text-sm text-gray-900">
-                      {viewItem.jenis_kelamin === "L" ? "Laki-laki" : viewItem.jenis_kelamin === "P" ? "Perempuan" : viewItem.jenis_kelamin || "-"}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-500 mb-1">Address</label>
-                  <p className="text-sm text-gray-900 break-all">{viewItem.alamat || "-"}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">NIK</label>
-                    <p className="text-sm text-gray-900 break-all">{viewItem.nik || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Birthplace</label>
-                    <p className="text-sm text-gray-900">{viewItem.tempat_lahir || "-"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Birthday</label>
-                    <p className="text-sm text-gray-900">{viewItem.birthday ? new Date(viewItem.birthday).toLocaleDateString() : "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Image</label>
-                    <p className="text-sm text-gray-900 break-all">{viewItem.image || "-"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">ECard</label>
-                    <p className="text-sm text-gray-900 break-all">{viewItem.ecard || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">ECard 2</label>
-                    <p className="text-sm text-gray-900 break-all">{viewItem.ecard2 || "-"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Province ID</label>
-                    <p className="text-sm text-gray-900">{viewItem.province_id || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Regency ID</label>
-                    <p className="text-sm text-gray-900">{viewItem.regency_id || "-"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Member Level ID</label>
-                    <p className="text-sm text-gray-900">{viewItem.member_level_id || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Created At</label>
-                    <p className="text-sm text-gray-900">{viewItem.created_at ? new Date(viewItem.created_at).toLocaleDateString() : "-"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Updated At</label>
-                    <p className="text-sm text-gray-900">{viewItem.updated_at ? new Date(viewItem.updated_at).toLocaleDateString() : "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Verified</label>
-                    {viewItem.verified_at ? (
-                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px]">
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">
-                        Not Verified
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Financial Data */}
-                <div className="border-t border-gray-100 pt-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-3">Financial Data</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">LRTJ Saldo</label>
-                      <p className="text-sm text-gray-900">
-                        {viewItem.lrtj_saldo ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parseFloat(viewItem.lrtj_saldo)) : "Rp 0"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">SLC Point</label>
-                      <p className="text-sm text-gray-900">{viewItem.slc_point.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Trip Count</label>
-                      <p className="text-sm text-gray-900">{viewItem.trip_count.toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Activation Status */}
-                <div className="border-t border-gray-100 pt-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-3">Activation Status</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">SLC Activation</label>
-                      <p className="text-sm text-gray-900">{viewItem.activation_slc === 1 ? "True" : "False"}</p>
-                      {viewItem.activation_slc_at && (
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          {new Date(viewItem.activation_slc_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">LRTJPay Activation</label>
-                      <p className="text-sm text-gray-900">{viewItem.activation_lrtjpay === 1 ? "True" : "False"}</p>
-                      {viewItem.activation_lrtjpay_at && (
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          {new Date(viewItem.activation_lrtjpay_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notification Preferences */}
-                <div className="border-t border-gray-100 pt-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-3">Notification Preferences</h3>
-                  <div className="grid grid-cols-3 gap-4 pb-4">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Push Notification</label>
-                      <p className="text-sm text-gray-900">{viewItem.push_notification === 1 ? "True" : "False"}</p>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">Email Notification</label>
-                      <p className="text-sm text-gray-900">{viewItem.email_notification === 1 ? "True" : "False"}</p>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1">New Content Notification</label>
-                      <p className="text-sm text-gray-900">{viewItem.new_content_notification === 1 ? "True" : "False"}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Alert Dialog */}
       <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>

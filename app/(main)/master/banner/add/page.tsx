@@ -35,7 +35,7 @@ export default function AddBannerPage() {
 
       if (res.ok) {
         toast.success("Banner created successfully");
-        router.push("/master/banner-config");
+        router.push("/master/banner");
       } else {
         const error = await res.json();
         toast.error(error.error || "Failed to create banner");
@@ -52,7 +52,7 @@ export default function AddBannerPage() {
     <div className="animate-fade-in pb-24">
       {/* Page Header */}
       <div className="mb-8">
-        <Link href="/master/banner-config" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4 transition-colors">
+        <Link href="/master/banner" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to Banner
         </Link>
@@ -100,7 +100,7 @@ export default function AddBannerPage() {
       {/* Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-50">
         <div className="flex gap-3">
-          <Link href="/master/banner-config" className="flex-1">
+          <Link href="/master/banner" className="flex-1">
             <Button type="button" variant="outline" className="w-full">
               Cancel
             </Button>

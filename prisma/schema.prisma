@@ -147,14 +147,15 @@ model auth_verifications {
 }
 
 model banners {
-  id          Int       @id @default(autoincrement())
-  description String?   @db.Text
-  image_url   String    @db.Text
-  sequence    Int
-  created_at  DateTime? @db.DateTime(0)
-  updated_at  DateTime? @db.DateTime(0)
-  created_by  String?   @db.VarChar(255)
-  updated_by  String?   @db.VarChar(255)
+  id           Int       @id @default(autoincrement())
+  description  String?   @db.Text
+  image_url    String    @db.Text
+  sequence     Int
+  created_at   DateTime? @db.DateTime(0)
+  updated_at   DateTime? @db.DateTime(0)
+  created_by   String?   @db.VarChar(255)
+  updated_by   String?   @db.VarChar(255)
+  redirect_url String?   @db.VarChar(255)
 }
 
 model bayarind_binding_states {
@@ -716,9 +717,10 @@ model personal_access_tokens {
 }
 
 model provinces {
-  id        String      @id @db.Char(2)
+  id        Int         @id @db.UnsignedInt
   name      String      @db.VarChar(255)
   regencies regencies[]
+  users     users[]
 }
 
 model qris_tap_auth {
@@ -830,10 +832,11 @@ model redempoin {
 }
 
 model regencies {
-  id          String    @id @db.Char(4)
-  province_id String    @db.Char(2)
+  id          Int       @id @db.UnsignedInt
+  province_id Int       @db.UnsignedInt
   name        String    @db.VarChar(255)
-  provinces   provinces @relation(fields: [province_id], references: [id], onUpdate: Restrict, map: "regencies_province_id_foreign")
+  provinces   provinces @relation(fields: [province_id], references: [id], onDelete: NoAction, onUpdate: Restrict, map: "regencies_province_id_foreign")
+  users       users[]
 
   @@index([province_id], map: "regencies_province_id_index")
 }
@@ -972,46 +975,48 @@ model trip_history {
 }
 
 model users {
-  id                       Int       @id @default(autoincrement())
-  email                    String    @db.VarChar(100)
-  password                 String?   @db.VarChar(150)
-  created_at               DateTime? @db.DateTime(0)
-  updated_at               DateTime? @db.DateTime(0)
-  no_telepon               String?   @db.VarChar(255)
-  jenis_kelamin            String?   @db.Char(1)
-  nik                      String?   @db.VarChar(20)
-  alamat                   String?   @db.Text
-  tempat_lahir             String?   @db.VarChar(50)
-  name                     String?   @db.VarChar(255)
-  image                    String?   @db.VarChar(100)
-  status                   Int       @default(1) @db.TinyInt
-  device_token             String?   @db.VarChar(200)
-  push_notification        Int       @default(1) @db.TinyInt
-  email_notification       Int       @default(1) @db.TinyInt
-  new_content_notification Int       @default(1) @db.TinyInt
-  google_id                String?   @db.VarChar(25)
-  otp                      String?   @db.VarChar(6)
-  verified_at              DateTime? @db.Timestamp(0)
-  ecard                    String?   @db.VarChar(40)
-  ecard2                   String?   @db.VarChar(40)
-  province_id              Int?
-  regency_id               Int?
-  activation_slc           Int       @default(0) @db.TinyInt
-  activation_slc_at        DateTime? @db.DateTime(0)
-  activation_lrtjpay       Int?      @default(0) @db.TinyInt
-  activation_lrtjpay_at    DateTime? @db.DateTime(0)
-  lrtj_saldo               Decimal?  @default(0.000000) @db.Decimal(20, 6)
-  slc_point                Int       @default(0)
-  lrtjpay_pin              String?   @db.Text
-  trip_count               Int       @default(0)
-  member_level_id          Int?      @default(2)
-  birthday                 DateTime? @db.DateTime(0)
-  apple_id                 String?   @db.VarChar(40)
-  lrtj_token               String?   @db.VarChar(255)
-  guid                     String?   @unique(map: "users_guid_unique") @db.VarChar(255)
-  domain                   String?   @db.VarChar(255)
-  lrtjpay_token            String?   @db.VarChar(255)
-  tanggal_lahir            DateTime? @db.Date
+  id                       Int        @id @default(autoincrement())
+  email                    String     @db.VarChar(100)
+  password                 String?    @db.VarChar(150)
+  created_at               DateTime?  @db.DateTime(0)
+  updated_at               DateTime?  @db.DateTime(0)
+  no_telepon               String?    @db.VarChar(255)
+  jenis_kelamin            String?    @db.Char(1)
+  nik                      String?    @db.VarChar(20)
+  alamat                   String?    @db.Text
+  tempat_lahir             String?    @db.VarChar(50)
+  name                     String?    @db.VarChar(255)
+  image                    String?    @db.VarChar(100)
+  status                   Int        @default(1) @db.TinyInt
+  device_token             String?    @db.VarChar(200)
+  push_notification        Int        @default(1) @db.TinyInt
+  email_notification       Int        @default(1) @db.TinyInt
+  new_content_notification Int        @default(1) @db.TinyInt
+  google_id                String?    @db.VarChar(25)
+  otp                      String?    @db.VarChar(6)
+  verified_at              DateTime?  @db.Timestamp(0)
+  ecard                    String?    @db.VarChar(40)
+  ecard2                   String?    @db.VarChar(40)
+  province_id              Int?       @db.UnsignedInt
+  regency_id               Int?       @db.UnsignedInt
+  activation_slc           Int        @default(0) @db.TinyInt
+  activation_slc_at        DateTime?  @db.DateTime(0)
+  activation_lrtjpay       Int?       @default(0) @db.TinyInt
+  activation_lrtjpay_at    DateTime?  @db.DateTime(0)
+  lrtj_saldo               Decimal?   @default(0.000000) @db.Decimal(20, 6)
+  slc_point                Int        @default(0)
+  lrtjpay_pin              String?    @db.Text
+  trip_count               Int        @default(0)
+  member_level_id          Int?       @default(2)
+  birthday                 DateTime?  @db.DateTime(0)
+  apple_id                 String?    @db.VarChar(40)
+  lrtj_token               String?    @db.VarChar(255)
+  guid                     String?    @unique(map: "users_guid_unique") @db.VarChar(255)
+  domain                   String?    @db.VarChar(255)
+  lrtjpay_token            String?    @db.VarChar(255)
+  tanggal_lahir            DateTime?  @db.Date
+  provinces                provinces? @relation(fields: [province_id], references: [id], map: "users_province_id_foreign")
+  regencies                regencies? @relation(fields: [regency_id], references: [id], map: "users_regency_id_foreign")
 
   @@index([created_at(sort: Desc)], map: "created_at")
   @@index([ecard], map: "ecard")
@@ -1020,6 +1025,8 @@ model users {
   @@index([id], map: "id")
   @@index([no_telepon], map: "no_telepon")
   @@index([slc_point], map: "slc_point")
+  @@index([province_id], map: "users_province_id_foreign")
+  @@index([regency_id], map: "users_regency_id_foreign")
 }
 
 model users_admin {
@@ -1103,13 +1110,14 @@ model merchandise_category {
 }
 
 model welcome_point {
-  id          Int       @id @default(autoincrement())
-  point       Int
-  created_at  DateTime  @db.DateTime(0)
-  updated_at  DateTime  @db.DateTime(0)
-  updated_by  String    @db.VarChar(100)
-  active_from DateTime? @db.DateTime(0)
-  active_to   DateTime? @db.DateTime(0)
+  id            Int       @id @default(autoincrement())
+  point         Int
+  created_at    DateTime  @db.DateTime(0)
+  updated_at    DateTime  @db.DateTime(0)
+  updated_by    String    @db.VarChar(100)
+  active_from   DateTime? @db.DateTime(0)
+  active_to     DateTime? @db.DateTime(0)
+  default_point Int?
 }
 
 model popups {

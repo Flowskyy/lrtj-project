@@ -114,7 +114,7 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
 
             {/* Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Link href={`/master/banner-config/edit/${banner.id}`}>
+              <Link href={`/master/banner/edit/${banner.id}`}>
                 <Button variant="ghost" size="sm">
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -248,7 +248,7 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
           <h1 className="text-2xl font-bold text-gray-900">Banner</h1>
           <p className="text-sm text-gray-500 mt-1">Manage banner images and their display order</p>
         </div>
-        <Link href="/master/banner-config/add">
+        <Link href="/master/banner/add">
           <Button className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
             <Plus className="h-4 w-4 mr-2" />
             Add Banner
