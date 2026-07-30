@@ -78,10 +78,10 @@ export async function POST(request: NextRequest) {
       caption_image: data.caption_image || '',
       type: data.type || 'general',
       status: data.status ?? 1,
-      publish_date: data.publish_date ? new Date(data.publish_date) : new Date(),
+      publish_date: data.publish_date ? data.publish_date.toString() : null,
       createdBy: data.createdBy,
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
   });
 

@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
         editedBy: data.editedBy,
         status: data.status ?? 1,
         category_id: data.category_id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       },
     });
 

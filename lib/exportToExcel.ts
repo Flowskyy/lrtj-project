@@ -11,7 +11,7 @@ export function exportToExcel(
   columns: ExportColumn[],
   filename: string
 ) {
-  // Create worksheet
+  // Create worksheet with styled header
   const worksheet = XLSX.utils.json_to_sheet(
     data.map(row => {
       const mappedRow: Record<string, any> = {};
@@ -22,6 +22,19 @@ export function exportToExcel(
     }),
     { header: columns.map(c => c.label) }
   );
+
+  // Style the header row
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  for (let col = range.s.c; col <= range.e.c; col++) {
+    const cellAddress = XLSX.utils.encode_cell({ r: range.s.r, c: col });
+    if (worksheet[cellAddress]) {
+      worksheet[cellAddress].s = {
+        fill: { fgColor: { rgb: "E5262C" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: "center" }
+      };
+    }
+  }
 
   // Calculate column widths based on content
   const colWidths = columns.map(col => {

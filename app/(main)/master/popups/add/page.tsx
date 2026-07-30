@@ -92,6 +92,7 @@ export default function AddPopupPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Popup Image"
+              recommendation="Recommended: 4:3 aspect ratio (e.g., 800x600)"
             />
           </div>
         </section>

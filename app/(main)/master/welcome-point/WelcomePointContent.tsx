@@ -74,21 +74,12 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     fetchWelcomePoint();
   }, []);
 
-  // Live WIB clock
+  // Live clock (no timezone conversion - system time is WIB)
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(
-        now.toLocaleString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-          timeZone: "Asia/Jakarta",
-        })
+        now.toISOString().replace('T', ' ').substring(0, 19)
       );
     };
 
@@ -224,16 +215,8 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
-    // DB value is UTC, convert to WIB for display
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "Asia/Jakarta",
-    });
+    // DB value is literal WIB, display as-is (no timezone conversion)
+    return dateString.replace('T', ' ').substring(0, 16);
   };
 
   return (

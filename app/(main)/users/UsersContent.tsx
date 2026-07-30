@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ExportDialog from "@/components/ExportDialog";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import Pagination from "@/components/Pagination";
 import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
 import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter, Download, CheckSquare, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -73,6 +74,7 @@ export default function UsersContent({ username }: UsersContentProps) {
   // Filter and Sort states
   const [activationSlcFilter, setActivationSlcFilter] = useState<string>("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -81,7 +83,6 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   // Modal and CRUD states
   const [deleteItem, setDeleteItem] = useState<MemberItem | null>(null);
-  const [redeemCount, setRedeemCount] = useState(0);
 
 
   // Column visibility states
@@ -98,12 +99,18 @@ export default function UsersContent({ username }: UsersContentProps) {
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  
+  // Membership options for tier filter
+  const [membershipOptions, setMembershipOptions] = useState<{ value: string; label: string }[]>([
+    { value: "all", label: "All" },
+  ]);
 
   // Fetch items
   const fetchItems = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
       if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
       if (tierFilter !== "all") params.set("tier", tierFilter);
       if (sortBy) params.set("sortBy", sortBy);
@@ -130,18 +137,42 @@ export default function UsersContent({ username }: UsersContentProps) {
     }
   };
 
+  // Fetch membership options for tier filter
+  useEffect(() => {
+    const fetchMembershipOptions = async () => {
+      try {
+        const res = await fetch('/api/membership');
+        if (res.ok) {
+          const memberships = await res.json();
+          const options = [
+            { value: "all", label: "All" },
+            ...memberships.map((m: any) => ({
+              value: m.id.toString(),
+              label: m.name,
+            })),
+          ];
+          setMembershipOptions(options);
+        }
+      } catch (err) {
+        console.error("Failed to fetch membership options", err);
+      }
+    };
+    fetchMembershipOptions();
+  }, []);
+
   useEffect(() => {
     fetchItems();
-  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [statusFilter, activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
 
-  const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "active" ? 1 : 0) + (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const handleResetFilters = () => {
+    setStatusFilter("active");
     setActivationSlcFilter("all");
     setTierFilter("all");
     setDateFrom("");
@@ -151,8 +182,11 @@ export default function UsersContent({ username }: UsersContentProps) {
   };
 
   // Delete Item
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const handleDelete = async () => {
     if (!deleteItem) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/users/${deleteItem.id}`, {
         method: "DELETE",
@@ -161,27 +195,21 @@ export default function UsersContent({ username }: UsersContentProps) {
         const result = await res.json();
         await fetchItems();
         setDeleteItem(null);
-        toast.success(result.message || "User deleted successfully");
+        toast.success(result.message || "User permanently deleted successfully");
       } else {
-        toast.error("Failed to delete user");
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to delete user");
       }
     } catch (err) {
       console.error("Failed to delete item", err);
       toast.error("Failed to delete user");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  // Check redeem count before delete
-  const checkRedeemCount = async (item: MemberItem) => {
-    try {
-      const res = await fetch(`/api/users/${item.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRedeemCount(data.redeemCount || 0);
-      }
-    } catch (err) {
-      console.error("Failed to check redeem count", err);
-    }
+  // Set delete item for confirmation dialog
+  const confirmDelete = (item: MemberItem) => {
     setDeleteItem(item);
   };
 
@@ -223,6 +251,7 @@ export default function UsersContent({ username }: UsersContentProps) {
       } else {
         // Fetch all filtered data
         const params = new URLSearchParams();
+        if (statusFilter !== "all") params.set("status", statusFilter);
         if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
         if (tierFilter !== "all") params.set("tier", tierFilter);
         if (sortBy) params.set("sortBy", sortBy);
@@ -430,8 +459,8 @@ export default function UsersContent({ username }: UsersContentProps) {
                 )}
               </div>
               <TableFilterSortMenu
-                statusFilter="all"
-                onStatusFilterChange={() => {}}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
                 activationSlcFilter={activationSlcFilter}
                 onActivationSlcFilterChange={setActivationSlcFilter}
                 tierFilter={tierFilter}
@@ -440,9 +469,10 @@ export default function UsersContent({ username }: UsersContentProps) {
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                showStatusFilter={false}
+                showStatusFilter={true}
                 showActivationSlcFilter={true}
                 showTierFilter={true}
+                tierOptions={membershipOptions}
                 sortByOptions={[
                   { value: "name", label: "Name" },
                   { value: "created_at", label: "Created At" },
@@ -607,7 +637,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                       )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-2 py-1 text-xs text-gray-600">
-                          {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
+                          {item.created_at ? item.created_at.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
@@ -622,7 +652,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                                 View
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => checkRedeemCount(item)} variant="destructive" className="text-xs h-8">
+                              <DropdownMenuItem onClick={() => confirmDelete(item)} variant="destructive" className="text-xs h-8">
                                 <Trash2 className="h-3.5 w-3.5 mr-2" />
                                 Delete
                               </DropdownMenuItem>
@@ -701,7 +731,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => checkRedeemCount(item)}
+                      onClick={() => confirmDelete(item)}
                       className="flex-1 min-h-[36px] text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
@@ -718,62 +748,33 @@ export default function UsersContent({ username }: UsersContentProps) {
           </div>
 
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-xs text-gray-500">
-                Showing {((currentPage - 1) * 50) + 1} to {Math.min(currentPage * 50, totalCount)} of {totalCount} records
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="min-h-[36px]"
-                >
-                  Previous
-                </Button>
-                <span className="text-xs text-gray-600 px-2">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="min-h-[36px]"
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalCount={totalCount}
+            pageSize={50}
+          />
         </CardContent>
       </Card>
 
 
       {/* Delete Alert Dialog */}
-      <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteItem?.name}"? This action cannot be undone.
-              {redeemCount > 0 && (
-                <span className="block mt-2 text-amber-600 font-medium">
-                  Warning: This user has {redeemCount} related redeem record(s) that will become orphaned.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="min-h-[44px] bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        title="Permanently Delete User"
+        description={
+          <>
+            Are you sure you want to permanently delete "{deleteItem?.name}"? This action cannot be undone and the user will be completely removed from the database.
+            <span className="block mt-2 text-red-600 font-medium">
+              Warning: This is a permanent hard delete. The user account and all associated data will be irretrievably lost.
+            </span>
+          </>
+        }
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
 
       {/* Export Dialog */}
       <ExportDialog

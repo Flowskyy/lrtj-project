@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,7 +15,9 @@ import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import RichTextContentField from "@/components/RichTextContentField";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import Link from "next/link";
 import {
@@ -131,25 +132,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   }, []);
 
   // Debounced search
-  const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const { handleSearchChange } = useDebouncedSearch({ delay: 300 });
 
-  const handleSearchChange = useCallback((value: string) => {
+  const onSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
-    searchDebounceRef.current = setTimeout(() => {
+    handleSearchChange(() => {
       // Search filtering is done client-side via filteredItems
-    }, 300);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-    };
-  }, []);
+    });
+  }, [handleSearchChange]);
 
   // Filter items based on search query (memoized for performance)
   const filteredItems = items.filter(item =>
@@ -166,8 +156,10 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   };
 
   // Delete Item
+  const [isDeleting, setIsDeleting] = useState(false);
   const handleDelete = async () => {
     if (!deleteItem) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/merchandise/${deleteItem.id}`, {
         method: "DELETE",
@@ -182,6 +174,8 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     } catch (err) {
       console.error("Failed to delete item", err);
       toast.error("Failed to delete merchandise");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -307,14 +301,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 <Input
                   placeholder="Search merchandise..."
                   value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => onSearchChange(e.target.value)}
                   className="pl-9 min-h-[44px] w-full sm:w-64"
                 />
                 {searchQuery && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleSearchChange("")}
+                    onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
                   >
                     <X className="h-4 w-4" />
@@ -744,13 +738,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Created
                   </span>
-                  {viewItem.createdAt ? new Date(viewItem.createdAt).toLocaleDateString() : "-"}
+                  {viewItem.createdAt ? viewItem.createdAt.split('T')[0] : "-"}
                 </div>
                 <div>
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Updated
                   </span>
-                  {viewItem.updatedAt ? new Date(viewItem.updatedAt).toLocaleDateString() : "-"}
+                  {viewItem.updatedAt ? viewItem.updatedAt.split('T')[0] : "-"}
                 </div>
               </div>
             </div>
@@ -779,27 +773,14 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
       </Dialog>
 
       {/* MODAL: DELETE */}
-      <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
-        <AlertDialogContent className="max-w-sm sm:max-w-md w-[calc(100%-2rem)] sm:w-auto">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Delete Merchandise</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteItem && (
-                <>Are you sure you want to delete <span className="font-bold text-gray-900">"{deleteItem.name}"</span>? This action cannot be undone.</>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="min-h-[44px] bg-destructive hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        title="Delete Merchandise"
+        itemName={deleteItem?.name}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
 
       {/* Image Preview Dialog */}
       <ImagePreviewDialog

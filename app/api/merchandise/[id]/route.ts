@@ -34,7 +34,7 @@ export async function PUT(
         editedBy: data.editedBy,
         status: data.status,
         category_id: data.category_id,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       },
     });
 

@@ -95,11 +95,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return dateString.split('T')[0];
   };
 
   return (

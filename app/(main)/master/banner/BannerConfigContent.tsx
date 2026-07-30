@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Plus, Pencil, Trash2, GripVertical, Image as ImageIcon } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import Link from "next/link";
@@ -44,15 +44,8 @@ interface BannerConfigContentProps {
 
 const formatDateWithTime = (dateString: string | null) => {
   if (!dateString) return "-";
-  return new Date(dateString).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Jakarta",
-  });
+  // DB value is literal WIB, display as-is (no timezone conversion)
+  return dateString.replace('T', ' ').substring(0, 16);
 };
 
 function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (banner: Banner) => void }) {
@@ -143,6 +136,11 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<Banner | null>(null);
 
+  // Reorder state
+  const [originalBanners, setOriginalBanners] = useState<Banner[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -158,6 +156,8 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
       if (res.ok) {
         const data = await res.json();
         setBanners(data);
+        setOriginalBanners(data);
+        setHasUnsavedChanges(false);
       }
     } catch (err) {
       console.error("Failed to fetch banners", err);
@@ -171,7 +171,7 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
     fetchBanners();
   }, []);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
@@ -187,33 +187,14 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
       }));
       
       setBanners(reorderedBanners);
-
-      // Persist to server
-      try {
-        const res = await fetch("/api/banners/reorder", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: reorderedBanners.map((b) => ({ id: b.id, sequence: b.sequence })),
-          }),
-        });
-
-        if (res.ok) {
-          toast.success("Banner order updated");
-        } else {
-          toast.error("Failed to update order");
-          fetchBanners(); // Revert on failure
-        }
-      } catch (err) {
-        console.error("Failed to reorder banners", err);
-        toast.error("Failed to update order");
-        fetchBanners(); // Revert on failure
-      }
+      setHasUnsavedChanges(true);
     }
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
   const handleDelete = async () => {
     if (!selectedBanner) return;
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/banners/${selectedBanner.id}`, {
@@ -224,6 +205,7 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
         toast.success("Banner deleted successfully");
         setDeleteDialogOpen(false);
         setSelectedBanner(null);
+        setHasUnsavedChanges(false);
         fetchBanners();
       } else {
         const error = await res.json();
@@ -232,12 +214,47 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
     } catch (err) {
       console.error("Failed to delete banner", err);
       toast.error("Failed to delete banner");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const openDeleteDialog = (banner: Banner) => {
     setSelectedBanner(banner);
     setDeleteDialogOpen(true);
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/banners/reorder", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: banners.map((b) => ({ id: b.id, sequence: b.sequence })),
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Banner order updated");
+        setOriginalBanners(banners);
+        setHasUnsavedChanges(false);
+      } else {
+        toast.error("Failed to update order");
+        setBanners(originalBanners);
+      }
+    } catch (err) {
+      console.error("Failed to reorder banners", err);
+      toast.error("Failed to update order");
+      setBanners(originalBanners);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelOrder = () => {
+    setBanners(originalBanners);
+    setHasUnsavedChanges(false);
   };
 
   return (
@@ -293,25 +310,36 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Banner</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this banner? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Banner"
+        description="Are you sure you want to delete this banner? This action cannot be undone."
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
+
+      {/* Save/Cancel Footer Bar */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4 z-50">
+          <div className="max-w-7xl mx-auto flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={handleCancelOrder}
+              disabled={isSaving}
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#E5262C] hover:bg-[#c41e22] text-white"
+              onClick={handleSaveOrder}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

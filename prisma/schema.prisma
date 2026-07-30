@@ -1115,8 +1115,8 @@ model welcome_point {
   created_at    DateTime  @db.DateTime(0)
   updated_at    DateTime  @db.DateTime(0)
   updated_by    String    @db.VarChar(100)
-  active_from   DateTime? @db.DateTime(0)
-  active_to     DateTime? @db.DateTime(0)
+  active_from   String?   @db.VarChar(19)
+  active_to     String?   @db.VarChar(19)
   default_point Int?
 }
 

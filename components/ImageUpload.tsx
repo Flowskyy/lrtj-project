@@ -9,6 +9,7 @@ interface ImageUploadProps {
   value: string;
   onChange: (value: string) => void;
   label?: string;
+  recommendation?: string;
 }
 
 interface FileInfo {
@@ -18,7 +19,7 @@ interface FileInfo {
   format: string;
 }
 
-export default function ImageUpload({ value, onChange, label = "Image" }: ImageUploadProps) {
+export default function ImageUpload({ value, onChange, label = "Image", recommendation }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
@@ -131,6 +132,9 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
       <label className="block text-sm font-semibold text-gray-900 mb-2">
         {label}
       </label>
+      {recommendation && (
+        <p className="text-xs text-gray-500 mb-2">{recommendation}</p>
+      )}
       
       {value ? (
         // Uploaded state - 16:9 thumbnail preview with buttons beside

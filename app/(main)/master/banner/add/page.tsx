@@ -92,6 +92,7 @@ export default function AddBannerPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Banner Image"
+              recommendation="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
             />
           </div>
         </section>

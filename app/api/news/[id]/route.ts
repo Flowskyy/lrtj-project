@@ -49,8 +49,8 @@ export async function PUT(
       caption_image: data.caption_image,
       type: data.type,
       status: data.status,
-      publish_date: data.publish_date ? new Date(data.publish_date) : undefined,
-      updated_at: new Date(),
+      publish_date: data.publish_date ? data.publish_date.toString() : null,
+      updated_at: new Date().toISOString(),
     },
   });
 

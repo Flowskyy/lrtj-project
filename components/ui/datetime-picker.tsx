@@ -15,38 +15,8 @@ interface DateTimePickerProps {
   className?: string
 }
 
-// Helper to extract WIB wall-clock components from a UTC Date
-const getWIBParts = (date: Date) => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date)
-  const get = (type: string) => parts.find((p) => p.type === type)?.value
-  return {
-    year: Number(get("year")),
-    month: Number(get("month")),
-    day: Number(get("day")),
-    hours: Number(get("hour")) % 24, // Intl can return "24" for midnight
-    minutes: Number(get("minute")),
-  }
-}
-
-// Helper to build a "fake local" Date object whose LOCAL getter values equal WIB wall-clock numbers
-const wibPartsToFakeLocalDate = (parts: {
-  year: number
-  month: number
-  day: number
-  hours: number
-  minutes: number
-}) => new Date(parts.year, parts.month - 1, parts.day, parts.hours, parts.minutes)
-
-// Helper to convert WIB wall-clock components to true UTC ISO string
-const wibPartsToUTCISOString = (
+// Helper to format date parts as plain ISO string (no timezone conversion)
+const formatToISOString = (
   year: number,
   month: number,
   day: number,
@@ -54,11 +24,19 @@ const wibPartsToUTCISOString = (
   minutes: number
 ) => {
   const pad = (n: number) => String(n).padStart(2, "0")
-  // Explicit +07:00 offset - JS correctly converts this to true UTC
-  // regardless of what timezone the system/browser is actually running in.
-  return new Date(
-    `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00+07:00`
-  ).toISOString()
+  return `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`
+}
+
+// Helper to parse ISO string to date parts (no timezone conversion)
+const parseISOString = (isoString: string) => {
+  const date = new Date(isoString)
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+    hours: date.getHours(),
+    minutes: date.getMinutes(),
+  }
 }
 
 export function DateTimePicker({
@@ -69,27 +47,26 @@ export function DateTimePicker({
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Plain WIB wall-clock state - initialized once from UTC value
-  const [wibYear, setWibYear] = React.useState<number>()
-  const [wibMonth, setWibMonth] = React.useState<number>()
-  const [wibDay, setWibDay] = React.useState<number>()
+  // Plain date/time state - initialized once from value
+  const [year, setYear] = React.useState<number>()
+  const [month, setMonth] = React.useState<number>()
+  const [day, setDay] = React.useState<number>()
   const [hours, setHours] = React.useState(0)
   const [minutes, setMinutes] = React.useState(0)
 
-  // Sync WIB state when value prop changes
+  // Sync state when value prop changes
   React.useEffect(() => {
     if (value) {
-      const utcDate = new Date(value)
-      const wibParts = getWIBParts(utcDate)
-      setWibYear(wibParts.year)
-      setWibMonth(wibParts.month)
-      setWibDay(wibParts.day)
-      setHours(wibParts.hours)
-      setMinutes(wibParts.minutes)
+      const parts = parseISOString(value)
+      setYear(parts.year)
+      setMonth(parts.month)
+      setDay(parts.day)
+      setHours(parts.hours)
+      setMinutes(parts.minutes)
     } else {
-      setWibYear(undefined)
-      setWibMonth(undefined)
-      setWibDay(undefined)
+      setYear(undefined)
+      setMonth(undefined)
+      setDay(undefined)
       setHours(0)
       setMinutes(0)
     }
@@ -97,16 +74,14 @@ export function DateTimePicker({
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (selectedDate) {
-      // Read clicked day numbers directly from local getters - these represent
-      // the literal calendar day the user clicked, regardless of system timezone
       const newYear = selectedDate.getFullYear()
       const newMonth = selectedDate.getMonth() + 1
       const newDay = selectedDate.getDate()
-      setWibYear(newYear)
-      setWibMonth(newMonth)
-      setWibDay(newDay)
+      setYear(newYear)
+      setMonth(newMonth)
+      setDay(newDay)
       onChange(
-        wibPartsToUTCISOString(newYear, newMonth, newDay, hours, minutes)
+        formatToISOString(newYear, newMonth, newDay, hours, minutes)
       )
     }
   }
@@ -114,26 +89,25 @@ export function DateTimePicker({
   const handleTimeChange = (newHours: number, newMinutes: number) => {
     setHours(newHours)
     setMinutes(newMinutes)
-    if (wibYear && wibMonth && wibDay) {
+    if (year && month && day) {
       onChange(
-        wibPartsToUTCISOString(wibYear, wibMonth, wibDay, newHours, newMinutes)
+        formatToISOString(year, month, day, newHours, newMinutes)
       )
     }
   }
 
   const formatDateTime = (dateString: string | undefined) => {
     if (!dateString) return placeholder
-    const utcDate = new Date(dateString)
-    if (!utcDate) return placeholder
-    // Convert UTC to WIB for display (already correct)
-    return utcDate.toLocaleString("en-US", {
+    const date = new Date(dateString)
+    if (!date) return placeholder
+    // Display as-is (no timezone conversion)
+    return date.toLocaleString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-      timeZone: "Asia/Jakarta",
     })
   }
 
@@ -159,8 +133,8 @@ export function DateTimePicker({
           <Calendar
             mode="single"
             selected={
-              wibYear && wibMonth && wibDay
-                ? wibPartsToFakeLocalDate({ year: wibYear, month: wibMonth, day: wibDay, hours, minutes })
+              year && month && day
+                ? new Date(year, month - 1, day)
                 : undefined
             }
             onSelect={handleDateSelect}

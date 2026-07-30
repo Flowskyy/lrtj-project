@@ -123,6 +123,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
 
   const handleDelete = async () => {
     if (!selectedCategory) return;
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/merchandise-category/${selectedCategory.id}`, {
@@ -151,6 +152,8 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     } catch (err) {
       console.error("Failed to delete category", err);
       toast.error("Failed to delete category");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -221,11 +224,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return dateString.split('T')[0];
   };
 
   return (
@@ -455,9 +454,10 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

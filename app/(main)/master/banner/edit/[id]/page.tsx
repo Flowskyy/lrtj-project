@@ -154,6 +154,7 @@ export default function EditBannerPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Banner Image"
+              recommendation="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
             />
           </div>
         </section>
@@ -170,15 +171,7 @@ export default function EditBannerPage() {
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {banner.created_at ? new Date(banner.created_at).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                    timeZone: "Asia/Jakarta",
-                  }) : "-"}
+                  {banner.created_at ? banner.created_at.replace('T', ' ').substring(0, 16) : "-"}
                 </div>
               </div>
               <div>
@@ -186,15 +179,7 @@ export default function EditBannerPage() {
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {banner.updated_at ? new Date(banner.updated_at).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                    timeZone: "Asia/Jakarta",
-                  }) : "-"}
+                  {banner.updated_at ? banner.updated_at.replace('T', ' ').substring(0, 16) : "-"}
                 </div>
               </div>
             </div>

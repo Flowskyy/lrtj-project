@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +15,8 @@ import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import RichTextContentField from "@/components/RichTextContentField";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import Link from "next/link";
@@ -106,25 +107,14 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
   }, [statusFilter, sortBy, sortOrder]);
 
   // Debounced search
-  const searchDebounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const { handleSearchChange } = useDebouncedSearch({ delay: 300 });
 
-  const handleSearchChange = useCallback((value: string) => {
+  const onSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
-    searchDebounceRef.current = setTimeout(() => {
+    handleSearchChange(() => {
       // Search filtering is done client-side via filteredItems
-    }, 300);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-    };
-  }, []);
+    });
+  }, [handleSearchChange]);
 
   // Filter items based on search query (memoized for performance)
   const filteredItems = items.filter(item =>
@@ -140,8 +130,10 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
   };
 
   // Delete Item
+  const [isDeleting, setIsDeleting] = useState(false);
   const handleDelete = async () => {
     if (!deleteItem) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/daily-benefit/${deleteItem.id}`, {
         method: "DELETE",
@@ -156,6 +148,8 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
     } catch (err) {
       console.error("Failed to delete item", err);
       toast.error("Failed to delete daily benefit");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -281,14 +275,14 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                 <Input
                   placeholder="Search daily benefits..."
                   value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => onSearchChange(e.target.value)}
                   className="pl-9 min-h-[44px] w-full sm:w-64"
                 />
                 {searchQuery && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleSearchChange("")}
+                    onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
                   >
                     <X className="h-4 w-4" />
@@ -304,8 +298,8 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                 onSortOrderChange={setSortOrder}
                 statusOptions={[
                   { value: "all", label: "All" },
-                  { value: "1", label: "Active" },
-                  { value: "0", label: "Inactive" },
+                  { value: "active", label: "Active" },
+                  { value: "inactive", label: "Inactive" },
                 ]}
                 sortByOptions={[
                   { value: "created_at", label: "Created Date" },
@@ -533,12 +527,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                       )}
                       {visibleColumns.start_date && (
                         <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {item.start_date ? new Date(item.start_date).toLocaleDateString() : "-"}
+                          {item.start_date ? item.start_date.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.end_date && (
                         <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {item.end_date ? new Date(item.end_date).toLocaleDateString() : "-"}
+                          {item.end_date ? item.end_date.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.editedBy && (
@@ -688,8 +682,8 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                         )}
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        <div>Start: {item.start_date ? new Date(item.start_date).toLocaleDateString() : "-"}</div>
-                        <div>End: {item.end_date ? new Date(item.end_date).toLocaleDateString() : "-"}</div>
+                        <div>Start: {item.start_date ? item.start_date.split('T')[0] : "-"}</div>
+                        <div>End: {item.end_date ? item.end_date.split('T')[0] : "-"}</div>
                       </div>
                     </div>
                   </div>
@@ -755,13 +749,13 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Start Date
                   </span>
-                  {viewItem.start_date ? new Date(viewItem.start_date).toLocaleDateString() : "-"}
+                  {viewItem.start_date ? viewItem.start_date.split('T')[0] : "-"}
                 </div>
                 <div>
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     End Date
                   </span>
-                  {viewItem.end_date ? new Date(viewItem.end_date).toLocaleDateString() : "-"}
+                  {viewItem.end_date ? viewItem.end_date.split('T')[0] : "-"}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
@@ -775,7 +769,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Created
                   </span>
-                  {viewItem.created_at ? new Date(viewItem.created_at).toLocaleDateString() : "-"}
+                  {viewItem.created_at ? viewItem.created_at.split('T')[0] : "-"}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
@@ -783,7 +777,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Updated
                   </span>
-                  {viewItem.updated_at ? new Date(viewItem.updated_at).toLocaleDateString() : "-"}
+                  {viewItem.updated_at ? viewItem.updated_at.split('T')[0] : "-"}
                 </div>
               </div>
             </div>
@@ -812,22 +806,14 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
       </Dialog>
 
       {/* Delete Alert Dialog */}
-      <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Daily Benefit</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteItem?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteItem(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        title="Delete Daily Benefit"
+        itemName={deleteItem?.name}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
 
       {/* Image Preview Dialog */}
       <ImagePreviewDialog

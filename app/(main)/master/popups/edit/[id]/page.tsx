@@ -154,6 +154,7 @@ export default function EditPopupPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Popup Image"
+              recommendation="Recommended: 4:3 aspect ratio (e.g., 800x600)"
             />
           </div>
         </section>
@@ -170,15 +171,7 @@ export default function EditPopupPage() {
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {popup.created_at ? new Date(popup.created_at).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                    timeZone: "Asia/Jakarta",
-                  }) : "-"}
+                  {popup.created_at ? popup.created_at.replace('T', ' ').substring(0, 16) : "-"}
                 </div>
               </div>
               <div>
@@ -186,15 +179,7 @@ export default function EditPopupPage() {
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {popup.updated_at ? new Date(popup.updated_at).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                    timeZone: "Asia/Jakarta",
-                  }) : "-"}
+                  {popup.updated_at ? popup.updated_at.replace('T', ' ').substring(0, 16) : "-"}
                 </div>
               </div>
             </div>

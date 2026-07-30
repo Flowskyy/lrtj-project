@@ -60,8 +60,8 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
           setFormImageUrl(data.image_url);
           setFormTermCondition(data.term_condition);
           setFormStatus(data.status);
-          setFormStartDate(data.start_date ? new Date(data.start_date).toISOString().split('T')[0] : "");
-          setFormEndDate(data.end_date ? new Date(data.end_date).toISOString().split('T')[0] : "");
+          setFormStartDate(data.start_date ? data.start_date.split('T')[0] : "");
+          setFormEndDate(data.end_date ? data.end_date.split('T')[0] : "");
           setFormIsActive(data.is_active ?? 1);
         } else {
           toast.error("Failed to fetch daily benefit");
@@ -273,7 +273,7 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
+                  {item.created_at ? item.created_at.split('T')[0] : "-"}
                 </div>
               </div>
               <div>
@@ -281,7 +281,7 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "-"}
+                  {item.updated_at ? item.updated_at.split('T')[0] : "-"}
                 </div>
               </div>
             </div>

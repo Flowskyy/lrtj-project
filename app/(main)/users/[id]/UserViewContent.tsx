@@ -175,7 +175,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Birthday</label>
-                <p className="text-sm text-gray-900 font-medium">{item.birthday ? new Date(item.birthday).toLocaleDateString() : "-"}</p>
+                <p className="text-sm text-gray-900 font-medium">{item.birthday ? item.birthday.split('T')[0] : "-"}</p>
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Image</label>
@@ -203,11 +203,11 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Created At</label>
-                <p className="text-sm text-gray-900 font-medium">{item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}</p>
+                <p className="text-sm text-gray-900 font-medium">{item.created_at ? item.created_at.split('T')[0] : "-"}</p>
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Updated At</label>
-                <p className="text-sm text-gray-900 font-medium">{item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "-"}</p>
+                <p className="text-sm text-gray-900 font-medium">{item.updated_at ? item.updated_at.split('T')[0] : "-"}</p>
               </div>
             </div>
           </div>

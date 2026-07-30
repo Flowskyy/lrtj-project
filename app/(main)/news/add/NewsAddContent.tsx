@@ -145,6 +145,7 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
               value={formImageUrl}
               onChange={setFormImageUrl}
               label="Featured Image"
+              recommendation="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

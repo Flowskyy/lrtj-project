@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ExportDialog from "@/components/ExportDialog";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import StatusBadge from "@/components/StatusBadge";
+import Pagination from "@/components/Pagination";
 import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
 import MerchandiseSearchCombobox from "@/components/MerchandiseSearchCombobox";
@@ -153,8 +154,10 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   };
 
   // Delete Item
+  const [isDeleting, setIsDeleting] = useState(false);
   const handleDelete = async () => {
     if (!deleteItem) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/redeem/${deleteItem.id}`, {
         method: "DELETE",
@@ -169,18 +172,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     } catch (err) {
       console.error("Failed to delete item", err);
       toast.error("Failed to delete redeem record");
+    } finally {
+      setIsDeleting(false);
     }
-  };
-
-  // Get status badge color
-  const getStatusBadge = (status: string) => {
-    const statusLower = status.toLowerCase();
-    if (statusLower === "completed") {
-      return <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">{status}</Badge>;
-    } else if (statusLower === "rejected") {
-      return <Badge variant="secondary" className="bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 text-[10px]">{status}</Badge>;
-    }
-    return <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">{status}</Badge>;
   };
 
   // Computed values
@@ -614,17 +608,17 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       )}
                       {visibleColumns.status && (
                         <TableCell className="px-4 py-3">
-                          {getStatusBadge(item.status)}
+                          <StatusBadge status={item.status} />
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-4 py-3 text-sm text-gray-600">
-                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
+                          {item.createdAt ? item.createdAt.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.updated_at && (
                         <TableCell className="px-4 py-3 text-sm text-gray-600">
-                          {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "-"}
+                          {item.updatedAt ? item.updatedAt.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
@@ -689,9 +683,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                         <p className="text-xs text-gray-500 mt-0.5">User ID: {item.user_id}</p>
                         <p className="text-xs text-gray-500 mt-0.5">Receiver: {item.receiver_name}</p>
                       </div>
-                      {getStatusBadge(item.status)}
+                      <StatusBadge status={item.status} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}</p>
+                    <p className="text-xs text-gray-400 mt-1">Created: {item.createdAt ? item.createdAt.split('T')[0] : "-"}</p>
                   </div>
                 </div>
               ))
@@ -703,36 +697,13 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </div>
 
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-xs text-gray-500">
-                Showing {((currentPage - 1) * 50) + 1} to {Math.min(currentPage * 50, totalCount)} of {totalCount} records
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="min-h-[36px]"
-                >
-                  Previous
-                </Button>
-                <span className="text-xs text-gray-600 px-2">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="min-h-[36px]"
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalCount={totalCount}
+            pageSize={50}
+          />
         </CardContent>
       </Card>
 
@@ -777,16 +748,16 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-              <div>{getStatusBadge(viewItem?.status || '')}</div>
+              <div><StatusBadge status={viewItem?.status || ''} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{viewItem?.createdAt ? new Date(viewItem.createdAt).toLocaleString() : '-'}</div>
+                <div className="text-sm text-gray-900">{viewItem?.createdAt ? viewItem.createdAt.replace('T', ' ').substring(0, 16) : '-'}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{viewItem?.updatedAt ? new Date(viewItem.updatedAt).toLocaleString() : '-'}</div>
+                <div className="text-sm text-gray-900">{viewItem?.updatedAt ? viewItem.updatedAt.replace('T', ' ').substring(0, 16) : '-'}</div>
               </div>
             </div>
           </div>
@@ -799,25 +770,14 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       </Dialog>
 
       {/* Delete AlertDialog */}
-      <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
-        <AlertDialogContent className="max-w-sm sm:max-w-md w-[calc(100%-2rem)] sm:w-auto">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Delete Redeem Record</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this redeem record? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="min-h-[44px] bg-destructive hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteItem}
+        onOpenChange={() => setDeleteItem(null)}
+        title="Delete Redeem Record"
+        description="Are you sure you want to delete this redeem record? This action cannot be undone."
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
 
       {/* Export Dialog */}
       <ExportDialog

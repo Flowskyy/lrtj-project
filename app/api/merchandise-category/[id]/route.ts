@@ -73,21 +73,23 @@ export async function DELETE(
     const force = searchParams.get('force') === 'true';
 
     if (force) {
-      // Force delete with atomic transaction
+      // Unassign and deactivate instead of force delete
       await prisma.$transaction(async (tx) => {
-        // First delete all merchandise items referencing this category
-        await tx.merchandise.deleteMany({
+        // First unassign all merchandise items from this category
+        await tx.merchandise.updateMany({
           where: { category_id: parseInt(id) },
+          data: { category_id: null },
         });
-        // Then delete the category itself
-        await tx.merchandise_category.delete({
+        // Then deactivate the category instead of deleting it
+        await tx.merchandise_category.update({
           where: { id: parseInt(id) },
+          data: { status: false },
         });
       });
-      return NextResponse.json({ success: true, forceDeleted: true });
+      return NextResponse.json({ success: true, unassignedAndDeactivated: true });
     }
 
-    // Normal delete attempt
+    // Normal delete attempt (should fail due to FK constraint)
     try {
       await prisma.merchandise_category.delete({
         where: { id: parseInt(id) },
@@ -103,8 +105,9 @@ export async function DELETE(
 
         return NextResponse.json(
           {
-            error: 'This category is still used by existing merchandise items and cannot be deleted. Remove or reassign those items first.',
+            error: 'This category is still used by existing merchandise items. Use force delete to unassign items and deactivate the category.',
             affectedItems: affectedItems.map(item => ({ id: item.id, name: item.name })),
+            forceDeleteAvailable: true,
           },
           { status: 400 }
         );

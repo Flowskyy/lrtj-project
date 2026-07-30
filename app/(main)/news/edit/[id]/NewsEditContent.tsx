@@ -67,7 +67,7 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
           setFormCaptionImage(data.caption_image || "");
           setFormType(data.type || "general");
           setFormStatus(data.status === 1);
-          setFormPublishDate(data.publish_date ? new Date(data.publish_date).toISOString().split('T')[0] : "");
+          setFormPublishDate(data.publish_date ? data.publish_date.split('T')[0] : "");
           
           setFormContent(data.content || '<p>-</p>');
           setFormContentEn(data.content_en || '<p>-</p>');
@@ -218,6 +218,7 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
               value={formImageUrl}
               onChange={setFormImageUrl}
               label="Featured Image"
+              recommendation="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -291,7 +292,7 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
                 Created
               </label>
               <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
+                {item.created_at ? item.created_at.split('T')[0] : "-"}
               </div>
             </div>
           </div>

@@ -264,7 +264,7 @@ export default function MerchandiseEditContent({ username, merchandiseId }: Merc
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}
+                  {item.createdAt ? item.createdAt.split('T')[0] : "-"}
                 </div>
               </div>
               <div>
@@ -272,7 +272,7 @@ export default function MerchandiseEditContent({ username, merchandiseId }: Merc
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : "-"}
+                  {item.updatedAt ? item.updatedAt.split('T')[0] : "-"}
                 </div>
               </div>
             </div>

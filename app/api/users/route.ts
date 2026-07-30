@@ -17,12 +17,19 @@ export async function GET(request: NextRequest) {
 
   const where: any = {};
 
-  if (status && status !== 'all') {
-    where.status = parseInt(status);
-  } else {
-    // Default to active users only
+  if (status === 'active') {
+    where.status = 1;
+  } else if (status === 'inactive') {
+    where.status = 0;
+  } else if (status && status !== 'all') {
+    // fallback in case a raw numeric value is ever passed directly
+    const parsed = parseInt(status);
+    if (!isNaN(parsed)) where.status = parsed;
+  } else if (!status) {
+    // default to active users only, preserving existing behavior
     where.status = 1;
   }
+  // if status === 'all', leave where.status unset (no filter)
 
   if (gender && gender !== 'all') {
     where.jenis_kelamin = gender;

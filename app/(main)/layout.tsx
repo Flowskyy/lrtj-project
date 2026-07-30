@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award, Trophy } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -118,6 +118,16 @@ const NAV_ITEMS = [
     icon: <Newspaper {...SIDEBAR_ICON_PROPS} />,
 
     href: "/news",
+
+  },
+
+  {
+
+    label: "LarataClub Earning",
+
+    icon: <Trophy {...SIDEBAR_ICON_PROPS} />,
+
+    href: "/larata-club-earning",
 
   },
 
@@ -304,6 +314,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Edit News",
         breadcrumb: ["News", "Edit News"],
+      }
+    : pathname === "/larata-club-earning"
+    ? {
+        title: "LarataClub Earning",
+        breadcrumb: ["LarataClub Earning"],
       }
     : {
         title: "Dashboard",
@@ -502,6 +517,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             : item === "Add News"
 
                             ? "/news/add"
+
+                            : item === "LarataClub Earning"
+
+                            ? "/larata-club-earning"
 
                             : item === "Edit News"
 

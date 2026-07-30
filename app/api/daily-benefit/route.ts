@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
     where.status = 1;
   } else if (status === 'inactive') {
     where.status = 0;
+  } else if (status === '1') {
+    where.status = 1;
+  } else if (status === '0') {
+    where.status = 0;
   }
 
   if (dateFrom || dateTo) {
