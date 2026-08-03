@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import fs from 'fs';
 
 export interface ExportColumn {
   key: string;
@@ -58,6 +59,7 @@ export function exportToExcel(
   const date = new Date().toISOString().split('T')[0];
   const fullFilename = `${filename}-${date}.xlsx`;
 
-  // Download
-  XLSX.writeFile(workbook, fullFilename);
+  // Generate buffer and write with Node.js fs to avoid XLSX bundler detection issues
+  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  fs.writeFileSync(fullFilename, buffer);
 }

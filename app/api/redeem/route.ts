@@ -151,16 +151,51 @@ export async function GET(request: NextRequest) {
     orderBy.id = 'desc';
   }
 
-  const [redeems, total, completedCount] = await Promise.all([
-    prisma.redeem.findMany({
-      where,
-      orderBy,
-      skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? undefined : limit,
-    }),
-    prisma.redeem.count({ where }),
-    prisma.redeem.count({ where: { status: 'completed' } }),
-  ]);
+  let redeems: any[];
+  let total: number;
+  let completedCount: number;
+  
+  if (exportMode) {
+    // Batch fetching for large exports to prevent timeout/memory issues
+    const batchSize = 50000;
+    redeems = [];
+    let offset = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const batch = await prisma.redeem.findMany({
+        where,
+        orderBy,
+        skip: offset,
+        take: batchSize,
+      });
+      
+      redeems.push(...batch);
+      offset += batchSize;
+      hasMore = batch.length === batchSize;
+    }
+    
+    [total, completedCount] = await Promise.all([
+      prisma.redeem.count({ where }),
+      prisma.redeem.count({ where: { status: 'completed' } }),
+    ]);
+  } else {
+    // Normal paginated query
+    const [redeemsResult, totalCount, completedCountResult] = await Promise.all([
+      prisma.redeem.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.redeem.count({ where }),
+      prisma.redeem.count({ where: { status: 'completed' } }),
+    ]);
+    
+    redeems = redeemsResult;
+    total = totalCount;
+    completedCount = completedCountResult;
+  }
 
   const pendingCount = 0;
 

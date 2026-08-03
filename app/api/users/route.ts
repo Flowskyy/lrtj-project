@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
+
+// Simple in-memory cache for unfiltered total count (30 second TTL)
+let cachedTotal: { count: number; timestamp: number } | null = null;
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -89,33 +94,168 @@ export async function GET(request: NextRequest) {
     orderBy.id = 'desc';
   }
 
-  const [users, total, activeSlcCount, inactiveSlcCount] = await Promise.all([
-    prisma.users.findMany({
-      where,
-      orderBy,
-      skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? undefined : limit,
-    }),
-    prisma.users.count({ where }),
-    prisma.users.count({ where: { status: 1, activation_slc: 1 } }),
-    prisma.users.count({ where: { status: 1, activation_slc: 0 } }),
-  ]);
+  // Build WHERE clause for raw SQL
+  const conditions: string[] = [];
+  const params: any[] = [];
 
-  // Manual join for membership only (no FK constraint per business decision)
-  const usersWithMembership = await Promise.all(
-    users.map(async (user) => {
-      let membership = null;
-      if (user.member_level_id) {
-        membership = await prisma.membership.findUnique({
-          where: { id: user.member_level_id },
-        });
+  if (where.status !== undefined) {
+    conditions.push('status = ?');
+    params.push(where.status);
+  }
+  if (where.jenis_kelamin) {
+    conditions.push('jenis_kelamin = ?');
+    params.push(where.jenis_kelamin);
+  }
+  if (where.activation_slc !== undefined) {
+    conditions.push('activation_slc = ?');
+    params.push(where.activation_slc);
+  }
+  if (where.member_level_id !== undefined) {
+    conditions.push('member_level_id = ?');
+    params.push(where.member_level_id);
+  }
+  if (where.created_at) {
+    if (where.created_at.gte) {
+      conditions.push('created_at >= ?');
+      params.push(where.created_at.gte);
+    }
+    if (where.created_at.lte) {
+      conditions.push('created_at <= ?');
+      params.push(where.created_at.lte);
+    }
+  }
+  if (where.OR) {
+    const orConditions = where.OR.map((cond: any) => {
+      const [field, op] = Object.entries(cond)[0];
+      const fieldValue = Object.values(cond)[0];
+      if (op === 'contains') return `${field} LIKE ?`;
+      return `${field} = ?`;
+    });
+    conditions.push(`(${orConditions.join(' OR ')})`);
+    where.OR.forEach((cond: any) => {
+      const fieldValue = Object.values(cond)[0];
+      if (typeof fieldValue === 'string' && fieldValue.includes && fieldValue.includes('%')) {
+        params.push(fieldValue);
+      } else {
+        params.push(fieldValue);
       }
-      return {
-        ...user,
-        membership_name: membership?.name || null,
-      };
-    })
-  );
+    });
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Build ORDER BY clause
+  let orderByClause = 'ORDER BY id DESC';
+  if (orderBy.id) orderByClause = `ORDER BY id ${orderBy.id.toUpperCase()}`;
+  else if (orderBy.name) orderByClause = `ORDER BY name ${orderBy.name.toUpperCase()}`;
+  else if (orderBy.email) orderByClause = `ORDER BY email ${orderBy.email.toUpperCase()}`;
+  else if (orderBy.created_at) orderByClause = `ORDER BY created_at ${orderBy.created_at.toUpperCase()}`;
+  else if (orderBy.lrtj_saldo) orderByClause = `ORDER BY lrtj_saldo ${orderBy.lrtj_saldo.toUpperCase()}`;
+  else if (orderBy.slc_point) orderByClause = `ORDER BY slc_point ${orderBy.slc_point.toUpperCase()}`;
+  else if (orderBy.trip_count) orderByClause = `ORDER BY trip_count ${orderBy.trip_count.toUpperCase()}`;
+
+  // Use raw SQL for consistent WIB formatting
+  let users: any[];
+  
+  if (exportMode) {
+    // Batch fetching for large exports to prevent timeout/memory issues
+    const batchSize = 50000;
+    users = [];
+    let offset = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const batch = await prisma.$queryRawUnsafe(
+        `SELECT
+          id, email, password, no_telepon, jenis_kelamin, nik, alamat, tempat_lahir, name, image, status, device_token,
+          push_notification, email_notification, new_content_notification, google_id, otp, verified_at, activation_slc,
+          activation_slc_at, activation_lrtjpay, activation_lrtjpay_at, member_level_id, apple_id, lrtj_token, guid,
+          domain, lrtjpay_token, lrtjpay_pin, DATE_FORMAT(birthday, '%Y-%m-%dT%H:%i:%s') as birthday, province_id, regency_id, ecard, ecard2, lrtj_saldo, slc_point, trip_count,
+          DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+          DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+        FROM users
+        ${whereClause}
+        ${orderByClause}
+        LIMIT ${offset}, ${batchSize}`,
+        ...params
+      ) as any[];
+      
+      users.push(...batch);
+      offset += batchSize;
+      hasMore = batch.length === batchSize;
+    }
+  } else {
+    // Normal paginated query
+    users = await prisma.$queryRawUnsafe(
+      `SELECT
+        id, email, password, no_telepon, jenis_kelamin, nik, alamat, tempat_lahir, name, image, status, device_token,
+        push_notification, email_notification, new_content_notification, google_id, otp, verified_at, activation_slc,
+        activation_slc_at, activation_lrtjpay, activation_lrtjpay_at, member_level_id, apple_id, lrtj_token, guid,
+        domain, lrtjpay_token, lrtjpay_pin, province_id, regency_id, ecard, ecard2, lrtj_saldo, slc_point, trip_count,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM users
+      ${whereClause}
+      ${orderByClause}
+      LIMIT ${(page - 1) * limit}, ${limit}`,
+      ...params
+    ) as any[];
+  }
+
+  // Get total count - use approximate count for unfiltered queries for performance
+  let total: number;
+  const hasFilters = Object.keys(where).length > 0;
+  
+  if (hasFilters) {
+    // Use exact COUNT(*) when filters are applied (necessary and typically faster)
+    const totalResult = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM users ${whereClause}`, ...params) as any[];
+    total = Number(totalResult[0]?.count || 0);
+  } else {
+    // Use cached approximate count for unfiltered queries (instant)
+    const now = Date.now();
+    if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
+      total = cachedTotal.count;
+    } else {
+      // Cache miss or expired - fetch fresh approximate count
+      const approxResult = await prisma.$queryRawUnsafe(
+        `SELECT table_rows as count FROM information_schema.tables 
+         WHERE table_schema = 'lrt_public_apps' AND table_name = 'users'`
+      ) as any[];
+      total = Number(approxResult[0]?.count || 0);
+      cachedTotal = { count: total, timestamp: now };
+    }
+  }
+  const activeSlcCount = Number(await prisma.users.count({ where: { status: 1, activation_slc: 1 } }));
+  const inactiveSlcCount = Number(await prisma.users.count({ where: { status: 1, activation_slc: 0 } }));
+
+  // Manual join for membership only (no FK constraint per business decision) - batched for efficiency
+  const memberLevelIds = [...new Set(users.map(u => u.member_level_id).filter(Boolean))];
+  
+  const membershipMap = new Map<number, string>();
+  if (memberLevelIds.length > 0) {
+    const memberships = await prisma.membership.findMany({
+      where: {
+        id: { in: memberLevelIds as number[] },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    memberships.forEach(m => {
+      membershipMap.set(m.id, m.name);
+    });
+  }
+  
+  const usersWithMembership = users.map(user => ({
+    ...user,
+    member_level_id: user.member_level_id != null ? Number(user.member_level_id) : null,
+    province_id: user.province_id != null ? Number(user.province_id) : null,
+    regency_id: user.regency_id != null ? Number(user.regency_id) : null,
+    slc_point: Number(user.slc_point),
+    trip_count: Number(user.trip_count),
+    membership_name: user.member_level_id ? (membershipMap.get(Number(user.member_level_id)) || null) : null,
+  }));
 
   return NextResponse.json({
     data: usersWithMembership,

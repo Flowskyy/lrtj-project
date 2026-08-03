@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
-import ExportDialog from "@/components/ExportDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import StatusBadge from "@/components/StatusBadge";
 import Pagination from "@/components/Pagination";
-import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
+import { useExportJob } from "@/hooks/use-export-job";
+import ExportProgressDialog from "@/components/ExportProgressDialog";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<RedeemBenefitItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<RedeemBenefitItem | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -76,8 +78,24 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
   // Row selection states
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
+
+  // Export job hook
+  const exportParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (statusFilter !== "all") params.status = statusFilter;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.order = sortOrder;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    return params;
+  }, [statusFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo]);
+
+  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+    moduleEndpoint: '/api/redeem-benefit',
+    params: exportParams,
+    onError: (msg) => toast.error(msg),
+  });
 
   // Fetch items
   const fetchItems = async () => {
@@ -184,94 +202,18 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
     }
   };
 
-  // Export handlers
-  const handleExport = async (scope: "full" | "preview") => {
-    setExporting(true);
-    try {
-      let dataToExport: RedeemBenefitItem[];
-      
-      if (selectedRows.size > 0) {
-        // Export only checked rows
-        dataToExport = items.filter(item => selectedRows.has(item.id));
-      } else {
-        // Fetch all filtered data
-        const params = new URLSearchParams();
-        if (statusFilter !== "all") params.set("status", statusFilter);
-        if (sortBy) params.set("sortBy", sortBy);
-        if (sortOrder) params.set("order", sortOrder);
-        if (searchQuery.trim()) params.set("search", searchQuery.trim());
-        if (dateFrom) params.set("dateFrom", dateFrom);
-        if (dateTo) params.set("dateTo", dateTo);
-        params.set("export", "true");
 
-        const res = await fetch(`/api/redeem-benefit?${params}`);
-        if (res.ok) {
-          const response = await res.json();
-          dataToExport = response.data || [];
-        } else {
-          dataToExport = [];
-        }
-      }
-
-      let columns: ExportColumn[];
-      if (scope === "full") {
-        columns = [
-          { key: "id", label: "ID" },
-          { key: "user_id", label: "User ID" },
-          { key: "merchant_id", label: "Merchant ID" },
-          { key: "name", label: "Name" },
-          { key: "email", label: "Email" },
-          { key: "status", label: "Status" },
-          { key: "created_at", label: "Created At" },
-          { key: "updated_at", label: "Updated At" },
-        ];
-      } else {
-        // Dynamic columns based on visibleColumns
-        columns = [];
-        if (visibleColumns.name) columns.push({ key: "name", label: "Name" });
-        if (visibleColumns.email) columns.push({ key: "email", label: "Email" });
-        if (visibleColumns.created_at) columns.push({ key: "created_at", label: "Created" });
-        if (visibleColumns.status) columns.push({ key: "status", label: "Status" });
-        if (visibleColumns.id) columns.push({ key: "id", label: "ID" });
-        if (visibleColumns.user_id) columns.push({ key: "user_id", label: "User ID" });
-        if (visibleColumns.merchant_id) columns.push({ key: "merchant_id", label: "Merchant ID" });
-        if (visibleColumns.updated_at) columns.push({ key: "updated_at", label: "Updated" });
-      }
-
-      exportToExcel(dataToExport, columns, "redeem-benefit-export");
-      setExportDialogOpen(false);
-    } catch (err) {
-      console.error("Export failed", err);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Get field lists for export dialog
-  const fullDataFields = ["ID", "User ID", "Merchant ID", "Name", "Email", "Status", "Created At", "Updated At"];
-  const getPreviewFields = () => {
-    const fields: string[] = [];
-    if (visibleColumns.name) fields.push("Name");
-    if (visibleColumns.email) fields.push("Email");
-    if (visibleColumns.created_at) fields.push("Created");
-    if (visibleColumns.status) fields.push("Status");
-    if (visibleColumns.id) fields.push("ID");
-    if (visibleColumns.user_id) fields.push("User ID");
-    if (visibleColumns.merchant_id) fields.push("Merchant ID");
-    if (visibleColumns.updated_at) fields.push("Updated");
-    return fields;
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
-          <CardContent>
+          <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Total
+                  Total Records
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : totalCount}
@@ -285,30 +227,6 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
             </div>
           </CardContent>
         </Card>
-        {statusKeys.slice(0, 2).map((status) => {
-          const colors = getStatusCardColor(status);
-          return (
-            <Card key={status} className="hover:shadow-md transition-shadow">
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                      {status}
-                    </p>
-                    <p className={`text-2xl font-bold mt-1 ${colors.text}`}>
-                      {loading ? "..." : statusCounts[status]}
-                    </p>
-                  </div>
-                  <div className={`h-10 w-10 rounded-xl ${colors.bg} flex items-center justify-center`}>
-                    <svg className={`h-5 w-5 ${colors.svgColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
       </div>
 
       {/* Main Content Card */}
@@ -320,41 +238,31 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
           {/* Table Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                onClick={() => setExportDialogOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-white min-h-[44px]"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
               <div className="relative flex-1 sm:flex-none">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
-                  <Input
-                    type="text"
-                    placeholder="Search by name, email..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search by name, email..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9 min-h-[44px] w-full sm:w-64"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSearchQuery("");
                       setCurrentPage(1);
                     }}
-                    className="pl-9 pr-8 min-h-[36px]"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setCurrentPage(1);
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <TableFilterSortMenu
                 statusFilter={statusFilter}
@@ -445,6 +353,17 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            <Button
+              onClick={() => {
+                setShowExportDialog(true);
+                startExport();
+              }}
+              disabled={isExporting}
+              className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? 'Exporting...' : 'Export'}
+            </Button>
           </div>
 
           {/* Table - Desktop */}
@@ -740,11 +659,11 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{viewItem?.created_at ? viewItem.created_at.replace('T', ' ').substring(0, 16) : '-'}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.created_at)}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{viewItem?.updated_at ? viewItem.updated_at.replace('T', ' ').substring(0, 16) : '-'}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.updated_at)}</div>
               </div>
             </div>
           </div>
@@ -774,16 +693,12 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
         isDeleting={isDeleting}
       />
 
-      {/* Export Dialog */}
-      <ExportDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        onExport={handleExport}
-        loading={exporting}
-        fullDataFields={fullDataFields}
-        previewDataFields={getPreviewFields()}
-        selectedCount={selectedRows.size}
-        totalFilteredCount={totalCount}
+      {/* Export Progress Dialog */}
+      <ExportProgressDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        status={status === 'idle' ? null : { status, processed, total, percentage }}
+        onCancel={cancelExport}
       />
     </div>
   );

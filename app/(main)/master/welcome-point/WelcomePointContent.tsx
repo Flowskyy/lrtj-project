@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Pencil, Star, Clock, Calendar, User, Activity } from "lucide-react";
+import { formatWIBDate, parseWIBString, getCurrentWIBTime, getCurrentWIBTimeISO } from "@/lib/formatWIBDate";
 
 interface WelcomePoint {
   id: number;
@@ -36,9 +37,6 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
   const [countdown, setCountdown] = useState<string>("");
   const [isActive, setIsActive] = useState(false);
   const [isStartingSoon, setIsStartingSoon] = useState(false);
-
-  // Live WIB clock state
-  const [currentTime, setCurrentTime] = useState<string>("");
 
   // Form states
   const [timeRangeOption, setTimeRangeOption] = useState<"default" | "custom">("default");
@@ -74,21 +72,6 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     fetchWelcomePoint();
   }, []);
 
-  // Live clock (no timezone conversion - system time is WIB)
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toISOString().replace('T', ' ').substring(0, 19)
-      );
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
   // Countdown logic
   useEffect(() => {
     if (!welcomePoint || !welcomePoint.active_from || !welcomePoint.active_to) {
@@ -98,59 +81,74 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     }
 
     const updateCountdown = () => {
-      const now = new Date();
-      // DB values are stored as UTC, parse them for comparison
-      const from = new Date(welcomePoint.active_from!);
-      const to = new Date(welcomePoint.active_to!);
+      // Get current time in WIB
+      const wibNowString = getCurrentWIBTimeISO()
+      const wibNow = parseWIBString(wibNowString)
+
+      if (!wibNow) {
+        setCountdown("")
+        setIsActive(false)
+        return
+      }
+
+      // Parse DB values as literal WIB
+      const from = parseWIBString(welcomePoint.active_from!)
+      const to = parseWIBString(welcomePoint.active_to!)
+
+      if (!from || !to) {
+        setCountdown("")
+        setIsActive(false)
+        return
+      }
 
       // Check if currently within active window
-      const currentlyActive = now >= from && now <= to;
-      const currentlyStartingSoon = now < from;
-      setIsActive(currentlyActive);
-      setIsStartingSoon(currentlyStartingSoon);
+      const currentlyActive = wibNow >= from && wibNow <= to
+      const currentlyStartingSoon = wibNow < from
+      setIsActive(currentlyActive)
+      setIsStartingSoon(currentlyStartingSoon)
 
-      let targetDate: Date;
-      let label: string;
+      let targetDate: Date
+      let label: string
 
-      if (now < from) {
-        targetDate = from;
-        label = "Starts in";
-      } else if (now >= from && now <= to) {
-        targetDate = to;
-        label = "Ends in";
+      if (wibNow < from) {
+        targetDate = from
+        label = "Starts in"
+      } else if (wibNow >= from && wibNow <= to) {
+        targetDate = to
+        label = "Ends in"
       } else {
-        setCountdown("Expired");
-        setIsActive(false);
-        setIsStartingSoon(false);
-        return;
+        setCountdown("Expired")
+        setIsActive(false)
+        setIsStartingSoon(false)
+        return
       }
 
-      const diff = targetDate.getTime() - now.getTime();
+      const diff = targetDate.getTime() - wibNow.getTime()
 
       if (diff <= 0) {
-        setCountdown(label === "Starts in" ? "Starting now" : "Ended");
-        return;
+        setCountdown(label === "Starts in" ? "Starting now" : "Ended")
+        return
       }
 
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
 
-      let timeString = "";
-      if (days > 0) timeString += `${days}d `;
-      if (hours > 0 || days > 0) timeString += `${hours}h `;
-      if (minutes > 0 || hours > 0 || days > 0) timeString += `${minutes}m `;
-      timeString += `${seconds}s`;
+      let timeString = ""
+      if (days > 0) timeString += `${days}d `
+      if (hours > 0 || days > 0) timeString += `${hours}h `
+      if (minutes > 0 || hours > 0 || days > 0) timeString += `${minutes}m `
+      timeString += `${seconds}s`
 
-      setCountdown(`${label}: ${timeString.trim()}`);
-    };
+      setCountdown(`${label}: ${timeString.trim()}`)
+    }
 
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    updateCountdown()
+    const interval = setInterval(updateCountdown, 1000)
 
-    return () => clearInterval(interval);
-  }, [welcomePoint]);
+    return () => clearInterval(interval)
+  }, [welcomePoint])
 
   const handleEdit = async () => {
     if (!point || point < 0) {
@@ -213,11 +211,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     }
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-";
-    // DB value is literal WIB, display as-is (no timezone conversion)
-    return dateString.replace('T', ' ').substring(0, 16);
-  };
+
 
   return (
     <div className="flex flex-col space-y-4 animate-fade-in">
@@ -262,13 +256,6 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                     {welcomePoint.point}
                   </div>
                   <p className="text-gray-500 text-sm">Points awarded to new members</p>
-                </div>
-                <div className="flex-shrink-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Current Time (WIB)</span>
-                  </div>
-                  <p className="text-lg font-semibold text-gray-700">{currentTime}</p>
                 </div>
               </div>
             </div>
@@ -324,7 +311,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex-1">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">From</p>
-                      <p className="text-gray-900 font-medium text-sm">{formatDate(welcomePoint.active_from)}</p>
+                      <p className="text-gray-900 font-medium text-sm">{formatWIBDate(welcomePoint.active_from)}</p>
                     </div>
                     <div className="hidden sm:block text-gray-300">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,7 +320,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
                     </div>
                     <div className="flex-1">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">To</p>
-                      <p className="text-gray-900 font-medium text-sm">{formatDate(welcomePoint.active_to)}</p>
+                      <p className="text-gray-900 font-medium text-sm">{formatWIBDate(welcomePoint.active_to)}</p>
                     </div>
                   </div>
                 </div>
@@ -350,7 +337,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated At</p>
-                  <p className="text-sm text-gray-700">{formatDate(welcomePoint.updated_at)}</p>
+                  <p className="text-sm text-gray-700">{formatWIBDate(welcomePoint.updated_at)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated By</p>

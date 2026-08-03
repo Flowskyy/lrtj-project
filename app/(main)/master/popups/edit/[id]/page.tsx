@@ -9,6 +9,7 @@ import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface Popup {
   id: number;
@@ -171,7 +172,7 @@ export default function EditPopupPage() {
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {popup.created_at ? popup.created_at.replace('T', ' ').substring(0, 16) : "-"}
+                  {formatWIBDate(popup.created_at)}
                 </div>
               </div>
               <div>
@@ -179,7 +180,7 @@ export default function EditPopupPage() {
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {popup.updated_at ? popup.updated_at.replace('T', ' ').substring(0, 16) : "-"}
+                  {formatWIBDate(popup.updated_at)}
                 </div>
               </div>
             </div>

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
+
+// Simple in-memory cache for unfiltered total count (30 second TTL)
+let cachedTotal: { count: number; timestamp: number } | null = null;
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -72,15 +77,90 @@ export async function GET(request: NextRequest) {
     orderBy.id = 'desc';
   }
 
-  const [redeemBenefits, total] = await Promise.all([
-    prisma.redeem_benefit.findMany({
-      where,
-      orderBy,
-      skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? undefined : limit,
-    }),
-    prisma.redeem_benefit.count({ where }),
-  ]);
+  // Build WHERE clause for reuse
+  const whereClause = Object.keys(where).length > 0 ?
+    'WHERE ' + Object.entries(where).map(([key, value]) => {
+      if (key === 'OR') {
+        const orConditions = (value as any[]).map((cond: any) => {
+          const [field, op] = Object.entries(cond)[0];
+          const fieldValue = Object.values(cond)[0];
+          if (op === 'contains') return `${field} LIKE '%${fieldValue}%'`;
+          return `${field} = ${fieldValue}`;
+        }).join(' OR ');
+        return `(${orConditions})`;
+      }
+      if (typeof value === 'object' && value !== null) {
+        const [op, val] = Object.entries(value)[0];
+        return `${key} ${op.toUpperCase()} ${val}`;
+      }
+      return `${key} = ${value}`;
+    }).join(' AND ') : '';
+
+  // Use raw SQL for consistent WIB formatting
+  let redeemBenefits: any[];
+  
+  if (exportMode) {
+    // Batch fetching for large exports to prevent timeout/memory issues
+    const batchSize = 50000;
+    redeemBenefits = [];
+    let offset = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const batch = await prisma.$queryRawUnsafe(
+        `SELECT
+          id, user_id, merchant_id, name, email, status,
+          DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+          DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+        FROM redeem_benefit
+        ${whereClause}
+        ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY id DESC'}
+        LIMIT ${offset}, ${batchSize}`
+      ) as any[];
+      
+      redeemBenefits.push(...batch);
+      offset += batchSize;
+      hasMore = batch.length === batchSize;
+    }
+  } else {
+    // Normal paginated query
+    redeemBenefits = await prisma.$queryRawUnsafe(
+      `SELECT
+        id, user_id, merchant_id, name, email, status,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM redeem_benefit
+      ${whereClause}
+      ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY id DESC'}
+      LIMIT ${(page - 1) * limit}, ${limit}`
+    ) as any[];
+  }
+
+  // Get total count - use approximate count for unfiltered queries for performance
+  let total: number;
+  const hasFilters = Object.keys(where).length > 0;
+  
+  if (hasFilters) {
+    // Use exact COUNT(*) when filters are applied (necessary and typically faster)
+    const countResult = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*) as total FROM redeem_benefit ${whereClause}`
+    ) as any[];
+    total = Number(countResult[0]?.total || 0);
+  } else {
+    // Use cached approximate count for unfiltered queries (instant)
+    const now = Date.now();
+    if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
+      total = cachedTotal.count;
+    } else {
+      // Cache miss or expired - fetch fresh approximate count
+      const approxResult = await prisma.$queryRawUnsafe(
+        `SELECT table_rows as total FROM information_schema.tables 
+         WHERE table_schema = 'lrt_public_apps' AND table_name = 'redeem_benefit'`
+      ) as any[];
+      total = Number(approxResult[0]?.total || 0);
+      cachedTotal = { count: total, timestamp: now };
+    }
+  }
 
   // Get status counts for stat cards
   const statusCounts = await prisma.redeem_benefit.groupBy({

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { CalendarIcon, Clock } from "lucide-react"
+import { formatWIBDate } from "@/lib/formatWIBDate"
 
 interface DateTimePickerProps {
   value?: string
@@ -29,13 +30,16 @@ const formatToISOString = (
 
 // Helper to parse ISO string to date parts (no timezone conversion)
 const parseISOString = (isoString: string) => {
-  const date = new Date(isoString)
+  // Parse manually to avoid timezone conversion from new Date()
+  const [datePart, timePart] = isoString.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hours, minutes] = timePart.split(':').map(Number)
   return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-    day: date.getDate(),
-    hours: date.getHours(),
-    minutes: date.getMinutes(),
+    year,
+    month,
+    day,
+    hours,
+    minutes,
   }
 }
 
@@ -98,17 +102,8 @@ export function DateTimePicker({
 
   const formatDateTime = (dateString: string | undefined) => {
     if (!dateString) return placeholder
-    const date = new Date(dateString)
-    if (!date) return placeholder
-    // Display as-is (no timezone conversion)
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
+    // Use shared formatWIBDate for consistent display
+    return formatWIBDate(dateString)
   }
 
   return (

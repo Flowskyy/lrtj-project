@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Filter, ArrowUpDown } from "lucide-react";
+import { Filter, ArrowUpDown, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface TableFilterSortMenuProps {
@@ -153,7 +153,9 @@ export default function TableFilterSortMenu({
               <div className="px-3 pb-2">
                 <Select value={statusFilter} onValueChange={(v) => onStatusFilterChange(v || 'all')}>
                   <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="Select status">
+                      {statusOptions.find(opt => opt.value === statusFilter)?.label || "Select status"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {statusOptions.map((option) => (
@@ -177,7 +179,9 @@ export default function TableFilterSortMenu({
                 <div className="px-3 pb-2">
                   <Select value={genderFilter} onValueChange={(v) => onGenderFilterChange(v || 'all')}>
                     <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select gender" />
+                      <SelectValue placeholder="Select gender">
+                        {genderOptions.find(opt => opt.value === genderFilter)?.label || "Select gender"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {genderOptions.map((option) => (
@@ -202,7 +206,9 @@ export default function TableFilterSortMenu({
                 <div className="px-3 pb-2">
                   <Select value={verifiedFilter} onValueChange={(v) => onVerifiedFilterChange(v || 'all')}>
                     <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select verification" />
+                      <SelectValue placeholder="Select verification">
+                        {verifiedOptions.find(opt => opt.value === verifiedFilter)?.label || "Select verification"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {verifiedOptions.map((option) => (
@@ -227,7 +233,9 @@ export default function TableFilterSortMenu({
                 <div className="px-3 pb-2">
                   <Select value={activationSlcFilter} onValueChange={(v) => onActivationSlcFilterChange(v || 'all')}>
                     <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select activation" />
+                      <SelectValue placeholder="Select activation">
+                        {activationSlcOptions.find(opt => opt.value === activationSlcFilter)?.label || "Select activation"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {activationSlcOptions.map((option) => (
@@ -252,7 +260,9 @@ export default function TableFilterSortMenu({
                 <div className="px-3 pb-2">
                   <Select value={tierFilter} onValueChange={(v) => onTierFilterChange(v || 'all')}>
                     <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select tier" />
+                      <SelectValue placeholder="Select tier">
+                        {tierOptions.find(opt => opt.value === tierFilter)?.label || "Select tier"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {tierOptions.map((option) => (
@@ -277,7 +287,9 @@ export default function TableFilterSortMenu({
                 <div className="px-3 pb-2">
                   <Select value={typeFilter} onValueChange={(v) => onTypeFilterChange(v || 'all')}>
                     <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Select type">
+                        {typeOptions.find(opt => opt.value === typeFilter)?.label || "Select type"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {typeOptions.map((option) => (
@@ -302,7 +314,9 @@ export default function TableFilterSortMenu({
                 <div className="px-3 pb-2">
                   <Select value={categoryFilter} onValueChange={(v) => onCategoryFilterChange(v || 'all')}>
                     <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Select category">
+                        {categoryOptions.find(opt => opt.value === categoryFilter)?.label || "Select category"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {categoryOptions.map((option) => (
@@ -377,7 +391,9 @@ export default function TableFilterSortMenu({
             <div className="px-3 pb-2">
               <Select value={sortBy} onValueChange={(v) => onSortByChange(v || 'id')}>
                 <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                  <SelectValue placeholder="Select sort field" />
+                  <SelectValue placeholder="Select sort field">
+                    {sortByOptions.find(opt => opt.value === sortBy)?.label || "Select sort field"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {sortByOptions.map((option) => (
@@ -395,7 +411,9 @@ export default function TableFilterSortMenu({
             <div className="px-3 pb-2">
               <Select value={sortOrder} onValueChange={(v) => onSortOrderChange(v || 'asc')}>
                 <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-white">
-                  <SelectValue placeholder="Select order" />
+                  <SelectValue placeholder="Select order">
+                    {sortOrder === 'asc' ? 'Ascending' : sortOrder === 'desc' ? 'Descending' : 'Select order'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="asc">Ascending</SelectItem>

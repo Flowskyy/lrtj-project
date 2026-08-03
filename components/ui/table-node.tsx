@@ -900,7 +900,7 @@ function TableFloatingToolbarContent({
   onSplit?: () => void;
 }) {
   return (
-    <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} contentEditable={false} {...props} render={<Toolbar className="scrollbar-hide flex w-auto max-w-[80vw] flex-row overflow-x-auto rounded-md border bg-popover p-1 shadow-md print:hidden" contentEditable={false} />}><ToolbarGroup>
+    <PopoverContent contentEditable={false} {...props} render={<Toolbar className="scrollbar-hide flex w-auto max-w-[80vw] flex-row overflow-x-auto rounded-md border bg-popover p-1 shadow-md print:hidden" contentEditable={false} />}><ToolbarGroup>
                 <ColorDropdownMenu tooltip="Background color">
                   <PaintBucketIcon />
                 </ColorDropdownMenu>

@@ -3,18 +3,30 @@ import { prisma } from '@/lib/prisma';
   
 export async function GET(request: Request) {
   try {
-    const welcomePoint = await prisma.welcome_point.findFirst({
-      orderBy: {
-        id: 'asc',
-      },
-    });
+    // Use raw SQL to bypass Prisma's timezone conversion
+    const result = await prisma.$queryRaw`
+      SELECT
+        id,
+        point,
+        default_point,
+        updated_by,
+        DATE_FORMAT(active_from, '%Y-%m-%dT%H:%i:%s') as active_from,
+        DATE_FORMAT(active_to, '%Y-%m-%dT%H:%i:%s') as active_to,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM welcome_point
+      ORDER BY id ASC
+      LIMIT 1
+    ` as any[];
 
-    if (!welcomePoint) {
+    if (!result || result.length === 0) {
       return NextResponse.json(
         { error: 'No welcome point configuration found' },
         { status: 404 }
       );
     }
+
+    const welcomePoint = result[0];
 
     return NextResponse.json(welcomePoint);
   } catch (error) {
@@ -45,33 +57,48 @@ export async function PUT(request: Request) {
       );
     }
 
-    const existing = await prisma.welcome_point.findFirst({
-      orderBy: {
-        id: 'asc',
-      },
-    });
+    // Get the first record ID
+    const existing = await prisma.$queryRaw`
+      SELECT id FROM welcome_point ORDER BY id ASC LIMIT 1
+    ` as any[];
 
-    if (!existing) {
+    if (!existing || existing.length === 0) {
       return NextResponse.json(
         { error: 'No welcome point configuration found to update' },
         { status: 404 }
       );
     }
 
-    const updated = await prisma.welcome_point.update({
-      where: {
-        id: existing.id,
-      },
-      data: {
-        point: point,
-        active_from: active_from ? active_from.toString() : null,
-        active_to: active_to ? active_to.toString() : null,
-        updated_by: updated_by,
-        updated_at: new Date(),
-      },
-    });
+    const id = existing[0].id;
 
-    return NextResponse.json(updated);
+    // Use raw SQL to bypass Prisma's timezone conversion
+    await prisma.$queryRaw`
+      UPDATE welcome_point
+      SET
+        point = ${point},
+        active_from = ${active_from || null},
+        active_to = ${active_to || null},
+        updated_by = ${updated_by},
+        updated_at = NOW()
+      WHERE id = ${id}
+    `;
+
+    // Fetch the updated record using raw SQL
+    const result = await prisma.$queryRaw`
+      SELECT
+        id,
+        point,
+        default_point,
+        updated_by,
+        DATE_FORMAT(active_from, '%Y-%m-%dT%H:%i:%s') as active_from,
+        DATE_FORMAT(active_to, '%Y-%m-%dT%H:%i:%s') as active_to,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM welcome_point
+      WHERE id = ${id}
+    ` as any[];
+
+    return NextResponse.json(result[0]);
   } catch (error) {
     console.error('Error updating welcome point:', error);
     return NextResponse.json(

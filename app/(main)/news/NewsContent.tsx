@@ -185,7 +185,7 @@ export default function NewsContent({ username }: NewsContentProps) {
   };
 
   // Computed values
-  const total = totalCount;
+  const totalNews = totalCount;
   const active = activeCount;
   const inactive = inactiveCount;
 
@@ -202,7 +202,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                   Total News
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : total}
+                  {loading ? "..." : totalNews}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -819,7 +819,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                   </div>
                   <div
                     className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
-                    dangerouslySetInnerHTML={{ __html: viewItem.content }}
+                    dangerouslySetInnerHTML={{ __html: viewItem.content || "" }}
                   />
                 </div>
               )}
@@ -831,7 +831,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                   </div>
                   <div
                     className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
-                    dangerouslySetInnerHTML={{ __html: viewItem.content_en }}
+                    dangerouslySetInnerHTML={{ __html: viewItem.content_en || "" }}
                   />
                 </div>
               )}

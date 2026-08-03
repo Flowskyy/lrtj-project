@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
+
+// Simple in-memory cache for unfiltered total count (30 second TTL)
+let cachedTotal: { count: number; timestamp: number } | null = null;
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,45 +14,73 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
 
-  const where: any = {};
+  // Build WHERE clause for raw SQL
+  const conditions: string[] = [];
+  const params: any[] = [];
 
-  if (status === 'active') {
-    where.status = 1;
-  } else if (status === 'inactive') {
-    where.status = 0;
-  } else if (status === '1') {
-    where.status = 1;
-  } else if (status === '0') {
-    where.status = 0;
+  if (status === 'active' || status === '1') {
+    conditions.push('status = 1');
+  } else if (status === 'inactive' || status === '0') {
+    conditions.push('status = 0');
   }
 
-  if (dateFrom || dateTo) {
-    where.created_at = {};
-    if (dateFrom) {
-      where.created_at.gte = new Date(dateFrom);
-    }
-    if (dateTo) {
-      where.created_at.lte = new Date(dateTo);
-    }
+  if (dateFrom) {
+    conditions.push('created_at >= ?');
+    params.push(dateFrom);
+  }
+  if (dateTo) {
+    conditions.push('created_at <= ?');
+    params.push(dateTo);
   }
 
-  const orderBy: any = {};
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Build ORDER BY clause
+  let orderByClause = 'ORDER BY id ASC';
   if (sortBy === 'id') {
-    orderBy.id = order;
+    orderByClause = `ORDER BY id ${order.toUpperCase()}`;
   } else if (sortBy === 'createdAt') {
-    orderBy.created_at = order;
+    orderByClause = `ORDER BY created_at ${order.toUpperCase()}`;
   } else if (sortBy === 'editedBy') {
-    orderBy.editedBy = order;
-  } else {
-    orderBy.id = 'asc';
+    orderByClause = `ORDER BY editedBy ${order.toUpperCase()}`;
   }
 
-  const [items, totalCount, activeCount, inactiveCount] = await Promise.all([
-    prisma.daily_benefit.findMany({
-      where,
-      orderBy,
-    }),
-    prisma.daily_benefit.count(),
+  // Use raw SQL for consistent WIB formatting
+  const items = await prisma.$queryRawUnsafe(
+    `SELECT
+      id, name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM daily_benefit
+    ${whereClause}
+    ${orderByClause}`,
+    ...params
+  ) as any[];
+
+  // Get counts - use approximate count for unfiltered queries for performance
+  const hasFilters = conditions.length > 0;
+  let totalCount: any[];
+  
+  if (hasFilters) {
+    // Use exact COUNT(*) when filters are applied
+    totalCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM daily_benefit ${whereClause}`, ...params) as any[];
+  } else {
+    // Use cached approximate count for unfiltered queries (instant)
+    const now = Date.now();
+    if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
+      totalCount = [{ count: cachedTotal.count }];
+    } else {
+      // Cache miss or expired - fetch fresh approximate count
+      const approxResult = await prisma.$queryRawUnsafe(
+        `SELECT table_rows as count FROM information_schema.tables 
+         WHERE table_schema = 'lrt_public_apps' AND table_name = 'daily_benefit'`
+      ) as any[];
+      totalCount = approxResult;
+      cachedTotal = { count: Number(approxResult[0]?.count || 0), timestamp: now };
+    }
+  }
+  
+  const [activeCount, inactiveCount] = await Promise.all([
     prisma.daily_benefit.count({ where: { status: 1 } }),
     prisma.daily_benefit.count({ where: { status: 0 } }),
   ]);
@@ -55,7 +88,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     data: items,
     meta: {
-      total: totalCount,
+      total: Number(totalCount[0]?.count || 0),
       active: activeCount,
       inactive: inactiveCount,
     },
@@ -64,21 +97,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  const newItem = await prisma.daily_benefit.create({
-    data: {
-      name: data.name,
-      redeem_point: data.redeem_point,
-      image_url: data.image_url || '',
-      term_condition: data.term_condition || '<p>-</p>',
-      editedBy: data.editedBy,
-      status: data.status ?? 1,
-      start_date: data.start_date ? new Date(data.start_date) : null,
-      end_date: data.end_date ? new Date(data.end_date) : null,
-      is_active: data.is_active ?? 1,
-      created_at: new Date(),
-      updated_at: new Date(),
-    },
-  });
 
-  return NextResponse.json(newItem);
+  // Use raw SQL to store WIB time literally without timezone conversion
+  await prisma.$queryRaw`
+    INSERT INTO daily_benefit (name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active, created_at, updated_at)
+    VALUES (
+      ${data.name},
+      ${data.redeem_point},
+      ${data.image_url || ''},
+      ${data.term_condition || '<p>-</p>'},
+      ${data.editedBy},
+      ${data.status ?? 1},
+      ${formatWIB(data.start_date)},
+      ${formatWIB(data.end_date)},
+      ${data.is_active ?? 1},
+      ${formatWIB(new Date())},
+      ${formatWIB(new Date())}
+    )
+  `;
+
+  // Fetch the new item with proper WIB formatting
+  const newItem = await prisma.$queryRaw`
+    SELECT
+      id, name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM daily_benefit
+    ORDER BY id DESC
+    LIMIT 1
+  ` as any[];
+
+  return NextResponse.json(newItem[0]);
 }

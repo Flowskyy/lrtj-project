@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
-import ExportDialog from "@/components/ExportDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import StatusBadge from "@/components/StatusBadge";
 import Pagination from "@/components/Pagination";
-import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
+import { useExportJob } from "@/hooks/use-export-job";
+import ExportProgressDialog from "@/components/ExportProgressDialog";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
 import MerchandiseSearchCombobox from "@/components/MerchandiseSearchCombobox";
 import UserSearchCombobox from "@/components/UserSearchCombobox";
@@ -71,11 +72,11 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   // Modal and CRUD states
   const [viewItem, setViewItem] = useState<RedeemItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<RedeemItem | null>(null);
-
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
-    select: true,
+    select: false,
     id: false,
     user_id: false,
     receiver_name: true,
@@ -86,10 +87,24 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     actions: true,
   });
 
-  // Row selection states
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  // Export job hook
+  const exportParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (statusFilter !== "all") params.status = statusFilter;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.order = sortOrder;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    if (categoryFilter !== "all") params.category_id = categoryFilter;
+    return params;
+  }, [statusFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo, categoryFilter]);
+
+  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+    moduleEndpoint: '/api/redeem',
+    params: exportParams,
+    onError: (msg) => toast.error(msg),
+  });
 
   // Fetch items
   const fetchItems = async () => {
@@ -178,147 +193,29 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   };
 
   // Computed values
-  const total = totalCount;
+  const totalRedeems = totalCount;
   const completed = completedCount;
 
-  // Handle row selection
-  const handleSelectRow = (id: number) => {
-    setSelectedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
 
-  const handleSelectAll = () => {
-    if (selectedRows.size === items.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(items.map(item => item.id)));
-    }
-  };
-
-  // Export handlers
-  const handleExport = async (scope: "full" | "preview") => {
-    setExporting(true);
-    try {
-      let dataToExport: RedeemItem[];
-      
-      if (selectedRows.size > 0) {
-        // Export only checked rows
-        dataToExport = items.filter(item => selectedRows.has(item.id));
-      } else {
-        // Fetch all filtered data
-        const params = new URLSearchParams();
-        if (statusFilter !== "all") params.set("status", statusFilter);
-        if (sortBy) params.set("sortBy", sortBy);
-        if (sortOrder) params.set("order", sortOrder);
-        if (searchQuery.trim()) params.set("search", searchQuery.trim());
-        if (dateFrom) params.set("dateFrom", dateFrom);
-        if (dateTo) params.set("dateTo", dateTo);
-        if (categoryFilter !== "all") params.set("category_id", categoryFilter);
-        params.set("export", "true");
-
-        const res = await fetch(`/api/redeem?${params}`);
-        if (res.ok) {
-          const response = await res.json();
-          dataToExport = response.data || [];
-        } else {
-          dataToExport = [];
-        }
-      }
-
-      let columns: ExportColumn[];
-      if (scope === "full") {
-        columns = [
-          { key: "id", label: "ID" },
-          { key: "user_id", label: "User ID" },
-          { key: "merchandise_id", label: "Merchandise ID" },
-          { key: "merchandise_name", label: "Merchandise Name" },
-          { key: "receiver_name", label: "Receiver Name" },
-          { key: "receiver_phone", label: "Receiver Phone" },
-          { key: "receiver_email", label: "Receiver Email" },
-          { key: "receiver_address", label: "Receiver Address" },
-          { key: "status", label: "Status" },
-          { key: "createdAt", label: "Created At" },
-          { key: "updatedAt", label: "Updated At" },
-        ];
-      } else {
-        // Dynamic columns based on visibleColumns
-        columns = [];
-        if (visibleColumns.receiver_name) columns.push({ key: "receiver_name", label: "Receiver Name" });
-        if (visibleColumns.merchandise_name) columns.push({ key: "merchandise_name", label: "Merchandise" });
-        if (visibleColumns.created_at) columns.push({ key: "createdAt", label: "Created" });
-        if (visibleColumns.status) columns.push({ key: "status", label: "Status" });
-        if (visibleColumns.id) columns.push({ key: "id", label: "ID" });
-        if (visibleColumns.user_id) columns.push({ key: "user_id", label: "User ID" });
-        if (visibleColumns.updated_at) columns.push({ key: "updatedAt", label: "Updated" });
-      }
-
-      exportToExcel(dataToExport, columns, "redeem-merchandise-export");
-      setExportDialogOpen(false);
-    } catch (err) {
-      console.error("Export failed", err);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Get field lists for export dialog
-  const fullDataFields = ["ID", "User ID", "Merchandise ID", "Merchandise Name", "Receiver Name", "Receiver Phone", "Receiver Email", "Receiver Address", "Status", "Created At", "Updated At"];
-  const getPreviewFields = () => {
-    const fields: string[] = [];
-    if (visibleColumns.receiver_name) fields.push("Receiver Name");
-    if (visibleColumns.merchandise_name) fields.push("Merchandise");
-    if (visibleColumns.created_at) fields.push("Created");
-    if (visibleColumns.status) fields.push("Status");
-    if (visibleColumns.id) fields.push("ID");
-    if (visibleColumns.user_id) fields.push("User ID");
-    if (visibleColumns.updated_at) fields.push("Updated");
-    return fields;
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Total Redeems
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  Total Records
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {loading ? "..." : total}
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {loading ? "..." : totalRedeems}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <svg className="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Completed
-                </p>
-                <p className="text-3xl font-bold text-green-700 mt-2">
-                  {loading ? "..." : completed}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
-                <svg className="h-6 w-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
             </div>
@@ -327,52 +224,42 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       </div>
 
       {/* Main Content Card */}
-      <Card className="border border-gray-200 shadow-sm">
-        <CardContent className="p-6">
-          <CardHeader className="px-0 pt-0 pb-4">
-            <CardTitle className="text-xl font-semibold text-gray-900">Redeem Merchandise</CardTitle>
+      <Card>
+        <CardContent>
+          <CardHeader className="p-3">
+            <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
           </CardHeader>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-              <Button
-                onClick={() => setExportDialogOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-white h-10 px-4"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
               <div className="relative flex-1 sm:flex-none">
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search redeems..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search redeems..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9 min-h-[44px] w-full sm:w-64"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSearchQuery("");
                       setCurrentPage(1);
                     }}
-                    className="pl-10 pr-9 h-10 border-gray-200"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setCurrentPage(1);
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-48 h-10 border-gray-200">
+              <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value || "all")}>
+                <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
                   <SelectValue placeholder="All Categories">
                     {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
                   </SelectValue>
@@ -412,10 +299,16 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-10 px-3 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
-                  <Columns className="h-4 w-4 text-gray-600" />
+                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                  <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, select: !prev.select }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.select && <Check className="h-4 w-4" />}
+                      <span>Select</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: !prev.id }))}>
                     <div className="flex items-center gap-2">
                       {visibleColumns.id && <Check className="h-4 w-4" />}
@@ -467,64 +360,66 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            <Button
+              onClick={() => {
+                setShowExportDialog(true);
+                startExport();
+              }}
+              disabled={isExporting}
+              className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? 'Exporting...' : 'Export'}
+            </Button>
           </div>
 
           {/* Table - Desktop */}
-          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
+          <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
+              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.select && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
-                      <button
-                        onClick={handleSelectAll}
-                        className="flex items-center justify-center"
-                      >
-                        {selectedRows.size === items.length && items.length > 0 ? (
-                          <CheckSquare className="h-4 w-4" />
-                        ) : (
-                          <Square className="h-4 w-4" />
-                        )}
-                      </button>
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-12">
+                      Select
                     </TableHead>
                   )}
                   {visibleColumns.id && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
                       ID
                     </TableHead>
                   )}
                   {visibleColumns.user_id && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
                       User ID
                     </TableHead>
                   )}
                   {visibleColumns.receiver_name && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">
                       Receiver Name
                     </TableHead>
                   )}
                   {visibleColumns.merchandise_name && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[160px]">
                       Merchandise
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
                       Created
                     </TableHead>
                   )}
                   {visibleColumns.updated_at && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
                       Updated
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
+                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
@@ -573,14 +468,9 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       {visibleColumns.select && (
                         <TableCell className="px-4 py-3">
                           <button
-                            onClick={() => handleSelectRow(item.id)}
                             className="flex items-center justify-center"
                           >
-                            {selectedRows.has(item.id) ? (
-                              <CheckSquare className="h-4 w-4" />
-                            ) : (
-                              <Square className="h-4 w-4" />
-                            )}
+                            <Square className="h-4 w-4" />
                           </button>
                         </TableCell>
                       )}
@@ -753,11 +643,11 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{viewItem?.createdAt ? viewItem.createdAt.replace('T', ' ').substring(0, 16) : '-'}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.createdAt)}</div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{viewItem?.updatedAt ? viewItem.updatedAt.replace('T', ' ').substring(0, 16) : '-'}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.updatedAt)}</div>
               </div>
             </div>
           </div>
@@ -779,16 +669,12 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
         isDeleting={isDeleting}
       />
 
-      {/* Export Dialog */}
-      <ExportDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        onExport={handleExport}
-        loading={exporting}
-        fullDataFields={fullDataFields}
-        previewDataFields={getPreviewFields()}
-        selectedCount={selectedRows.size}
-        totalFilteredCount={totalCount}
+      {/* Export Progress Dialog */}
+      <ExportProgressDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        status={status === 'idle' ? null : { status, processed, total, percentage }}
+        onCancel={cancelExport}
       />
     </div>
   );

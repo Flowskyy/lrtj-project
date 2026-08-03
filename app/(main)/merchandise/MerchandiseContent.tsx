@@ -180,7 +180,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   };
 
   // Computed values
-  const total = totalCount;
+  const totalMerchandise = totalCount;
   const active = activeCount;
   const inactive = inactiveCount;
 
@@ -197,7 +197,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   Total Merchandise
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : total}
+                  {loading ? "..." : totalMerchandise}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -315,7 +315,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   </Button>
                 )}
               </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value || "all")}>
                 <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
                   <SelectValue placeholder="All Categories">
                     {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
@@ -507,8 +507,8 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                         </TableCell>
                       )}
                       {visibleColumns.category && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-600 truncate max-w-[140px]" title={item.category?.category_name || "Uncategorized"}>
-                          {item.category?.category_name || "-"}
+                        <TableCell className="px-3 py-1.5 text-xs text-gray-600 truncate max-w-[140px]" title={item.merchandise_category?.category_name || "Uncategorized"}>
+                          {item.merchandise_category?.category_name || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.points && (

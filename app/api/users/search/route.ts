@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         take: 10,
         distinct: ['receiver_name'],
         orderBy: {
-          created_at: 'desc',
+          id: 'desc',
         },
       });
 

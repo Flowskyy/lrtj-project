@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
+
+// Simple in-memory cache for unfiltered total count (30 second TTL)
+let cachedTotal: { count: number; timestamp: number } | null = null;
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,43 +14,76 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
 
-  const where: any = {};
+  // Build WHERE clause for raw SQL
+  const conditions: string[] = [];
+  const params: any[] = [];
 
   if (status === 'active') {
-    where.status = 1;
+    conditions.push('status = 1');
   } else if (status === 'inactive') {
-    where.status = 0;
+    conditions.push('status = 0');
   }
 
-  if (dateFrom || dateTo) {
-    where.publish_date = {};
-    if (dateFrom) {
-      where.publish_date.gte = new Date(dateFrom);
-    }
-    if (dateTo) {
-      where.publish_date.lte = new Date(dateTo);
-    }
+  if (dateFrom) {
+    conditions.push('publish_date >= ?');
+    params.push(dateFrom);
+  }
+  if (dateTo) {
+    conditions.push('publish_date <= ?');
+    params.push(dateTo);
   }
 
-  const orderBy: any = {};
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Build ORDER BY clause
+  let orderByClause = 'ORDER BY id DESC';
   if (sortBy === 'id') {
-    orderBy.id = order;
+    orderByClause = `ORDER BY id ${order.toUpperCase()}`;
   } else if (sortBy === 'publish_date') {
-    orderBy.publish_date = order;
+    orderByClause = `ORDER BY publish_date ${order.toUpperCase()}`;
   } else if (sortBy === 'views') {
-    orderBy.views = order;
+    orderByClause = `ORDER BY views ${order.toUpperCase()}`;
   } else if (sortBy === 'created_at') {
-    orderBy.created_at = order;
-  } else {
-    orderBy.id = 'desc';
+    orderByClause = `ORDER BY created_at ${order.toUpperCase()}`;
   }
 
-  const [items, totalCount, activeCount, inactiveCount] = await Promise.all([
-    prisma.news.findMany({
-      where,
-      orderBy,
-    }),
-    prisma.news.count(),
+  // Use raw SQL for consistent WIB formatting
+  const items = await prisma.$queryRawUnsafe(
+    `SELECT
+      id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
+      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM news
+    ${whereClause}
+    ${orderByClause}`,
+    ...params
+  ) as any[];
+
+  // Get counts - use approximate count for unfiltered queries for performance
+  const hasFilters = conditions.length > 0;
+  let totalCount: any[];
+  
+  if (hasFilters) {
+    // Use exact COUNT(*) when filters are applied
+    totalCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM news ${whereClause}`, ...params) as any[];
+  } else {
+    // Use cached approximate count for unfiltered queries (instant)
+    const now = Date.now();
+    if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
+      totalCount = [{ count: cachedTotal.count }];
+    } else {
+      // Cache miss or expired - fetch fresh approximate count
+      const approxResult = await prisma.$queryRawUnsafe(
+        `SELECT table_rows as count FROM information_schema.tables 
+         WHERE table_schema = 'lrt_public_apps' AND table_name = 'news'`
+      ) as any[];
+      totalCount = approxResult;
+      cachedTotal = { count: Number(approxResult[0]?.count || 0), timestamp: now };
+    }
+  }
+  
+  const [activeCount, inactiveCount] = await Promise.all([
     prisma.news.count({ where: { status: 1 } }),
     prisma.news.count({ where: { status: 0 } }),
   ]);
@@ -53,13 +91,13 @@ export async function GET(request: NextRequest) {
   // Convert BigInt to string for JSON serialization
   const serializedItems = items.map(item => ({
     ...item,
-    views: item.views.toString(),
+    views: item.views ? item.views.toString() : '0',
   }));
 
   return NextResponse.json({
     data: serializedItems,
     meta: {
-      total: totalCount,
+      total: Number(totalCount[0]?.count || 0),
       active: activeCount,
       inactive: inactiveCount,
     },
@@ -68,26 +106,41 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  const newItem = await prisma.news.create({
-    data: {
-      title: data.title,
-      title_en: data.title_en,
-      content: data.content || '<p>-</p>',
-      content_en: data.content_en || '<p>-</p>',
-      img_url: data.img_url || '',
-      caption_image: data.caption_image || '',
-      type: data.type || 'general',
-      status: data.status ?? 1,
-      publish_date: data.publish_date ? data.publish_date.toString() : null,
-      createdBy: data.createdBy,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  });
+
+  // Use raw SQL to store WIB time literally without timezone conversion
+  await prisma.$queryRaw`
+    INSERT INTO news (title, title_en, content, content_en, img_url, caption_image, type, status, publish_date, createdBy, created_at, updated_at)
+    VALUES (
+      ${data.title},
+      ${data.title_en || null},
+      ${data.content || '<p>-</p>'},
+      ${data.content_en || '<p>-</p>'},
+      ${data.img_url || ''},
+      ${data.caption_image || ''},
+      ${data.type || 'general'},
+      ${data.status ?? 1},
+      ${formatWIB(data.publish_date)},
+      ${data.createdBy},
+      ${formatWIB(new Date())},
+      ${formatWIB(new Date())}
+    )
+  `;
+
+  // Fetch the new item with proper WIB formatting
+  const newItem = await prisma.$queryRaw`
+    SELECT
+      id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
+      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM news
+    ORDER BY id DESC
+    LIMIT 1
+  ` as any[];
 
   const serialized = {
-    ...newItem,
-    views: newItem.views.toString(),
+    ...newItem[0],
+    views: newItem[0]?.views ? newItem[0].views.toString() : '0',
     creatorEmail: data.creatorEmail || null,
   };
   return NextResponse.json(serialized);

@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2, Search, Package, Check, X } from "lucide-react";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface Category {
   id: number;
@@ -222,10 +223,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     setDeleteDialogOpen(true);
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-";
-    return dateString.split('T')[0];
-  };
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -340,8 +338,8 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
                             onCheckedChange={() => handleStatusToggle(category)}
                           />
                         </TableCell>
-                        <TableCell>{formatDate(category.created_at)}</TableCell>
-                        <TableCell>{formatDate(category.updated_at)}</TableCell>
+                        <TableCell>{formatWIBDate(category.created_at)}</TableCell>
+                        <TableCell>{formatWIBDate(category.updated_at)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Button

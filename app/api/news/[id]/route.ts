@@ -1,32 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const item = await prisma.news.findUnique({
-    where: { id: parseInt(id) },
-  });
 
-  if (!item) {
+  // Use raw SQL for consistent WIB formatting
+  const item = await prisma.$queryRaw`
+    SELECT
+      id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
+      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM news
+    WHERE id = ${parseInt(id)}
+  ` as any[];
+
+  if (!item || item.length === 0) {
     return NextResponse.json({ error: 'News not found' }, { status: 404 });
   }
 
   // Fetch creator email if createdBy exists
   let creatorEmail = null;
-  if (item.createdBy) {
+  if (item[0].createdBy) {
     const creator = await prisma.auth_users.findFirst({
-      where: { name: item.createdBy },
+      where: { name: item[0].createdBy },
       select: { email: true },
     });
     creatorEmail = creator?.email || null;
   }
 
   const serialized = {
-    ...item,
-    views: item.views.toString(),
+    ...item[0],
+    views: item[0].views ? item[0].views.toString() : '0',
     creatorEmail: creatorEmail || null,
   };
   return NextResponse.json(serialized);
@@ -38,25 +47,37 @@ export async function PUT(
 ) {
   const { id } = await params;
   const data = await request.json();
-  const updatedItem = await prisma.news.update({
-    where: { id: parseInt(id) },
-    data: {
-      title: data.title,
-      title_en: data.title_en,
-      content: data.content,
-      content_en: data.content_en,
-      img_url: data.img_url,
-      caption_image: data.caption_image,
-      type: data.type,
-      status: data.status,
-      publish_date: data.publish_date ? data.publish_date.toString() : null,
-      updated_at: new Date().toISOString(),
-    },
-  });
+  
+  // Use raw SQL to store WIB time literally without timezone conversion
+  await prisma.$queryRaw`
+    UPDATE news 
+    SET title = ${data.title},
+        title_en = ${data.title_en},
+        content = ${data.content},
+        content_en = ${data.content_en},
+        img_url = ${data.img_url},
+        caption_image = ${data.caption_image},
+        type = ${data.type},
+        status = ${data.status},
+        publish_date = ${formatWIB(data.publish_date)},
+        updated_at = ${formatWIB(new Date())}
+    WHERE id = ${parseInt(id)}
+  `;
+
+  // Fetch the updated item with proper WIB formatting
+  const updatedItem = await prisma.$queryRaw`
+    SELECT
+      id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
+      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM news
+    WHERE id = ${parseInt(id)}
+  ` as any[];
 
   const serialized = {
-    ...updatedItem,
-    views: updatedItem.views.toString(),
+    ...updatedItem[0],
+    views: updatedItem[0]?.views ? updatedItem[0].views.toString() : '0',
   };
   return NextResponse.json(serialized);
 }

@@ -13,30 +13,52 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
     }
 
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      include: {
-        provinces: true,
-        regencies: true,
-      },
-    });
+    // Use raw SQL for consistent WIB formatting
+    const user = await prisma.$queryRawUnsafe(
+      `SELECT
+        id, email, password, no_telepon, jenis_kelamin, nik, alamat, tempat_lahir, name, image, status, device_token,
+        push_notification, email_notification, new_content_notification, google_id, otp, DATE_FORMAT(verified_at, '%Y-%m-%dT%H:%i:%s') as verified_at, activation_slc,
+        DATE_FORMAT(activation_slc_at, '%Y-%m-%dT%H:%i:%s') as activation_slc_at, activation_lrtjpay,
+        DATE_FORMAT(activation_lrtjpay_at, '%Y-%m-%dT%H:%i:%s') as activation_lrtjpay_at, member_level_id, apple_id, lrtj_token, guid,
+        domain, lrtjpay_token, lrtjpay_pin, province_id, regency_id, ecard, ecard2, lrtj_saldo, slc_point, trip_count,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM users
+      WHERE id = ?`,
+      userId
+    ) as any[];
 
-    if (!user) {
+    if (!user || user.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Manual join for membership only (no FK constraint per business decision)
+    const userData = user[0];
+
+    // Manual joins for provinces, regencies, and membership (no FK constraints per business decision)
+    let province = null;
+    let regency = null;
     let membership = null;
-    if (user.member_level_id) {
+
+    if (userData.province_id) {
+      province = await prisma.provinces.findUnique({
+        where: { id: userData.province_id },
+      });
+    }
+    if (userData.regency_id) {
+      regency = await prisma.regencies.findUnique({
+        where: { id: userData.regency_id },
+      });
+    }
+    if (userData.member_level_id) {
       membership = await prisma.membership.findUnique({
-        where: { id: user.member_level_id },
+        where: { id: userData.member_level_id },
       });
     }
 
     return NextResponse.json({
-      ...user,
-      province_name: user.provinces?.name || null,
-      regency_name: user.regencies?.name || null,
+      ...userData,
+      province_name: province?.name || null,
+      regency_name: regency?.name || null,
       membership_name: membership?.name || null,
     });
   } catch (error) {

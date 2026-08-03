@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface MemberItem {
   id: number;
@@ -175,7 +176,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Birthday</label>
-                <p className="text-sm text-gray-900 font-medium">{item.birthday ? item.birthday.split('T')[0] : "-"}</p>
+                <p className="text-sm text-gray-900 font-medium">{formatWIBDate(item.birthday)}</p>
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Image</label>
@@ -203,11 +204,11 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Created At</label>
-                <p className="text-sm text-gray-900 font-medium">{item.created_at ? item.created_at.split('T')[0] : "-"}</p>
+                <p className="text-sm text-gray-900 font-medium">{formatWIBDate(item.created_at)}</p>
               </div>
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Updated At</label>
-                <p className="text-sm text-gray-900 font-medium">{item.updated_at ? item.updated_at.split('T')[0] : "-"}</p>
+                <p className="text-sm text-gray-900 font-medium">{formatWIBDate(item.updated_at)}</p>
               </div>
             </div>
           </div>

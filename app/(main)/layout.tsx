@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award, Trophy } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award, Trophy, Clock } from "lucide-react"
 
 import { signOut, useSession } from "next-auth/react"
 
@@ -81,6 +81,7 @@ import {
 } from "@/components/ui/breadcrumb"
 
 import { SidebarNavGroup } from "@/components/SidebarNavGroup"
+import { getCurrentWIBTimeCompact } from "@/lib/formatWIBDate"
 
 // Shared icon props for ALL top-level sidebar navigation icons
 // IMPORTANT: Any new top-level sidebar icon MUST use these exact props to ensure visual consistency
@@ -118,6 +119,16 @@ const NAV_ITEMS = [
     icon: <Newspaper {...SIDEBAR_ICON_PROPS} />,
 
     href: "/news",
+
+  },
+
+  {
+
+    label: "Notifications",
+
+    icon: <Bell {...SIDEBAR_ICON_PROPS} />,
+
+    href: "/notifications",
 
   },
 
@@ -204,6 +215,20 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     const name = email.split("@")[0]
     return name.charAt(0).toUpperCase()
   }
+
+  // Live WIB clock state
+  const [currentTime, setCurrentTime] = React.useState<string>("")
+
+  React.useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(getCurrentWIBTimeCompact())
+    }
+
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const pageMeta = pathname === "/merchandise"
     ? {
@@ -314,6 +339,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Edit News",
         breadcrumb: ["News", "Edit News"],
+      }
+    : pathname === "/notifications"
+    ? {
+        title: "Notifications",
+        breadcrumb: ["Notifications"],
       }
     : pathname === "/larata-club-earning"
     ? {
@@ -597,6 +627,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
           </Breadcrumb>
 
           <div className="ml-auto flex items-center gap-3">
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100">
+              <Clock className="h-3.5 w-3.5 text-gray-500" />
+              <span className="text-xs font-medium text-gray-600 tabular-nums">{currentTime}</span>
+            </div>
 
             <Button variant="ghost" size="icon" className="relative h-9 w-9">
 

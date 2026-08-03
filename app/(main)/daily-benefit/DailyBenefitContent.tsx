@@ -154,7 +154,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
   };
 
   // Computed values
-  const total = totalCount;
+  const totalBenefits = totalCount;
   const active = activeCount;
   const inactive = inactiveCount;
 
@@ -171,7 +171,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   Total Daily Benefits
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : total}
+                  {loading ? "..." : totalBenefits}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">

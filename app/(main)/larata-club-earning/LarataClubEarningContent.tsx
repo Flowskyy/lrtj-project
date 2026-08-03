@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { exportToExcel, ExportColumn } from "@/lib/exportToExcel";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import Pagination from "@/components/Pagination";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
-import { Search, Eye, ChevronDown, X, Download, Columns, Check } from "lucide-react";
+import { useExportJob } from "@/hooks/use-export-job";
+import ExportProgressDialog from "@/components/ExportProgressDialog";
+import { Search, Eye, X, Download, Columns, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,13 +58,37 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
 
+  // Prefetching state
+  const pageCacheRef = useRef<Map<string, { data: EarningItem[]; total: number }>>(new Map());
+  const prefetchAbortControllerRef = useRef<AbortController | null>(null);
+  const inFlightPrefetchRef = useRef<Set<string>>(new Set());
+
   // Available filter options
   const [categories, setCategories] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
 
   // Modal states
   const [viewItem, setViewItem] = useState<EarningItem | null>(null);
-  const [exporting, setExporting] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+
+  // Export job hook
+  const exportParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (categoryFilter !== "all") params.category = categoryFilter;
+    if (typeFilter !== "all") params.type = typeFilter;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.order = sortOrder;
+    return params;
+  }, [categoryFilter, typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
+
+  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+    moduleEndpoint: '/api/larata-club-earning',
+    params: exportParams,
+    onError: (msg) => toast.error(msg),
+  });
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
@@ -89,57 +115,173 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     }
   };
 
-  // Fetch items
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (categoryFilter !== "all") params.set("category", categoryFilter);
-      if (typeFilter !== "all") params.set("type", typeFilter);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      if (sortBy) params.set("sortBy", sortBy);
-      if (sortOrder) params.set("order", sortOrder);
-      params.set("page", page.toString());
-      params.set("limit", limit.toString());
+  // Generate cache key for a page with current filters
+  const getCacheKey = useCallback((pageNum: number) => {
+    return JSON.stringify({
+      page: pageNum,
+      category: categoryFilter,
+      type: typeFilter,
+      search: searchQuery.trim(),
+      dateFrom,
+      dateTo,
+      sortBy,
+      sortOrder,
+    });
+  }, [categoryFilter, typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
 
-      const res = await fetch(`/api/larata-club-earning?${params}`);
-      if (res.ok) {
-        const response = await res.json();
-        setItems(response.data || []);
-        setTotalCount(response.meta?.total || 0);
-      }
+  // Fetch items (main function used for both active and prefetch)
+  const fetchItems = async (pageNum: number, signal?: AbortSignal) => {
+    const params = new URLSearchParams();
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
+    if (typeFilter !== "all") params.set("type", typeFilter);
+    if (searchQuery.trim()) params.set("search", searchQuery.trim());
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (sortBy) params.set("sortBy", sortBy);
+    if (sortOrder) params.set("order", sortOrder);
+    params.set("page", pageNum.toString());
+    params.set("limit", limit.toString());
+
+    const res = await fetch(`/api/larata-club-earning?${params}`, { signal });
+    if (!res.ok) throw new Error("Failed to fetch");
+    const response = await res.json();
+    return {
+      data: response.data || [],
+      total: response.meta?.total || 0,
+    };
+  };
+
+  // Prefetch next page in background
+  const prefetchNextPage = useCallback(() => {
+    // Cancel any in-flight prefetch
+    if (prefetchAbortControllerRef.current) {
+      prefetchAbortControllerRef.current.abort();
+    }
+
+    const nextPage = page + 1;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Only prefetch if there's a next page
+    if (nextPage > totalPages) return;
+
+    const cacheKey = getCacheKey(nextPage);
+
+    // Skip if already cached
+    if (pageCacheRef.current.has(cacheKey)) return;
+
+    // Skip if already in-flight (defense in depth)
+    if (inFlightPrefetchRef.current.has(cacheKey)) return;
+
+    const controller = new AbortController();
+    prefetchAbortControllerRef.current = controller;
+    inFlightPrefetchRef.current.add(cacheKey);
+
+    // Fetch in background without loading state
+    fetchItems(nextPage, controller.signal)
+      .then(({ data, total }) => {
+        pageCacheRef.current.set(cacheKey, { data, total });
+      })
+      .catch((err) => {
+        // Ignore abort errors - they're expected when cancelling
+        if (err.name !== 'AbortError') {
+          console.error("Prefetch failed:", err);
+        }
+      })
+      .finally(() => {
+        inFlightPrefetchRef.current.delete(cacheKey);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, totalCount, limit, getCacheKey]);
+
+  // Fetch items for current page (from cache or network)
+  const loadCurrentPage = useCallback(async () => {
+    setLoading(true);
+
+    // Cancel any in-flight prefetch
+    if (prefetchAbortControllerRef.current) {
+      prefetchAbortControllerRef.current.abort();
+      prefetchAbortControllerRef.current = null;
+    }
+
+    const cacheKey = getCacheKey(page);
+
+    // Check cache first
+    if (pageCacheRef.current.has(cacheKey)) {
+      const cached = pageCacheRef.current.get(cacheKey)!;
+      setItems(cached.data);
+      setTotalCount(cached.total);
+      setLoading(false);
+
+      // Trigger prefetch for next page after render
+      setTimeout(() => prefetchNextPage(), 100);
+      return;
+    }
+
+    try {
+      const { data, total } = await fetchItems(page);
+      setItems(data);
+      setTotalCount(total);
+
+      // Cache this page
+      pageCacheRef.current.set(cacheKey, { data, total });
+
+      // Trigger prefetch for next page after render
+      setTimeout(() => prefetchNextPage(), 100);
     } catch (err) {
-      console.error("Failed to fetch items", err);
-      toast.error("Failed to fetch earning history");
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error("Failed to fetch items", err);
+        toast.error("Failed to fetch earning history");
+      }
     } finally {
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, getCacheKey, prefetchNextPage]);
 
   useEffect(() => {
     fetchFilterOptions();
   }, []);
 
+  // Clear cache when filters change (to avoid showing stale data)
   useEffect(() => {
-    fetchItems();
-  }, [categoryFilter, typeFilter, sortBy, sortOrder, searchQuery, page, dateFrom, dateTo]);
+    pageCacheRef.current.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryFilter, typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
+
+  useEffect(() => {
+    loadCurrentPage();
+  }, [loadCurrentPage]);
 
   // Debounced search
   const { handleSearchChange } = useDebouncedSearch({ delay: 300 });
 
   const onSearchChange = useCallback((value: string) => {
+    // Cancel any in-flight prefetch immediately
+    if (prefetchAbortControllerRef.current) {
+      prefetchAbortControllerRef.current.abort();
+      prefetchAbortControllerRef.current = null;
+    }
+
     setSearchQuery(value);
     setPage(1); // Reset to first page on search
     handleSearchChange(() => {
       // Search is handled by the useEffect
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleSearchChange]);
 
   const activeFilterCount = (categoryFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const handleResetFilters = () => {
+    // Cancel any in-flight prefetch
+    if (prefetchAbortControllerRef.current) {
+      prefetchAbortControllerRef.current.abort();
+      prefetchAbortControllerRef.current = null;
+    }
+
+    // Clear cache on filter reset
+    pageCacheRef.current.clear();
+
     setCategoryFilter("all");
     setTypeFilter("all");
     setSortBy("created_at");
@@ -155,53 +297,9 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     setViewItem(item);
   };
 
-  // Format date (no timezone conversion)
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-";
-    return dateString.split('T')[0];
-  };
 
-  // Export to Excel
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      const params = new URLSearchParams();
-      if (categoryFilter !== "all") params.set("category", categoryFilter);
-      if (typeFilter !== "all") params.set("type", typeFilter);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      if (sortBy) params.set("sortBy", sortBy);
-      if (sortOrder) params.set("order", sortOrder);
-      params.set("export", "true");
 
-      const res = await fetch(`/api/larata-club-earning?${params}`);
-      if (res.ok) {
-        const response = await res.json();
-        const data = response.data || [];
 
-        const columns: ExportColumn[] = [
-          { key: "user_name", label: "User Name" },
-          { key: "user_email", label: "User Email" },
-          { key: "category", label: "Category" },
-          { key: "type", label: "Type" },
-          { key: "earning_point", label: "Earning Point" },
-          { key: "info", label: "Info" },
-          { key: "created_at", label: "Created At" },
-        ];
-
-        exportToExcel(data, columns, "larata-club-earning");
-        toast.success("Export successful");
-      } else {
-        toast.error("Failed to export data");
-      }
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Failed to export data");
-    } finally {
-      setExporting(false);
-    }
-  };
 
   // Computed values
   const totalPages = Math.ceil(totalCount / limit);
@@ -273,12 +371,15 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                 )}
               </div>
               <TableFilterSortMenu
-                statusFilter={categoryFilter}
-                onStatusFilterChange={(value) => { setCategoryFilter(value); setPage(1); }}
+                statusFilter=""
+                onStatusFilterChange={() => {}}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={(value) => { setCategoryFilter(value); setPage(1); }}
                 typeFilter={typeFilter}
                 onTypeFilterChange={(value) => { setTypeFilter(value); setPage(1); }}
                 showCategoryFilter={true}
                 showTypeFilter={true}
+                showStatusFilter={false}
                 categoryOptions={[
                   { value: "all", label: "All Categories" },
                   ...categories.map(cat => ({ value: cat, label: cat }))
@@ -355,12 +456,15 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
               </DropdownMenu>
             </div>
             <Button
-              onClick={handleExport}
-              disabled={exporting}
+              onClick={() => {
+                setShowExportDialog(true);
+                startExport();
+              }}
+              disabled={isExporting}
               className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
             >
               <Download className="h-4 w-4 mr-2" />
-              {exporting ? "Exporting..." : "Export"}
+              {isExporting ? 'Exporting...' : 'Export'}
             </Button>
           </div>
 
@@ -478,7 +582,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                       )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {formatDate(item.created_at)}
+                          {formatWIBDate(item.created_at)}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
@@ -556,7 +660,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-400">
-                      {formatDate(item.created_at)}
+                      {formatWIBDate(item.created_at)}
                     </span>
                     <Button
                       size="sm"
@@ -621,7 +725,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Created At</p>
-                    <p className="text-sm text-gray-900">{formatDate(viewItem.created_at)}</p>
+                    <p className="text-sm text-gray-900">{formatWIBDate(viewItem.created_at)}</p>
                   </div>
                 </div>
                 <div>
@@ -633,6 +737,14 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Export Progress Dialog */}
+      <ExportProgressDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        status={status === 'idle' ? null : { status, processed, total, percentage }}
+        onCancel={cancelExport}
+      />
     </div>
   );
 }

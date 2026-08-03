@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
+
+// Simple in-memory cache for unfiltered total count (30 second TTL)
+let cachedTotal: { count: number; timestamp: number } | null = null;
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   try {
@@ -95,41 +100,140 @@ export async function GET(request: NextRequest) {
     orderBy.created_at = 'desc';
   }
 
-  const [earnings, total] = await Promise.all([
-    prisma.slc_earning_history.findMany({
-      where,
-      orderBy,
-      skip: exportMode ? 0 : (page - 1) * limit,
-      take: exportMode ? undefined : limit,
-    }),
-    prisma.slc_earning_history.count({ where }),
-  ]);
+  // Build WHERE clause for reuse in both queries
+  const whereClause = Object.keys(where).length > 0 ?
+    'WHERE ' + Object.entries(where).map(([key, value]) => {
+      if (key === 'OR') {
+        const orConditions = (value as any[]).map((cond: any) => {
+          const [field, op] = Object.entries(cond)[0];
+          const fieldValue = Object.values(cond)[0];
+          if (op === 'in') {
+            // Quote string values in IN clause
+            const quotedValues = (fieldValue as any[]).map((v: any) => typeof v === 'string' ? `'${v}'` : v);
+            return `${field} IN (${quotedValues.join(',')})`;
+          }
+          // Quote string values in OR conditions
+          if (typeof fieldValue === 'string') {
+            return `${field} = '${fieldValue}'`;
+          }
+          return `${field} = ${fieldValue}`;
+        }).join(' OR ');
+        return `(${orConditions})`;
+      }
+      if (typeof value === 'object' && value !== null) {
+        const [op, val] = Object.entries(value)[0];
+        if (val instanceof Date) {
+          // Format date for MySQL
+          const formattedDate = val.toISOString().slice(0, 19).replace('T', ' ');
+          return `${key} ${op.toUpperCase()} '${formattedDate}'`;
+        }
+        return `${key} ${op.toUpperCase()} ${val}`;
+      }
+      // Quote string values
+      if (typeof value === 'string') {
+        return `${key} = '${value}'`;
+      }
+      return `${key} = ${value}`;
+    }).join(' AND ') : '';
 
-  // Get user information for manual join
-  const userIds = earnings.map(e => e.user_id).filter(Boolean);
+  // Get total count - use approximate count for unfiltered queries for performance
+  let total: number;
+  const hasFilters = Object.keys(where).length > 0;
   
-  let users: Array<{ id: number; name: string | null; email: string | null }> = [];
-  if (userIds.length > 0) {
-    users = await prisma.users.findMany({
-      where: {
-        id: { in: userIds as number[] },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    });
+  if (hasFilters) {
+    // Use exact COUNT(*) when filters are applied (necessary and typically faster)
+    const countResult = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*) as total FROM slc_earning_history ${whereClause}`
+    ) as any[];
+    total = Number(countResult[0]?.total || 0);
+  } else {
+    // Use cached approximate count for unfiltered queries (instant)
+    const now = Date.now();
+    if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
+      total = cachedTotal.count;
+    } else {
+      // Cache miss or expired - fetch fresh approximate count
+      const approxResult = await prisma.$queryRawUnsafe(
+        `SELECT table_rows as total FROM information_schema.tables 
+         WHERE table_schema = 'lrt_public_apps' AND table_name = 'slc_earning_history'`
+      ) as any[];
+      total = Number(approxResult[0]?.total || 0);
+      cachedTotal = { count: total, timestamp: now };
+    }
   }
 
-  const userMap = new Map(
-    users.map(u => [u.id, { name: u.name, email: u.email }])
-  );
+  // Use raw SQL for consistent WIB formatting
+  let earnings: any[];
+  
+  if (exportMode) {
+    // Batch fetching for large exports to prevent timeout/memory issues
+    // Using keyset pagination on primary key `id` for performance (avoids OFFSET)
+    const batchSize = 50000;
+    earnings = [];
+    let lastId = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const cursorClause = whereClause
+        ? `${whereClause} AND id > ${lastId}`
+        : `WHERE id > ${lastId}`;
+      const batch = await prisma.$queryRawUnsafe(
+        `SELECT
+          id, user_id, category, type, earning_point, info,
+          DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at
+        FROM slc_earning_history
+        ${cursorClause}
+        ORDER BY id ASC
+        LIMIT ${batchSize}`
+      ) as any[];
+
+      earnings.push(...batch);
+      hasMore = batch.length === batchSize;
+      if (hasMore) {
+        lastId = Number(batch[batch.length - 1].id);
+      }
+    }
+  } else {
+    // Normal paginated query
+    earnings = await prisma.$queryRawUnsafe(
+      `SELECT
+        id, user_id, category, type, earning_point, info,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at
+      FROM slc_earning_history
+      ${whereClause}
+      ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY created_at DESC'}
+      LIMIT ${(page - 1) * limit}, ${limit}`
+    ) as any[];
+  }
+
+  // Get user information for manual join - batched to handle large datasets
+  const userIds = [...new Set(earnings.map(e => e.user_id).filter(Boolean))]; // Deduplicate
+  
+  const userMap = new Map<number, { name: string | null; email: string | null }>();
+  if (userIds.length > 0) {
+    const userBatchSize = 1000;
+    for (let i = 0; i < userIds.length; i += userBatchSize) {
+      const batch = userIds.slice(i, i + userBatchSize);
+      const users = await prisma.users.findMany({
+        where: {
+          id: { in: batch as number[] },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+      users.forEach(u => {
+        userMap.set(u.id, { name: u.name, email: u.email });
+      });
+    }
+  }
 
   // Merge user information into earnings
   const earningsWithUser = earnings.map(earning => ({
     ...earning,
-    id: earning.id.toString(), // Convert BigInt to string
+    id: earning.id.toString(),
     user_name: userMap.get(earning.user_id)?.name || 'Unknown',
     user_email: userMap.get(earning.user_id)?.email || 'Unknown',
   }));

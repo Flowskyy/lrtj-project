@@ -652,12 +652,12 @@ model model_has_roles {
 }
 
 model notifications {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   user_id     Int?
-  title       String   @db.Text
-  description String   @db.Text
-  created_at  DateTime @db.DateTime(0)
-  payload     String?  @db.Text
+  title       String    @db.Text
+  description String    @db.Text
+  payload     String?   @db.Text
+  created_at  DateTime? @db.DateTime(0)
 
   @@index([user_id], map: "user_id")
 }
@@ -1093,10 +1093,10 @@ model news {
   type          String?   @db.VarChar(50)
   content       String?   @db.Text
   content_en    String?   @db.Text
-  created_at    DateTime? @db.DateTime(0)
-  updated_at    DateTime? @db.DateTime(0)
   publish_date  DateTime? @db.DateTime(0)
   status        Int       @default(1)
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
 }
 
 model merchandise_category {
@@ -1115,8 +1115,8 @@ model welcome_point {
   created_at    DateTime  @db.DateTime(0)
   updated_at    DateTime  @db.DateTime(0)
   updated_by    String    @db.VarChar(100)
-  active_from   String?   @db.VarChar(19)
-  active_to     String?   @db.VarChar(19)
+  active_from   DateTime? @db.DateTime(0)
+  active_to     DateTime? @db.DateTime(0)
   default_point Int?
 }
 

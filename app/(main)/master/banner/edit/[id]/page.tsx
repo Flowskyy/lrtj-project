@@ -9,6 +9,7 @@ import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface Banner {
   id: number;
@@ -171,7 +172,7 @@ export default function EditBannerPage() {
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {banner.created_at ? banner.created_at.replace('T', ' ').substring(0, 16) : "-"}
+                  {formatWIBDate(banner.created_at)}
                 </div>
               </div>
               <div>
@@ -179,7 +180,7 @@ export default function EditBannerPage() {
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {banner.updated_at ? banner.updated_at.replace('T', ' ').substring(0, 16) : "-"}
+                  {formatWIBDate(banner.updated_at)}
                 </div>
               </div>
             </div>

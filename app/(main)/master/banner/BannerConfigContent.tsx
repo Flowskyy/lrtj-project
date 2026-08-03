@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Plus, Pencil, Trash2, GripVertical, Image as ImageIcon } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
 import {
   DndContext,
@@ -42,11 +43,7 @@ interface BannerConfigContentProps {
   username: string;
 }
 
-const formatDateWithTime = (dateString: string | null) => {
-  if (!dateString) return "-";
-  // DB value is literal WIB, display as-is (no timezone conversion)
-  return dateString.replace('T', ' ').substring(0, 16);
-};
+
 
 function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (banner: Banner) => void }) {
   const {
@@ -97,10 +94,10 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
               </p>
               <div className="mt-2 space-y-1">
                 <div className="text-xs text-gray-500">
-                  <span className="font-medium">Created:</span> {formatDateWithTime(banner.created_at)} by {banner.created_by || "-"}
+                  <span className="font-medium">Created:</span> {formatWIBDate(banner.created_at)} by {banner.created_by || "-"}
                 </div>
                 <div className="text-xs text-gray-500">
-                  <span className="font-medium">Updated:</span> {formatDateWithTime(banner.updated_at)} by {banner.updated_by || "-"}
+                  <span className="font-medium">Updated:</span> {formatWIBDate(banner.updated_at)} by {banner.updated_by || "-"}
                 </div>
               </div>
             </div>

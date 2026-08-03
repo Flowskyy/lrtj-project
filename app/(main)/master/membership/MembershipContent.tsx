@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Award } from "lucide-react";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface Membership {
   id: number;
@@ -94,9 +95,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
     setEditDialogOpen(true);
   };
 
-  const formatDate = (dateString: string) => {
-    return dateString.split('T')[0];
-  };
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -204,7 +203,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
                         <TableCell className="font-medium">{membership.name}</TableCell>
                         <TableCell>{membership.min_trip.toLocaleString()}</TableCell>
                         <TableCell>{membership.reward_tap_out.toLocaleString()}</TableCell>
-                        <TableCell>{formatDate(membership.updated_at)}</TableCell>
+                        <TableCell>{formatWIBDate(membership.updated_at)}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"

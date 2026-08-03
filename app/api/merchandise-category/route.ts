@@ -1,24 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const all = searchParams.get('all') === 'true';
 
-    const categories = await prisma.merchandise_category.findMany({
-      where: all ? undefined : { status: true },
-      select: {
-        id: true,
-        category_name: true,
-        status: all ? true : undefined,
-        created_at: all ? true : undefined,
-        updated_at: all ? true : undefined,
-      },
-      orderBy: {
-        id: 'asc',
-      },
-    });
+    // Use raw SQL for consistent WIB formatting
+    const categories = await prisma.$queryRawUnsafe(
+      `SELECT
+        id, category_name, status${all ? ', DATE_FORMAT(created_at, \'%Y-%m-%dT%H:%i:%s\') as created_at, DATE_FORMAT(updated_at, \'%Y-%m-%dT%H:%i:%s\') as updated_at' : ''}
+      FROM merchandise_category
+      ${all ? '' : 'WHERE status = true'}
+      ORDER BY id ASC`
+    ) as any[];
 
     return NextResponse.json(categories);
   } catch (error) {
@@ -42,14 +38,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const category = await prisma.merchandise_category.create({
-      data: {
-        category_name: category_name.trim(),
-        status: status !== undefined ? status : true,
-      },
-    });
+    // Use raw SQL to store WIB time literally without timezone conversion
+    await prisma.$queryRaw`
+      INSERT INTO merchandise_category (category_name, status, created_at, updated_at)
+      VALUES (
+        ${category_name.trim()},
+        ${status !== undefined ? status : true},
+        ${formatWIB(new Date())},
+        ${formatWIB(new Date())}
+      )
+    `;
 
-    return NextResponse.json(category, { status: 201 });
+    // Fetch the new item with proper WIB formatting
+    const category = await prisma.$queryRaw`
+      SELECT
+        id, category_name, status,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM merchandise_category
+      ORDER BY id DESC
+      LIMIT 1
+    ` as any[];
+
+    return NextResponse.json(category[0], { status: 201 });
   } catch (error) {
     console.error('Error creating category:', error);
     return NextResponse.json(

@@ -1,20 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatWIB } from '@/lib/utils';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const item = await prisma.daily_benefit.findUnique({
-    where: { id: parseInt(id) },
-  });
 
-  if (!item) {
+  // Use raw SQL for consistent WIB formatting
+  const item = await prisma.$queryRaw`
+    SELECT
+      id, name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM daily_benefit
+    WHERE id = ${parseInt(id)}
+  ` as any[];
+
+  if (!item || item.length === 0) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
   }
 
-  return NextResponse.json(item);
+  return NextResponse.json(item[0]);
 }
 
 export async function PUT(
@@ -23,23 +31,34 @@ export async function PUT(
 ) {
   const { id } = await params;
   const data = await request.json();
-  const updatedItem = await prisma.daily_benefit.update({
-    where: { id: parseInt(id) },
-    data: {
-      name: data.name,
-      redeem_point: data.redeem_point,
-      image_url: data.image_url,
-      term_condition: data.term_condition,
-      editedBy: data.editedBy,
-      status: data.status,
-      start_date: data.start_date ? new Date(data.start_date) : null,
-      end_date: data.end_date ? new Date(data.end_date) : null,
-      is_active: data.is_active,
-      updated_at: new Date(),
-    },
-  });
 
-  return NextResponse.json(updatedItem);
+  // Use raw SQL to store WIB time literally without timezone conversion
+  await prisma.$queryRaw`
+    UPDATE daily_benefit
+    SET name = ${data.name},
+        redeem_point = ${data.redeem_point},
+        image_url = ${data.image_url},
+        term_condition = ${data.term_condition},
+        editedBy = ${data.editedBy},
+        status = ${data.status},
+        start_date = ${formatWIB(data.start_date)},
+        end_date = ${formatWIB(data.end_date)},
+        is_active = ${data.is_active},
+        updated_at = ${formatWIB(new Date())}
+    WHERE id = ${parseInt(id)}
+  `;
+
+  // Fetch the updated item with proper WIB formatting
+  const updatedItem = await prisma.$queryRaw`
+    SELECT
+      id, name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active,
+      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+    FROM daily_benefit
+    WHERE id = ${parseInt(id)}
+  ` as any[];
+
+  return NextResponse.json(updatedItem[0]);
 }
 
 export async function DELETE(

@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { formatWIB } from '@/lib/utils';
 
 export async function GET(request: Request) {
   try {
-    const banners = await prisma.banners.findMany({
-      orderBy: {
-        sequence: 'asc',
-      },
-    });
+    // Use raw SQL for consistent WIB formatting
+    const banners = await prisma.$queryRaw`
+      SELECT
+        id, description, image_url, sequence, created_by,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM banners
+      ORDER BY sequence ASC
+    ` as any[];
 
     return NextResponse.json(banners);
   } catch (error) {
@@ -34,25 +39,37 @@ export async function POST(request: Request) {
     }
 
     // Get the next sequence number
-    const maxSequence = await prisma.banners.findFirst({
-      orderBy: { sequence: 'desc' },
-      select: { sequence: true },
-    });
+    const maxSequence = await prisma.$queryRaw`
+      SELECT sequence FROM banners ORDER BY sequence DESC LIMIT 1
+    ` as any[];
 
-    const nextSequence = (maxSequence?.sequence ?? 0) + 1;
+    const nextSequence = (maxSequence[0]?.sequence ?? 0) + 1;
 
-    const banner = await prisma.banners.create({
-      data: {
-        description: description || null,
-        image_url,
-        sequence: nextSequence,
-        created_at: new Date(),
-        updated_at: new Date(),
-        created_by: session?.user?.name || null,
-      },
-    });
+    // Use raw SQL to store WIB time literally without timezone conversion
+    await prisma.$queryRaw`
+      INSERT INTO banners (description, image_url, sequence, created_at, updated_at, created_by)
+      VALUES (
+        ${description || null},
+        ${image_url},
+        ${nextSequence},
+        ${formatWIB(new Date())},
+        ${formatWIB(new Date())},
+        ${session?.user?.name || null}
+      )
+    `;
 
-    return NextResponse.json(banner, { status: 201 });
+    // Fetch the new item with proper WIB formatting
+    const banner = await prisma.$queryRaw`
+      SELECT
+        id, description, image_url, sequence, created_by,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM banners
+      ORDER BY id DESC
+      LIMIT 1
+    ` as any[];
+
+    return NextResponse.json(banner[0], { status: 201 });
   } catch (error) {
     console.error('Error creating banner:', error);
     return NextResponse.json(
