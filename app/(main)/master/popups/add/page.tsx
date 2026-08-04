@@ -63,7 +63,7 @@ export default function AddPopupPage() {
       {/* Form */}
       <form id="popup-form" onSubmit={handleSubmit}>
         {/* Basic Information Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <section className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Basic Information</h2>
           <p className="text-sm text-gray-500 mb-6">Enter the details for this popup</p>
 
@@ -83,7 +83,7 @@ export default function AddPopupPage() {
         </section>
 
         {/* Media Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <section className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Media</h2>
           <p className="text-sm text-gray-500 mb-6">Add an image for this popup</p>
 
@@ -102,7 +102,7 @@ Format: JPG / PNG"
       </form>
 
       {/* Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-md border-t border-white/40 p-4 z-50">
         <div className="flex gap-3">
           <Link href="/master/popups" className="flex-1">
             <Button type="button" variant="outline" className="w-full">

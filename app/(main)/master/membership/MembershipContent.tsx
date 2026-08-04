@@ -113,7 +113,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
           <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
@@ -124,13 +124,13 @@ export default function MembershipContent({ username }: MembershipContentProps) 
                   {loading ? "..." : memberships.length}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Award className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                <Award className="h-5 w-5 text-[#E5262C]" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
           <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
@@ -138,18 +138,18 @@ export default function MembershipContent({ username }: MembershipContentProps) 
                   Avg Min Trip
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : memberships.length > 0 
+                  {loading ? "..." : memberships.length > 0
                     ? Math.round(memberships.reduce((acc, m) => acc + m.min_trip, 0) / memberships.length)
                     : "0"}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                <span className="text-lg font-bold text-blue-700">T</span>
+              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-lg font-bold text-blue-600">T</span>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
           <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
@@ -157,13 +157,13 @@ export default function MembershipContent({ username }: MembershipContentProps) 
                   Avg Reward
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : memberships.length > 0 
+                  {loading ? "..." : memberships.length > 0
                     ? Math.round(memberships.reduce((acc, m) => acc + m.reward_tap_out, 0) / memberships.length)
                     : "0"}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <span className="text-lg font-bold text-green-700">R</span>
+              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-lg font-bold text-green-600">R</span>
               </div>
             </div>
           </CardContent>
@@ -171,7 +171,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
       </div>
 
       {/* Table Card */}
-      <Card>
+      <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
         <CardHeader>
           <CardTitle>Membership Tiers</CardTitle>
         </CardHeader>
@@ -229,7 +229,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white/70 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Membership Tier</DialogTitle>
           </DialogHeader>

@@ -251,7 +251,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
           <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
@@ -262,8 +262,8 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
                   {loading ? "..." : categories.length}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                <Package className="h-5 w-5 text-[#E5262C]" />
               </div>
             </div>
           </CardContent>
@@ -279,13 +279,13 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
                   {loading ? "..." : categories.filter(c => c.status).length}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <Check className="h-5 w-5 text-green-700" />
+              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                <Check className="h-5 w-5 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
           <CardContent className="p-4 pt-3">
             <div className="flex items-center justify-between">
               <div>
@@ -296,7 +296,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
                   {loading ? "..." : categories.filter(c => !c.status).length}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
                 <X className="h-5 w-5 text-gray-500" />
               </div>
             </div>
@@ -305,7 +305,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
       </div>
 
       {/* Table Card */}
-      <Card>
+      <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
         <CardHeader>
           <CardTitle>Categories</CardTitle>
         </CardHeader>
@@ -378,7 +378,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
 
       {/* Add Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white/70 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
           <DialogHeader>
             <DialogTitle>Add Category</DialogTitle>
           </DialogHeader>
@@ -413,7 +413,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white/70 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>

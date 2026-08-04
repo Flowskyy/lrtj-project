@@ -101,7 +101,7 @@ export default function EditBannerPage() {
           <Skeleton className="h-9 w-48" />
           <Skeleton className="h-5 w-64 mt-2" />
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-6">
           <Skeleton className="h-6 w-40 mb-6" />
           <Skeleton className="h-24 w-full mb-6" />
           <Skeleton className="h-6 w-24 mb-6" />
@@ -126,7 +126,7 @@ export default function EditBannerPage() {
       {/* Form */}
       <form id="banner-form" onSubmit={handleSubmit}>
         {/* Basic Information Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <section className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Basic Information</h2>
           <p className="text-sm text-gray-500 mb-6">Enter the details for this banner</p>
 
@@ -146,7 +146,7 @@ export default function EditBannerPage() {
         </section>
 
         {/* Media Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <section className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Media</h2>
           <p className="text-sm text-gray-500 mb-6">Add an image for this banner</p>
 
@@ -165,7 +165,7 @@ Format: JPG / PNG "
 
         {/* Audit Info Section */}
         {banner && (
-          <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <section className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-1">Audit Information</h2>
             <p className="text-sm text-gray-500 mb-6">Timestamp information for this item</p>
 
@@ -192,7 +192,7 @@ Format: JPG / PNG "
       </form>
 
       {/* Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-md border-t border-white/40 p-4 z-50">
         <div className="flex gap-3">
           <Link href="/master/banner" className="flex-1">
             <Button type="button" variant="outline" className="w-full">

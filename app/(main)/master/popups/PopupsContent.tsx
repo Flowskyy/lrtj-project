@@ -63,7 +63,7 @@ function SortablePopupCard({ popup, onDelete }: { popup: Popup; onDelete: (popup
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             {/* Drag Handle */}
@@ -318,7 +318,7 @@ export default function PopupsContent({ username }: PopupsContentProps) {
 
       {/* Save/Cancel Footer Bar */}
       {hasUnsavedChanges && (
-        <div className="bg-white border-t border-gray-200 shadow-lg p-4 rounded-lg mt-6">
+        <div className="bg-white/70 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl p-4 mt-6">
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"

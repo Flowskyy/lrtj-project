@@ -217,13 +217,7 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
   };
 
   return (
-    <div className="space-y-6 animate-fade-in relative min-h-screen">
-      {/* Background gradient blobs for glassmorphism effect */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
-      </div>
-
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

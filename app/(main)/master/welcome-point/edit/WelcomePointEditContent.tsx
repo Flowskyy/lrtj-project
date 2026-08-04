@@ -122,12 +122,7 @@ export default function WelcomePointEditContent({ username }: WelcomePointEditCo
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in relative min-h-screen">
-        {/* Background gradient blobs for glassmorphism effect */}
-        <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
-        </div>
+      <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Edit Welcome Point</h1>
           <p className="text-sm text-gray-500 mt-1">Manage welcome point configuration</p>
@@ -141,13 +136,7 @@ export default function WelcomePointEditContent({ username }: WelcomePointEditCo
   }
 
   return (
-    <div className="space-y-6 animate-fade-in relative min-h-screen">
-      {/* Background gradient blobs for glassmorphism effect */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
-      </div>
-
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
         <Link href="/master/welcome-point" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4 transition-colors">
