@@ -43,6 +43,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     category_name: "",
     status: true,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -71,6 +72,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/merchandise-category", {
         method: "POST",
@@ -90,6 +92,8 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     } catch (err) {
       console.error("Failed to create category", err);
       toast.error("Failed to create category");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -99,6 +103,7 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const res = await fetch(`/api/merchandise-category/${selectedCategory.id}`, {
         method: "PUT",
@@ -119,6 +124,8 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
     } catch (err) {
       console.error("Failed to update category", err);
       toast.error("Failed to update category");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -394,11 +401,11 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleAdd} className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
-              Add Category
+            <Button onClick={handleAdd} className="bg-[#E5262C] hover:bg-[#c41e22] text-white" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Category"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -429,11 +436,11 @@ export default function MerchandiseCategoryContent({ username }: MerchandiseCate
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
-              Save Changes
+            <Button onClick={handleEdit} className="bg-[#E5262C] hover:bg-[#c41e22] text-white" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

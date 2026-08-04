@@ -41,11 +41,18 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { point, active_from, active_to, updated_by } = body;
+    const { point, default_point, active_from, active_to, updated_by } = body;
 
     if (point === undefined || point === null) {
       return NextResponse.json(
         { error: 'Point value is required' },
+        { status: 400 }
+      );
+    }
+
+    if (default_point === undefined || default_point === null) {
+      return NextResponse.json(
+        { error: 'Default point value is required' },
         { status: 400 }
       );
     }
@@ -76,6 +83,7 @@ export async function PUT(request: Request) {
       UPDATE welcome_point
       SET
         point = ${point},
+        default_point = ${default_point},
         active_from = ${active_from || null},
         active_to = ${active_to || null},
         updated_by = ${updated_by},

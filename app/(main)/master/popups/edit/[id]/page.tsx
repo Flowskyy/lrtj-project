@@ -155,7 +155,10 @@ export default function EditPopupPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Popup Image"
-              recommendation="Recommended: 4:3 aspect ratio (e.g., 800x600)"
+              recommendation="Recommendation Popup Image
+Ratio: 148:210 (A5 Portrait)
+Recommended Resolution: 1480 × 2100 px
+Format: JPG / PNG"
             />
           </div>
         </section>

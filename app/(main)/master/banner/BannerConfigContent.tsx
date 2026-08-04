@@ -318,8 +318,8 @@ export default function BannerConfigContent({ username }: BannerConfigContentPro
 
       {/* Save/Cancel Footer Bar */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4 z-50">
-          <div className="max-w-7xl mx-auto flex justify-end gap-3">
+        <div className="bg-white border-t border-gray-200 shadow-lg p-4 rounded-lg mt-6">
+          <div className="flex justify-end gap-3">
             <Button
               variant="outline"
               onClick={handleCancelOrder}

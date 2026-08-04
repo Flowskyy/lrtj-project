@@ -8,6 +8,7 @@ import type {
 } from '@radix-ui/react-dropdown-menu';
 
 import { useComposedRef } from '@udecode/cn';
+// @ts-ignore
 import { debounce } from 'lodash';
 import { CheckIcon, EraserIcon, PlusIcon } from 'lucide-react';
 import {
@@ -487,10 +488,11 @@ function ColorDropdownMenuItem({
         className
       )}
       style={{ backgroundColor: value }}
+      // @ts-ignore
       onSelect={(e: any) => {
         e.preventDefault();
         updateColor(value);
-      } as any}
+      }}
       {...props}
     >
       {isSelected ? <CheckIcon className="!size-3" strokeWidth={3} /> : null}

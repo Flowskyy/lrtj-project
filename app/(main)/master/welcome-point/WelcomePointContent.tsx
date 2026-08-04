@@ -1,16 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { NumberInput } from "@/components/ui/number-input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DateTimePicker } from "@/components/ui/datetime-picker";
-import { Pencil, Star, Clock, Calendar, User, Activity } from "lucide-react";
-import { formatWIBDate, parseWIBString, getCurrentWIBTime, getCurrentWIBTimeISO } from "@/lib/formatWIBDate";
+import { Infinity, Clock as ClockIcon, Hourglass, Zap, AlertTriangle, ClockAlert, Settings } from "lucide-react";
+import { formatWIBDate, parseWIBString, getCurrentWIBTimeISO } from "@/lib/formatWIBDate";
+import { useRouter } from "next/navigation";
 
 interface WelcomePoint {
   id: number;
@@ -28,22 +26,16 @@ interface WelcomePointContentProps {
 }
 
 export default function WelcomePointContent({ username }: WelcomePointContentProps) {
+  const router = useRouter();
   const [welcomePoint, setWelcomePoint] = useState<WelcomePoint | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Countdown state
   const [countdown, setCountdown] = useState<string>("");
   const [isActive, setIsActive] = useState(false);
   const [isStartingSoon, setIsStartingSoon] = useState(false);
-
-  // Form states
-  const [timeRangeOption, setTimeRangeOption] = useState<"default" | "custom">("default");
-  const [pointMode, setPointMode] = useState<"custom" | "default">("custom");
-  const [point, setPoint] = useState<number>(0);
-  const [activeFrom, setActiveFrom] = useState<string>("");
-  const [activeTo, setActiveTo] = useState<string>("");
+  const [isNearingEnd, setIsNearingEnd] = useState(false);
+  const [windowState, setWindowState] = useState<"default" | "starting-soon" | "active" | "nearing-end" | "expired">("default");
 
   const fetchWelcomePoint = async () => {
     setLoading(true);
@@ -52,11 +44,6 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
       if (res.ok) {
         const data = await res.json();
         setWelcomePoint(data);
-        setPoint(data.point);
-        setActiveFrom(data.active_from || "");
-        setActiveTo(data.active_to || "");
-        setTimeRangeOption(data.active_from || data.active_to ? "custom" : "default");
-        setPointMode(data.point === data.default_point ? "default" : "custom");
       } else {
         toast.error("Failed to fetch welcome point configuration");
       }
@@ -77,35 +64,65 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     if (!welcomePoint || !welcomePoint.active_from || !welcomePoint.active_to) {
       setCountdown("");
       setIsActive(false);
+      setIsStartingSoon(false);
       return;
     }
 
     const updateCountdown = () => {
-      // Get current time in WIB
       const wibNowString = getCurrentWIBTimeISO()
       const wibNow = parseWIBString(wibNowString)
 
       if (!wibNow) {
         setCountdown("")
         setIsActive(false)
+        setIsStartingSoon(false)
+        setIsNearingEnd(false)
+        setWindowState("default")
         return
       }
 
-      // Parse DB values as literal WIB
       const from = parseWIBString(welcomePoint.active_from!)
       const to = parseWIBString(welcomePoint.active_to!)
 
       if (!from || !to) {
         setCountdown("")
         setIsActive(false)
+        setIsStartingSoon(false)
+        setIsNearingEnd(false)
+        setWindowState("default")
         return
       }
 
-      // Check if currently within active window
+      const totalDuration = to.getTime() - from.getTime()
       const currentlyActive = wibNow >= from && wibNow <= to
       const currentlyStartingSoon = wibNow < from
+      const currentlyExpired = wibNow > to
+
+      // Calculate nearing end: last 10% of duration OR last 1 hour, whichever is longer
+      const tenPercentOfDuration = totalDuration * 0.1
+      const oneHour = 60 * 60 * 1000
+      const nearingEndThreshold = Math.max(tenPercentOfDuration, oneHour)
+      const timeUntilEnd = to.getTime() - wibNow.getTime()
+      const currentlyNearingEnd = currentlyActive && timeUntilEnd <= nearingEndThreshold
+
       setIsActive(currentlyActive)
       setIsStartingSoon(currentlyStartingSoon)
+      setIsNearingEnd(currentlyNearingEnd)
+
+      // Set window state
+      if (!welcomePoint.active_from && !welcomePoint.active_to) {
+        setWindowState("default")
+      } else if (currentlyStartingSoon) {
+        setWindowState("starting-soon")
+      } else if (currentlyExpired) {
+        setWindowState("expired")
+      } else if (currentlyNearingEnd) {
+        setWindowState("nearing-end")
+      } else if (currentlyActive) {
+        setWindowState("active")
+      } else {
+        setWindowState("default")
+      }
 
       let targetDate: Date
       let label: string
@@ -120,6 +137,8 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
         setCountdown("Expired")
         setIsActive(false)
         setIsStartingSoon(false)
+        setIsNearingEnd(false)
+        setWindowState("expired")
         return
       }
 
@@ -150,332 +169,207 @@ export default function WelcomePointContent({ username }: WelcomePointContentPro
     return () => clearInterval(interval)
   }, [welcomePoint])
 
-  const handleEdit = async () => {
-    if (!point || point < 0) {
-      toast.error("Point value must be a positive number");
-      return;
-    }
-
-    if (timeRangeOption === "custom") {
-      if (!activeFrom) {
-        toast.error("Active From is required for custom time range");
-        return;
-      }
-      if (!activeTo) {
-        toast.error("Active To is required for custom time range");
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
-
-    const payload = {
-      point: pointMode === "default" ? 100 : point,
-      active_from: timeRangeOption === "default" ? null : activeFrom,
-      active_to: timeRangeOption === "default" ? null : activeTo,
-      updated_by: username,
-    };
-
-    try {
-      const res = await fetch("/api/welcome-point", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        toast.success("Welcome point configuration updated successfully");
-        setEditDialogOpen(false);
-        fetchWelcomePoint();
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to update welcome point configuration");
-      }
-    } catch (err) {
-      console.error("Failed to update welcome point", err);
-      toast.error("Failed to update welcome point configuration");
-    } finally {
-      setIsSubmitting(false);
+  const getWindowStateConfig = () => {
+    switch (windowState) {
+      case "default":
+        return {
+          icon: Infinity,
+          iconBgClass: "bg-gray-100/50 backdrop-blur-sm",
+          iconTextClass: "text-gray-600",
+          label: "Always Active"
+        };
+      case "starting-soon":
+        return {
+          icon: Hourglass,
+          iconBgClass: "bg-gradient-to-r from-gray-200/50 to-green-400/50 backdrop-blur-sm",
+          iconTextClass: "text-gray-700",
+          label: "Starting Soon"
+        };
+      case "active":
+        return {
+          icon: Zap,
+          iconBgClass: "bg-green-500/70 backdrop-blur-sm",
+          iconTextClass: "text-white",
+          label: "Live"
+        };
+      case "nearing-end":
+        return {
+          icon: AlertTriangle,
+          iconBgClass: "bg-gradient-to-r from-green-400/50 to-red-500/50 backdrop-blur-sm",
+          iconTextClass: "text-white",
+          label: "Ending Soon"
+        };
+      case "expired":
+        return {
+          icon: ClockAlert,
+          iconBgClass: "bg-gray-100/50 backdrop-blur-sm",
+          iconTextClass: "text-gray-600",
+          label: "Expired"
+        };
+      default:
+        return {
+          icon: Infinity,
+          iconBgClass: "bg-gray-100/50 backdrop-blur-sm",
+          iconTextClass: "text-gray-600",
+          label: "Always Active"
+        };
     }
   };
-
-
-  const openEditDialog = () => {
-    if (welcomePoint) {
-      setPoint(welcomePoint.point);
-      setActiveFrom(welcomePoint.active_from || "");
-      setActiveTo(welcomePoint.active_to || "");
-      setTimeRangeOption(welcomePoint.active_from || welcomePoint.active_to ? "custom" : "default");
-      setPointMode(welcomePoint.point === welcomePoint.default_point ? "default" : "custom");
-      setEditDialogOpen(true);
-    }
-  };
-
-
 
   return (
-    <div className="flex flex-col space-y-4 animate-fade-in">
+    <div className="space-y-6 animate-fade-in relative min-h-screen">
+      {/* Background gradient blobs for glassmorphism effect */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome Point</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome Point</h1>
           <p className="text-sm text-gray-500 mt-1">Manage welcome point configuration</p>
         </div>
         <Button
-          onClick={openEditDialog}
+          onClick={() => router.push("/master/welcome-point/edit")}
           disabled={loading || !welcomePoint}
-          className="bg-[#E5262C] hover:bg-[#c41e22] text-white shadow-sm"
+          className="bg-[#E5262C] hover:bg-[#c41e22] text-white"
         >
-          <Pencil className="h-4 w-4 mr-2" />
-          Edit Configuration
+          Edit
         </Button>
       </div>
 
-      {/* Premium Single-Record Display */}
-      <div>
-        {loading ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="space-y-4">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          </div>
-        ) : welcomePoint ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-            {/* Hero Section - Large Point Display */}
-            <div className="bg-gradient-to-br from-gray-50 to-white p-6 border-b border-gray-100 flex-shrink-0">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-                <div className="max-w-2xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="h-10 w-10 rounded-xl bg-[#E5262C]/10 flex items-center justify-center">
-                      <Star className="h-6 w-6 text-[#E5262C]" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Current Point Value</span>
+      {/* Content */}
+      {loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-full bg-white/60 backdrop-blur-md rounded-2xl" />
+          <Skeleton className="h-24 w-full bg-white/60 backdrop-blur-md rounded-2xl" />
+        </div>
+      ) : welcomePoint ? (
+        <div className="space-y-4">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Default Point Card */}
+            <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
+              <CardContent className="p-4 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      Default Point
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {welcomePoint.default_point}
+                    </p>
                   </div>
-                  <div className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight mb-1">
-                    {welcomePoint.point}
+                  <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                    <Settings className="h-5 w-5 text-gray-600" />
                   </div>
-                  <p className="text-gray-500 text-sm">Points awarded to new members</p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Active Window Section */}
-            <div
-              className={`p-6 border-b border-gray-100 flex-shrink-0 transition-all duration-300 ${
-                isActive ? 'bg-red-50/50 border-l-4 border-l-[#E5262C]' : ''
-              } ${
-                isStartingSoon ? 'bg-amber-50/50 border-l-4 border-l-amber-500' : ''
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${
-                  isActive ? 'bg-[#E5262C]/10' : isStartingSoon ? 'bg-amber-500/10' : 'bg-blue-50'
-                }`}>
-                  <Clock className={`h-4 w-4 ${isActive ? 'text-[#E5262C]' : isStartingSoon ? 'text-amber-600' : 'text-blue-600'}`} />
+            {/* Status Card */}
+            <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
+              <CardContent className="p-4 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      Status
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {welcomePoint.active_from && welcomePoint.active_to ? "Limited Time" : "Default"}
+                    </p>
+                    {isStartingSoon && countdown && (
+                      <p className="text-xs text-gray-500 mt-1">{countdown.replace("Starts in: ", "Upcoming in: ")}</p>
+                    )}
+                  </div>
+                  <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                    <div className={`h-2 w-2 rounded-full ${isActive ? "bg-green-600" : isStartingSoon ? "bg-[#E5262C]" : "bg-gray-400"}`} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Active Time Window</span>
-                  {isActive && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-[#E5262C] animate-pulse" />
-                      <span className="text-xs font-semibold text-[#E5262C] uppercase tracking-wider">Live</span>
-                    </div>
-                  )}
-                  {isStartingSoon && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                      <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Starting Soon</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {welcomePoint.active_from || welcomePoint.active_to ? (
-                <div className={`rounded-lg p-4 transition-all duration-300 ${
-                  isActive ? 'bg-white border border-[#E5262C]/20 shadow-sm' : isStartingSoon ? 'bg-white border border-amber-500/20 shadow-sm' : 'bg-gray-50'
-                }`}>
-                  {/* Countdown Display */}
-                  {countdown && (
-                    <div className={`mb-3 pb-3 border-b ${
-                      isActive ? 'border-[#E5262C]/10' : isStartingSoon ? 'border-amber-500/10' : 'border-gray-200'
-                    }`}>
-                      <div className={`flex items-center gap-2 ${
-                        isActive ? 'text-[#E5262C]' : isStartingSoon ? 'text-amber-600' : 'text-gray-700'
-                      }`}>
-                        <Activity className={`h-4 w-4 ${isActive ? 'animate-pulse' : isStartingSoon ? 'animate-pulse' : ''}`} />
-                        <span className="font-semibold text-sm">{countdown}</span>
+              </CardContent>
+            </Card>
+
+            {/* Current Time Window Card */}
+            <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
+              <CardContent className="p-4 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      Current Time Window
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {welcomePoint.active_from && welcomePoint.active_to ? "Ends " + formatWIBDate(welcomePoint.active_to).split(",")[0] : "Infinite"}
+                    </p>
+                    {welcomePoint.active_from && welcomePoint.active_to && (
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-xs text-gray-500">Start: {formatWIBDate(welcomePoint.active_from)}</p>
+                        <p className="text-xs text-gray-500">End: {formatWIBDate(welcomePoint.active_to)}</p>
                       </div>
-                    </div>
-                  )}
-                  {/* Time Range Display */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">From</p>
-                      <p className="text-gray-900 font-medium text-sm">{formatWIBDate(welcomePoint.active_from)}</p>
-                    </div>
-                    <div className="hidden sm:block text-gray-300">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">To</p>
-                      <p className="text-gray-900 font-medium text-sm">{formatWIBDate(welcomePoint.active_to)}</p>
+                    )}
+                  </div>
+                  <div className={`h-10 w-10 rounded-xl ${getWindowStateConfig().iconBgClass} bg-white/30 backdrop-blur-sm flex items-center justify-center`}>
+                    {React.createElement(getWindowStateConfig().icon, {
+                      className: `h-5 w-5 ${getWindowStateConfig().iconTextClass}`
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Upcoming/Live Time Window Event Section */}
+          {(isStartingSoon || isActive) && welcomePoint.active_from && welcomePoint.active_to && (
+            <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={`h-8 w-8 rounded-lg ${isStartingSoon ? "bg-gray-100/50 backdrop-blur-sm" : "bg-green-100/50 backdrop-blur-sm"} flex items-center justify-center flex-shrink-0`}>
+                    {isStartingSoon ? (
+                      <Hourglass className="h-4 w-4 text-gray-600" />
+                    ) : (
+                      <Zap className="h-4 w-4 text-green-600" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {isStartingSoon ? "Upcoming Event" : "Live Event"}
+                    </p>
+                    <div className="mt-1 space-y-0.5">
+                      <p className="text-xs text-gray-600">
+                        Starts: {formatWIBDate(welcomePoint.active_from)}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Ends: {formatWIBDate(welcomePoint.active_to)}
+                      </p>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
-                  <span className="text-green-700 font-semibold text-sm">Always Active</span>
-                </div>
-              )}
-            </div>
+              </CardContent>
+            </Card>
+          )}
 
-            {/* Metadata Footer */}
-            <div className="bg-gray-50/50 p-6 flex-shrink-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated At</p>
-                  <p className="text-sm text-gray-700">{formatWIBDate(welcomePoint.updated_at)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Updated By</p>
-                  <p className="text-sm text-gray-700">{welcomePoint.updated_by || "-"}</p>
+          {/* Details Card */}
+          <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
+            <CardContent className="p-6">
+              {/* Metadata Footer */}
+              <div className="flex items-center gap-3">
+                <ClockIcon className="h-4 w-4 text-gray-400" />
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500">
+                    Last Updated: {formatWIBDate(welcomePoint.updated_at)} by {welcomePoint.updated_by}
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
-            <div className="h-12 w-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3">
-              <Star className="h-6 w-6 text-gray-300" />
-            </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
+          <CardContent className="p-12 text-center">
             <p className="text-gray-500 text-sm">No welcome point configuration found</p>
-          </div>
-        )}
-      </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[calc(100dvh-100px)] overflow-hidden flex flex-col">
-          <DialogHeader className="pb-3 flex-shrink-0">
-            <DialogTitle className="text-lg font-semibold">Edit Welcome Point Configuration</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2 overflow-y-auto flex-1 min-h-0">
-            {/* Time Range Option */}
-            <div>
-              <label className="text-sm font-semibold text-gray-700 mb-2 block">Active Time Window</label>
-              <div className="space-y-1.5">
-                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="timeRangeOption"
-                    value="default"
-                    checked={timeRangeOption === "default"}
-                    onChange={(e) => setTimeRangeOption(e.target.value as "default" | "custom")}
-                    className="w-4 h-4 text-[#E5262C] border-gray-300 focus:ring-[#E5262C]"
-                  />
-                  <span className="text-sm text-gray-700">Default (Always Active)</span>
-                </label>
-                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="timeRangeOption"
-                    value="custom"
-                    checked={timeRangeOption === "custom"}
-                    onChange={(e) => setTimeRangeOption(e.target.value as "default" | "custom")}
-                    className="w-4 h-4 text-[#E5262C] border-gray-300 focus:ring-[#E5262C]"
-                  />
-                  <span className="text-sm text-gray-700">Custom Time Range</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Custom Date Time Pickers */}
-            {timeRangeOption === "custom" && (
-              <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Active From</label>
-                  <DateTimePicker
-                    value={activeFrom}
-                    onChange={setActiveFrom}
-                    placeholder="Select start date and time"
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Active To</label>
-                  <DateTimePicker
-                    value={activeTo}
-                    onChange={setActiveTo}
-                    placeholder="Select end date and time"
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Point Mode Selection */}
-            <div>
-              <label className="text-sm font-semibold text-gray-700 mb-2 block">Point Value</label>
-              <div className="space-y-1.5">
-                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="pointMode"
-                    value="custom"
-                    checked={pointMode === "custom"}
-                    onChange={(e) => setPointMode(e.target.value as "custom" | "default")}
-                    className="w-4 h-4 text-[#E5262C] border-gray-300 focus:ring-[#E5262C]"
-                  />
-                  <span className="text-sm text-gray-700">Custom Points</span>
-                </label>
-                <label className="flex items-center space-x-3 p-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="pointMode"
-                    value="default"
-                    checked={pointMode === "default"}
-                    onChange={(e) => setPointMode(e.target.value as "custom" | "default")}
-                    className="w-4 h-4 text-[#E5262C] border-gray-300 focus:ring-[#E5262C]"
-                  />
-                  <span className="text-sm text-gray-700">Default Point (100)</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Point Value Input */}
-            {pointMode === "custom" && (
-              <div>
-                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Custom Point Value</label>
-                <NumberInput
-                  min="0"
-                  value={point}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPoint(parseInt(e.target.value) || 0)}
-                  placeholder="Enter custom point value"
-                  className="w-full text-base font-semibold"
-                />
-              </div>
-            )}
-            {pointMode === "default" && (
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-sm font-semibold text-gray-700 mb-1">Default Point Value</p>
-                <p className="text-3xl font-bold text-[#E5262C]">100</p>
-                <p className="text-xs text-gray-500 mt-1">Fixed default value - not editable</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="pt-3 flex-shrink-0">
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSubmitting} className="rounded-xl">
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} className="bg-[#E5262C] hover:bg-[#c41e22] text-white rounded-xl" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -527,12 +528,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                       )}
                       {visibleColumns.start_date && (
                         <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {item.start_date ? item.start_date.split('T')[0] : "-"}
+                          {formatWIBDate(item.start_date)}
                         </TableCell>
                       )}
                       {visibleColumns.end_date && (
                         <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {item.end_date ? item.end_date.split('T')[0] : "-"}
+                          {formatWIBDate(item.end_date)}
                         </TableCell>
                       )}
                       {visibleColumns.editedBy && (
@@ -682,8 +683,8 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                         )}
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        <div>Start: {item.start_date ? item.start_date.split('T')[0] : "-"}</div>
-                        <div>End: {item.end_date ? item.end_date.split('T')[0] : "-"}</div>
+                        <div>Start: {formatWIBDate(item.start_date)}</div>
+                        <div>End: {formatWIBDate(item.end_date)}</div>
                       </div>
                     </div>
                   </div>
@@ -749,13 +750,13 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Start Date
                   </span>
-                  {viewItem.start_date ? viewItem.start_date.split('T')[0] : "-"}
+                  {formatWIBDate(viewItem.start_date)}
                 </div>
                 <div>
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     End Date
                   </span>
-                  {viewItem.end_date ? viewItem.end_date.split('T')[0] : "-"}
+                  {formatWIBDate(viewItem.end_date)}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
@@ -769,7 +770,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Created
                   </span>
-                  {viewItem.created_at ? viewItem.created_at.split('T')[0] : "-"}
+                  {formatWIBDate(viewItem.created_at)}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
@@ -777,7 +778,7 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Updated
                   </span>
-                  {viewItem.updated_at ? viewItem.updated_at.split('T')[0] : "-"}
+                  {formatWIBDate(viewItem.updated_at)}
                 </div>
               </div>
             </div>

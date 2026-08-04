@@ -17,6 +17,7 @@ import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import RichTextContentField from "@/components/RichTextContentField";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import Link from "next/link";
@@ -738,13 +739,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Created
                   </span>
-                  {viewItem.createdAt ? viewItem.createdAt.split('T')[0] : "-"}
+                  {formatWIBDate(viewItem.createdAt)}
                 </div>
                 <div>
                   <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
                     Updated
                   </span>
-                  {viewItem.updatedAt ? viewItem.updatedAt.split('T')[0] : "-"}
+                  {formatWIBDate(viewItem.updatedAt)}
                 </div>
               </div>
             </div>

@@ -11,6 +11,7 @@ import ImageUpload from "@/components/ImageUpload";
 import RichTextContentField from "@/components/RichTextContentField";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface DailyBenefitEditContentProps {
   username: string;
@@ -273,7 +274,7 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.created_at ? item.created_at.split('T')[0] : "-"}
+                  {formatWIBDate(item.created_at)}
                 </div>
               </div>
               <div>
@@ -281,7 +282,7 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.updated_at ? item.updated_at.split('T')[0] : "-"}
+                  {formatWIBDate(item.updated_at)}
                 </div>
               </div>
             </div>

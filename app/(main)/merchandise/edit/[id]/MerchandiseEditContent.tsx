@@ -12,6 +12,7 @@ import ImageUpload from "@/components/ImageUpload";
 import RichTextContentField from "@/components/RichTextContentField";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface MerchandiseEditContentProps {
   username: string;
@@ -264,7 +265,7 @@ export default function MerchandiseEditContent({ username, merchandiseId }: Merc
                   Created
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.createdAt ? item.createdAt.split('T')[0] : "-"}
+                  {formatWIBDate(item.createdAt)}
                 </div>
               </div>
               <div>
@@ -272,7 +273,7 @@ export default function MerchandiseEditContent({ username, merchandiseId }: Merc
                   Updated
                 </label>
                 <div className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                  {item.updatedAt ? item.updatedAt.split('T')[0] : "-"}
+                  {formatWIBDate(item.updatedAt)}
                 </div>
               </div>
             </div>

@@ -155,7 +155,10 @@ export default function EditBannerPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Banner Image"
-              recommendation="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
+              recommendation="Carousel Banner Image
+Ratio: 2048:777 (≈ 2.64:1 Landscape)
+Recommended Resolution: 2048 × 777 px
+Format: JPG / PNG "
             />
           </div>
         </section>

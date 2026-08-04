@@ -39,6 +39,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
     min_trip: 0,
     reward_tap_out: 0,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchMemberships = async () => {
     setLoading(true);
@@ -63,6 +64,7 @@ export default function MembershipContent({ username }: MembershipContentProps) 
   const handleEdit = async () => {
     if (!selectedMembership) return;
 
+    setIsSubmitting(true);
     try {
       const res = await fetch(`/api/membership/${selectedMembership.id}`, {
         method: "PUT",
@@ -83,6 +85,8 @@ export default function MembershipContent({ username }: MembershipContentProps) 
     } catch (err) {
       console.error("Failed to update membership", err);
       toast.error("Failed to update membership");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -259,11 +263,11 @@ export default function MembershipContent({ username }: MembershipContentProps) 
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} className="bg-[#E5262C] hover:bg-[#c41e22] text-white">
-              Save Changes
+            <Button onClick={handleEdit} className="bg-[#E5262C] hover:bg-[#c41e22] text-white" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
