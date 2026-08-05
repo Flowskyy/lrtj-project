@@ -60,7 +60,7 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
       points: formPoints,
       image_url: formImageUrl,
       description: formDescription,
-      editedBy: username,
+      editedBy: userEmail || username,
       status: formStatus,
       category_id: categoryId,
     };

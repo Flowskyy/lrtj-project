@@ -11,12 +11,14 @@ export async function GET(
   // Use raw SQL for consistent WIB formatting
   const item = await prisma.$queryRaw`
     SELECT
-      m.id, m.name, m.points, m.image_url, m.description, m.editedBy, m.status, m.category_id,
-      DATE_FORMAT(m.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-      DATE_FORMAT(m.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
-      c.id as category_id, c.category_name
+      m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
+      DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
+      DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+      c.id as category_id, c.category_name,
+      COALESCE(u.email, m.editedBy) as display_email
     FROM merchandise m
     LEFT JOIN merchandise_category c ON m.category_id = c.id
+    LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
     WHERE m.id = ${parseInt(id)}
   ` as any[];
 
@@ -47,25 +49,27 @@ export async function PUT(
     await prisma.$queryRaw`
       UPDATE merchandise 
       SET name = ${data.name},
-          points = ${data.points},
+          redeem_point = ${data.points},
           image_url = ${data.image_url},
-          description = ${data.description},
+          term_condition = ${data.description},
           editedBy = ${data.editedBy},
           status = ${data.status},
           category_id = ${data.category_id},
-          updatedAt = ${formatWIB(new Date())}
+          updated_at = ${formatWIB(new Date())}
       WHERE id = ${parseInt(id)}
     `;
 
     // Fetch the updated item with proper WIB formatting
     const updatedItem = await prisma.$queryRaw`
       SELECT
-        m.id, m.name, m.points, m.image_url, m.description, m.editedBy, m.status, m.category_id,
-        DATE_FORMAT(m.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(m.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
-        c.id as category_id, c.category_name
+        m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
+        DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+        c.id as category_id, c.category_name,
+        COALESCE(u.email, m.editedBy) as display_email
       FROM merchandise m
       LEFT JOIN merchandise_category c ON m.category_id = c.id
+      LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
       WHERE m.id = ${parseInt(id)}
     ` as any[];
 

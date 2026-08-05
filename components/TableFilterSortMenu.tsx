@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 
 interface TableFilterSortMenuProps {
   // Filter props
-  statusFilter: string;
-  onStatusFilterChange: (value: string) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (value: string) => void;
   genderFilter?: string;
   onGenderFilterChange?: (value: string) => void;
   verifiedFilter?: string;
@@ -62,7 +62,7 @@ interface TableFilterSortMenuProps {
 }
 
 export default function TableFilterSortMenu({
-  statusFilter,
+  statusFilter = "all",
   onStatusFilterChange,
   genderFilter = "all",
   onGenderFilterChange,
@@ -121,7 +121,7 @@ export default function TableFilterSortMenu({
   showVerifiedFilter = false,
   showActivationSlcFilter = false,
   showTierFilter = false,
-  showStatusFilter = true,
+  showStatusFilter = false,
   showCategoryFilter = false,
   dateFrom = "",
   onDateFromChange,
@@ -144,8 +144,8 @@ export default function TableFilterSortMenu({
             </span>
           )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-80 rounded-xl shadow-lg border-gray-200 bg-white p-2">
-          {showStatusFilter && (
+        <DropdownMenuContent align="start" side="bottom" collisionAvoidance={{ side: 'shift' }} className="w-80 rounded-xl shadow-lg border-gray-200 bg-white p-2">
+          {showStatusFilter && onStatusFilterChange && (
             <div className="space-y-2">
               <div className="px-3 py-1">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Status</label>
@@ -157,7 +157,7 @@ export default function TableFilterSortMenu({
                       {statusOptions.find(opt => opt.value === statusFilter)?.label || "Select status"}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom">
                     {statusOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -183,7 +183,7 @@ export default function TableFilterSortMenu({
                         {genderOptions.find(opt => opt.value === genderFilter)?.label || "Select gender"}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom">
                       {genderOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -210,7 +210,7 @@ export default function TableFilterSortMenu({
                         {verifiedOptions.find(opt => opt.value === verifiedFilter)?.label || "Select verification"}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom">
                       {verifiedOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -237,7 +237,7 @@ export default function TableFilterSortMenu({
                         {activationSlcOptions.find(opt => opt.value === activationSlcFilter)?.label || "Select activation"}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom">
                       {activationSlcOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -264,7 +264,7 @@ export default function TableFilterSortMenu({
                         {tierOptions.find(opt => opt.value === tierFilter)?.label || "Select tier"}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom">
                       {tierOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -291,7 +291,7 @@ export default function TableFilterSortMenu({
                         {typeOptions.find(opt => opt.value === typeFilter)?.label || "Select type"}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom">
                       {typeOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -306,7 +306,7 @@ export default function TableFilterSortMenu({
 
           {showCategoryFilter && onCategoryFilterChange && (
             <>
-              <DropdownMenuSeparator className="my-2" />
+              {(showStatusFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showTypeFilter) && <DropdownMenuSeparator className="my-2" />}
               <div className="space-y-2">
                 <div className="px-3 py-1">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Category</label>
@@ -318,7 +318,7 @@ export default function TableFilterSortMenu({
                         {categoryOptions.find(opt => opt.value === categoryFilter)?.label || "Select category"}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="bottom">
                       {categoryOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -333,7 +333,7 @@ export default function TableFilterSortMenu({
           
           {showDateRange && onDateFromChange && onDateToChange && (
             <>
-              <DropdownMenuSeparator className="my-2" />
+              {(showStatusFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showTypeFilter || showCategoryFilter) && <DropdownMenuSeparator className="my-2" />}
               <div className="space-y-2">
                 <div className="px-3 py-1">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">From Date</label>
@@ -363,7 +363,7 @@ export default function TableFilterSortMenu({
           
           {onResetFilters && activeFilterCount > 0 && (
             <>
-              <DropdownMenuSeparator className="my-2" />
+              {(showStatusFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showTypeFilter || showCategoryFilter || showDateRange) && <DropdownMenuSeparator className="my-2" />}
               <div className="px-3 pb-2">
                 <button
                   onClick={onResetFilters}
@@ -383,7 +383,7 @@ export default function TableFilterSortMenu({
           <ArrowUpDown className="h-4 w-4 mr-2 text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Sort</span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-80 rounded-xl shadow-lg border-gray-200 bg-white p-2">
+        <DropdownMenuContent align="start" side="bottom" collisionAvoidance={{ side: 'shift' }} className="w-80 rounded-xl shadow-lg border-gray-200 bg-white p-2">
           <div className="space-y-2">
             <div className="px-3 py-1">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Sort By</label>

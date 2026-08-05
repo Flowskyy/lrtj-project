@@ -709,13 +709,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
         </header>
 
-        <main className="flex-1 bg-gray-50/50 min-w-0 relative">
-          {/* Background gradient blobs for glassmorphism effect - positioned at layout level to avoid container clipping */}
-          <div className="fixed inset-0 -z-10 pointer-events-none">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
-          </div>
-
+        <main className="flex-1 bg-gray-50/50 min-w-0">
           <div className="container mx-auto max-w-7xl pt-2 px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
 
             {children}
@@ -725,6 +719,12 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         </main>
 
       </SidebarInset>
+
+      {/* Background gradient blobs for glassmorphism effect - positioned outside SidebarInset to avoid CSS containing block clipping */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
+      </div>
     </>
   )
 }

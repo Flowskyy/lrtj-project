@@ -16,6 +16,7 @@ import { formatWIBDate } from "@/lib/formatWIBDate";
 
 interface MerchandiseEditContentProps {
   username: string;
+  userEmail: string | null;
   merchandiseId: string;
 }
 
@@ -36,7 +37,7 @@ interface Category {
   category_name: string | null;
 }
 
-export default function MerchandiseEditContent({ username, merchandiseId }: MerchandiseEditContentProps) {
+export default function MerchandiseEditContent({ username, userEmail, merchandiseId }: MerchandiseEditContentProps) {
   const router = useRouter();
   
   // Form states
@@ -104,7 +105,7 @@ export default function MerchandiseEditContent({ username, merchandiseId }: Merc
       points: formPoints,
       image_url: formImageUrl,
       description: formDescription,
-      editedBy: username,
+      editedBy: userEmail || username,
       status: formStatus,
       category_id: categoryId,
     };

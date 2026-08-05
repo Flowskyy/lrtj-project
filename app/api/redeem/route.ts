@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const categoryId = searchParams.get('category_id');
+  const searchScope = searchParams.get('searchScope') || searchParams.get('searchMode') || 'receiver_name';
 
   if (dateFrom || dateTo) {
     where.createdAt = {};
@@ -86,23 +87,44 @@ export async function GET(request: NextRequest) {
   }
 
   if (categoryId) {
-    // Filter by merchandise category_id
-    const matchingMerchandiseIds = await prisma.merchandise.findMany({
-      where: {
-        category_id: parseInt(categoryId),
-      },
-      select: {
-        id: true,
-      },
-    });
-    
-    if (matchingMerchandiseIds.length > 0) {
-      where.merchandise_id = {
-        in: matchingMerchandiseIds.map(m => m.id),
-      };
+    if (categoryId === 'uncategorized') {
+      // Filter for items with no category
+      const uncategorizedMerchandiseIds = await prisma.merchandise.findMany({
+        where: {
+          category_id: null,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (uncategorizedMerchandiseIds.length > 0) {
+        where.merchandise_id = {
+          in: uncategorizedMerchandiseIds.map(m => m.id),
+        };
+      } else {
+        // No uncategorized merchandise, return empty results
+        where.merchandise_id = -1;
+      }
     } else {
-      // No merchandise in this category, return empty results
-      where.merchandise_id = -1;
+      // Filter by merchandise category_id
+      const matchingMerchandiseIds = await prisma.merchandise.findMany({
+        where: {
+          category_id: parseInt(categoryId),
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (matchingMerchandiseIds.length > 0) {
+        where.merchandise_id = {
+          in: matchingMerchandiseIds.map(m => m.id),
+        };
+      } else {
+        // No merchandise in this category, return empty results
+        where.merchandise_id = -1;
+      }
     }
   }
 
@@ -114,27 +136,32 @@ export async function GET(request: NextRequest) {
       searchConditions.push({ id: searchNum });
     }
 
-    searchConditions.push({ receiver_name: { contains: search.trim() } });
-
-    // For merchandise name search, we need to find matching merchandise IDs first
-    const matchingMerchandise = await prisma.merchandise.findMany({
-      where: {
-        name: {
-          contains: search.trim(),
+    // Search based on selected scope
+    if (searchScope === 'receiver_name') {
+      searchConditions.push({ receiver_name: { contains: search.trim() } });
+    } else if (searchScope === 'receiver_email') {
+      searchConditions.push({ receiver_email: { contains: search.trim() } });
+    } else if (searchScope === 'merchandise_name') {
+      // For merchandise name search, we need to find matching merchandise IDs first
+      const matchingMerchandise = await prisma.merchandise.findMany({
+        where: {
+          name: {
+            contains: search.trim(),
+          },
         },
-      },
-      select: {
-        id: true,
-      },
-      take: 100,
-    });
-
-    if (matchingMerchandise.length > 0) {
-      searchConditions.push({
-        merchandise_id: {
-          in: matchingMerchandise.map(m => m.id),
+        select: {
+          id: true,
         },
+        take: 100,
       });
+
+      if (matchingMerchandise.length > 0) {
+        searchConditions.push({
+          merchandise_id: {
+            in: matchingMerchandise.map(m => m.id),
+          },
+        });
+      }
     }
 
     where.OR = searchConditions;
@@ -177,7 +204,7 @@ export async function GET(request: NextRequest) {
     
     [total, completedCount] = await Promise.all([
       prisma.redeem.count({ where }),
-      prisma.redeem.count({ where: { status: 'completed' } }),
+      prisma.redeem.count({ where: { ...where, status: 'completed' } }),
     ]);
   } else {
     // Normal paginated query
@@ -189,7 +216,7 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.redeem.count({ where }),
-      prisma.redeem.count({ where: { status: 'completed' } }),
+      prisma.redeem.count({ where: { ...where, status: 'completed' } }),
     ]);
     
     redeems = redeemsResult;

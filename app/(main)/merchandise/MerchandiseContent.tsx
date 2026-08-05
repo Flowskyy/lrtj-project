@@ -7,18 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
-import RichTextContentField from "@/components/RichTextContentField";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { getImageUrl } from "@/lib/utils";
-import { formatWIBDate } from "@/lib/formatWIBDate";
-import { useDebouncedSearch } from "@/hooks/use-debounced-search";
+import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import Link from "next/link";
 import {
@@ -28,11 +26,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 interface MerchandiseItem {
   id: number;
   editedBy?: string;
-  creator_email?: string;
+  display_email?: string;
   name: string;
   image_url: string;
   points: number;
@@ -57,6 +56,7 @@ interface MerchandiseContentProps {
 }
 
 export default function MerchandiseContent({ username }: MerchandiseContentProps) {
+  const router = useRouter();
   const [items, setItems] = useState<MerchandiseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -64,15 +64,15 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   const [inactiveCount, setInactiveCount] = useState(0);
 
   // Filter and Sort states
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] = useState<string>("");
+  const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [categories, setCategories] = useState<Category[]>([]);
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<MerchandiseItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<MerchandiseItem | null>(null);
   const [previewItem, setPreviewItem] = useState<MerchandiseItem | null>(null);
 
@@ -92,7 +92,6 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (categoryFilter !== "all") params.set("category_id", categoryFilter);
@@ -114,7 +113,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, categoryFilter]);
+  }, [sortBy, sortOrder, categoryFilter]);
+
+  // Search scopes for Merchandise
+  const merchandiseSearchScopes: SearchScope[] = [
+    { field: "editedBy", label: "Last Edited By" },
+    { field: "name", label: "Merchandise Name" },
+  ];
 
   // Fetch categories on mount
   useEffect(() => {
@@ -132,28 +137,43 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     fetchCategories();
   }, []);
 
-  // Debounced search
-  const { handleSearchChange } = useDebouncedSearch({ delay: 300 });
-
-  const onSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    handleSearchChange(() => {
-      // Search filtering is done client-side via filteredItems
-    });
-  }, [handleSearchChange]);
-
-  // Filter items based on search query (memoized for performance)
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.editedBy?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
+  // Filter items based on search query and scope (memoized for performance)
+  const filteredItems = items.filter(item => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    if (searchScope === 'editedBy') {
+      return item.editedBy?.toLowerCase().includes(query) || item.display_email?.toLowerCase().includes(query);
+    } else if (searchScope === 'name') {
+      return item.name.toLowerCase().includes(query);
+    } else {
+      // Default: search both name and editedBy
+      return item.name.toLowerCase().includes(query) ||
+             item.editedBy?.toLowerCase().includes(query) ||
+             item.display_email?.toLowerCase().includes(query);
+    }
+  });
+  const activeFilterCount = (searchQuery ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
 
   const handleResetFilters = () => {
-    setStatusFilter("all");
+    setSearchQuery("");
+    setSearchScope("");
     setSortBy("createdAt");
     setSortOrder("desc");
-    setCategoryFilter("all");
+  };
+
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+  };
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setShowScopeSuggestions(value.length >= 2);
+    if (!value.trim()) {
+      setSearchScope("");
+    }
   };
 
   // Delete Item
@@ -189,21 +209,21 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total Merchandise
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : totalMerchandise}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-primary"
+                  className="h-6 w-6 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -219,20 +239,20 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Active
                 </p>
-                <p className="text-2xl font-bold text-green-700 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : active}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-green-700"
+                  className="h-6 w-6 text-green-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -248,20 +268,20 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Inactive
                 </p>
-                <p className="text-2xl font-bold text-gray-500 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : inactive}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-gray-500"
+                  className="h-6 w-6 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -280,141 +300,141 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
       </div>
 
       {/* Main Content Card */}
-      <Card>
-        <CardContent>
-          <CardHeader className="p-3">
-            <div className="flex flex-wrap items-center justify-between">
-              <CardTitle className="text-lg">Merchandise Management</CardTitle>
-              <Link href="/merchandise/add">
-                <Button className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Merchandise
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-wrap items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Merchandise Management</h2>
+            <Link href="/merchandise/add">
+              <Button className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Merchandise
+              </Button>
+            </Link>
+          </div>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search merchandise..."
                   value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-9 min-h-[44px] w-full sm:w-64"
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search merchandise..."
+                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
+                  onFocus={() => {
+                    if (searchQuery.length >= 2) {
+                      setShowScopeSuggestions(true);
+                    }
+                  }}
                 />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <SearchScopeSuggestions
+                  searchQuery={searchQuery}
+                  scopes={merchandiseSearchScopes}
+                  onScopeSelect={handleScopeSelect}
+                  isVisible={showScopeSuggestions}
+                  onClose={() => setShowScopeSuggestions(false)}
+                />
               </div>
-              <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value || "all")}>
-                <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
-                  <SelectValue placeholder="All Categories">
-                    {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.category_name || `Category ${cat.id}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <TableFilterSortMenu
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                statusOptions={[
-                  { value: "all", label: "All" },
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
-                ]}
                 sortByOptions={[
                   { value: "createdAt", label: "Created Date" },
                   { value: "name", label: "Name" },
                   { value: "points", label: "Points" },
                 ]}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+                categoryOptions={[
+                  { value: "all", label: "All Categories" },
+                  { value: "uncategorized", label: "No Category" },
+                  ...categories.map(cat => ({ value: cat.id.toString(), label: cat.category_name || `Category ${cat.id}` }))
+                ]}
+                showCategoryFilter={true}
                 onResetFilters={handleResetFilters}
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
                   <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, image: !prev.image }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.image && <Check className="h-4 w-4" />}
-                      <span>Image</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, name: !prev.name }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.name && <Check className="h-4 w-4" />}
-                      <span>Name</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: !prev.category }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.category && <Check className="h-4 w-4" />}
-                      <span>Category</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, points: !prev.points }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.points && <Check className="h-4 w-4" />}
-                      <span>Points</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: !prev.status }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.status && <Check className="h-4 w-4" />}
-                      <span>Status</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, editedBy: !prev.editedBy }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.editedBy && <Check className="h-4 w-4" />}
-                      <span>Last Edited By</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: !prev.actions }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.actions && <Check className="h-4 w-4" />}
-                      <span>Actions</span>
-                    </div>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
+                  {visibleColumns.image && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, image: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Image</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.name && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, name: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Name</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.category && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Category</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.points && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, points: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Points</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.status && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Status</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.editedBy && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, editedBy: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Last Edited By</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.actions && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Actions</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
 
           {/* Table - Desktop */}
-          <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
+          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
+              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
                 <TableRow>
                   {visibleColumns.image && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-40">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-40">
                       Image
                     </TableHead>
                   )}
                   {visibleColumns.name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px] max-w-[140px]">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px] max-w-[140px]">
                       <div className="flex items-center gap-1">
                         Name
                         <ChevronDown className="h-3 w-3" />
@@ -422,12 +442,12 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     </TableHead>
                   )}
                   {visibleColumns.category && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] max-w-[140px]">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[100px] max-w-[140px]">
                       Category
                     </TableHead>
                   )}
                   {visibleColumns.points && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-20">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-20">
                       <div className="flex items-center gap-1">
                         Points
                         <ChevronDown className="h-3 w-3" />
@@ -435,27 +455,27 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.editedBy && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] max-w-[120px]">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[100px] max-w-[120px]">
                       Last Edited By
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
+                    <TableHead className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center w-32">
                       Actions
                     </TableHead>
                   )}
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-50">
+              <TableBody className="divide-y divide-gray-200">
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded-lg" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
@@ -464,7 +484,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded-lg" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
@@ -473,7 +493,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded-lg" /></TableCell>}
                       {visibleColumns.name && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
                       {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                       {visibleColumns.points && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
@@ -486,8 +506,8 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   filteredItems.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.image && (
-                        <TableCell className="px-3 py-1.5">
-                          <div className="h-32 w-40 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                        <TableCell className="px-4 py-3">
+                          <div className="h-32 w-40 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                             <img
                               src={getImageUrl(item.image_url)}
                               alt={item.name}
@@ -501,62 +521,60 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                         </TableCell>
                       )}
                       {visibleColumns.name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[140px]">
+                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[140px]">
                           <span className="block truncate" title={item.name}>
                             {item.name}
                           </span>
                         </TableCell>
                       )}
                       {visibleColumns.category && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-600 truncate max-w-[140px]" title={item.merchandise_category?.category_name || "Uncategorized"}>
+                        <TableCell className="px-4 py-3 text-sm text-gray-600 truncate max-w-[140px]" title={item.merchandise_category?.category_name || "Uncategorized"}>
                           {item.merchandise_category?.category_name || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.points && (
-                        <TableCell className="px-3 py-1.5 text-xs font-semibold text-[#E5262C]">
+                        <TableCell className="px-4 py-3 text-sm font-semibold text-[#E5262C]">
                           {item.points} pts
                         </TableCell>
                       )}
                       {visibleColumns.status && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-4 py-3">
                           {item.status === 1 ? (
-                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
+                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
                               Active
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs">
                               Inactive
                             </Badge>
                           )}
                         </TableCell>
                       )}
                       {visibleColumns.editedBy && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 truncate max-w-[120px]" title={item.editedBy || ""}>
-                          {item.editedBy || "-"}
+                        <TableCell className="px-4 py-3 text-sm text-gray-600 truncate max-w-[140px]" title={item.display_email || ""}>
+                          {item.display_email || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-3 py-1.5 text-center">
+                        <TableCell className="px-4 py-3 text-center">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground p-0">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 p-0">
+                              <MoreVertical className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                setViewItem(item);
-                              }} className="text-xs h-8">
-                                <Eye className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => router.push(`/merchandise/view/${item.id}`)} className="text-sm h-9">
+                                <Eye className="h-4 w-4 mr-2" />
                                 View
                               </DropdownMenuItem>
                               <Link href={`/merchandise/edit/${item.id}`}>
-                                <DropdownMenuItem className="text-xs h-8">
-                                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                                <DropdownMenuItem className="text-sm h-9">
+                                  <Pencil className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
                               </Link>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-sm h-9">
+                                <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -567,7 +585,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-xs text-gray-400">
+                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-sm text-gray-500">
                       No merchandise items found.
                     </TableCell>
                   </TableRow>
@@ -577,10 +595,10 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           </div>
 
           {/* Card List - Mobile */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-4">
             {loading ? (
               <>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex gap-3 items-start">
                     <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
@@ -595,7 +613,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     </div>
                   </div>
                 </div>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex gap-3 items-start">
                     <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
@@ -613,9 +631,9 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               </>
             ) : filteredItems.length > 0 ? (
               filteredItems.map((item) => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex gap-3 items-start">
-                    <div className="h-32 w-24 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                    <div className="h-32 w-24 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-200 shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                       <img
                         src={getImageUrl(item.image_url)}
                         alt={item.name}
@@ -629,25 +647,23 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-gray-900 truncate">{item.name}</h3>
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">{item.name}</h3>
                           <p className="text-sm font-semibold text-[#E5262C] mt-0.5">{item.points} pts</p>
                         </div>
                         {item.status === 1 ? (
-                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px] px-2 py-0.5 shrink-0">
+                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs px-2 py-0.5 shrink-0">
                             Active
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px] px-2 py-0.5 shrink-0">
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs px-2 py-0.5 shrink-0">
                             Inactive
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 truncate">Edited by: {item.editedBy || "-"}</p>
+                      <p className="text-xs text-gray-500 mt-1 truncate">Edited by: {item.display_email || "-"}</p>
                       <div className="flex gap-2 mt-3">
                         <Button
-                          onClick={() => {
-                            setViewItem(item);
-                          }}
+                          onClick={() => router.push(`/merchandise/view/${item.id}`)}
                           variant="outline"
                           size="sm"
                           className="min-h-[44px] px-3"
@@ -659,7 +675,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                           <Button
                             variant="outline"
                             size="sm"
-                            className="min-h-[44px] px-3 border-primary/30 text-primary hover:bg-primary/5"
+                            className="min-h-[44px] px-3 border-[#E5262C]/30 text-[#E5262C] hover:bg-[#E5262C]/5"
                             aria-label="Edit"
                           >
                             <Pencil className="h-4 w-4" />
@@ -680,98 +696,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-sm text-gray-400">
-                No merchandise items found.
+              <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+                <p className="text-sm text-gray-500">No merchandise items found.</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
-
-      {/* MODAL: VIEW */}
-      <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-2xl md:max-w-3xl max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
-          <DialogHeader>
-            <DialogTitle>{viewItem?.name}</DialogTitle>
-          </DialogHeader>
-          {viewItem && (
-            <div className="overflow-y-auto space-y-4">
-              <div className="flex gap-4 items-start">
-                <div className="h-16 w-16 sm:h-20 sm:w-20 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
-                  <img
-                    src={`/${viewItem.image_url}`}
-                    alt={viewItem.name}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                      (e.target as HTMLImageElement).className = "h-10 w-auto object-contain";
-                    }}
-                  />
-                </div>
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="font-bold text-gray-900 text-base sm:text-lg">{viewItem.name}</div>
-                  <div className="text-[#E5262C] font-bold text-sm sm:text-base">{viewItem.points} Points</div>
-                  <div>
-                    {viewItem.status === 1 ? (
-                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
-                        Inactive
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-500">Edited by: {viewItem.editedBy || "-"}</div>
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-                  Terms & Condition
-                </div>
-                <div
-                  className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: viewItem.description }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Created
-                  </span>
-                  {formatWIBDate(viewItem.createdAt)}
-                </div>
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Updated
-                  </span>
-                  {formatWIBDate(viewItem.updatedAt)}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            {viewItem && (
-              <Link href={`/merchandise/edit/${viewItem.id}`}>
-                <Button
-                  onClick={() => setViewItem(null)}
-                  variant="outline"
-                  className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
-                >
-                  Edit
-                </Button>
-              </Link>
-            )}
-            <Button
-              onClick={() => setViewItem(null)}
-              variant="outline"
-              className="min-h-[44px]"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* MODAL: DELETE */}
       <DeleteConfirmDialog

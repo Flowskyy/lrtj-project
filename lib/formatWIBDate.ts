@@ -163,3 +163,36 @@ export function getCurrentWIBTimeISO(): string {
     hour12: false,
   }).replace(',', '').replace(/\//g, '-').replace(' ', 'T')
 }
+
+/**
+ * Format date for display in tables/lists (date only, no time)
+ * Input: "2026-07-31T13:00:00" or "2026-07-31 13:00:00"
+ * Output: "Jul 31, 2026"
+ * 
+ * Simpler version of formatWIBDate for tables where time isn't needed
+ */
+export function formatDisplayDate(wibString: string | null | undefined): string {
+  if (!wibString) {
+    return '-'
+  }
+
+  // Handle both T and space separators
+  const normalized = wibString.replace(' ', 'T')
+  const parts = normalized.split('T')
+
+  if (parts.length < 1) {
+    return '-'
+  }
+
+  const datePart = parts[0]
+  const dateComponents = datePart.split('-')
+
+  if (dateComponents.length !== 3) {
+    return '-'
+  }
+
+  const [year, month, day] = dateComponents.map(Number)
+  const monthName = MONTH_NAMES[month - 1] || 'Unknown'
+
+  return `${monthName} ${day}, ${year}`
+}

@@ -52,5 +52,16 @@ export const ListKit = [
     render: {
       belowNodes: BlockList,
     },
+    rules: {
+      break: {
+        default: 'default',
+        empty: 'exit',
+      },
+      match: ({ editor, rule, node }) => {
+        const isList = rule === 'break.default' || rule === 'break.empty';
+        const hasListStyle = Boolean(node?.listStyleType);
+        return isList && hasListStyle;
+      },
+    },
   }),
 ];

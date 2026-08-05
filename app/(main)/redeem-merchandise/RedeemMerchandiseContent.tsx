@@ -6,19 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { formatWIBDate } from "@/lib/formatWIBDate";
+import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import StatusBadge from "@/components/StatusBadge";
 import Pagination from "@/components/Pagination";
+import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
 import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
-import MerchandiseSearchCombobox from "@/components/MerchandiseSearchCombobox";
-import UserSearchCombobox from "@/components/UserSearchCombobox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 interface RedeemItem {
   id: number;
@@ -51,6 +50,7 @@ interface RedeemMerchandiseContentProps {
 }
 
 export default function RedeemMerchandiseContent({ username }: RedeemMerchandiseContentProps) {
+  const router = useRouter();
   const [items, setItems] = useState<RedeemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -59,10 +59,11 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   const [totalPages, setTotalPages] = useState(1);
 
   // Filter and Sort states
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] = useState<string>("");
+  const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -70,7 +71,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<RedeemItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<RedeemItem | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
 
@@ -90,7 +90,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   // Export job hook
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (statusFilter !== "all") params.status = statusFilter;
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.order = sortOrder;
     if (searchQuery.trim()) params.search = searchQuery.trim();
@@ -98,7 +97,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     if (dateTo) params.dateTo = dateTo;
     if (categoryFilter !== "all") params.category_id = categoryFilter;
     return params;
-  }, [statusFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo, categoryFilter]);
+  }, [sortBy, sortOrder, searchQuery, dateFrom, dateTo, categoryFilter]);
 
   const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/redeem',
@@ -106,15 +105,23 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     onError: (msg) => toast.error(msg),
   });
 
+  // Search scopes for Redeem Merchandise
+  const redeemSearchScopes: SearchScope[] = [
+    { field: "receiver_name", label: "Receiver Name" },
+    { field: "merchandise_name", label: "Redeem Item" },
+  ];
+
   // Fetch items
   const fetchItems = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+        if (searchScope) params.set("searchScope", searchScope);
+      }
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       if (categoryFilter !== "all") params.set("category_id", categoryFilter);
@@ -138,7 +145,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo, categoryFilter]);
+  }, [sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo, categoryFilter]);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -157,10 +164,27 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   }, []);
 
   // Count active filters
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
+  const activeFilterCount = (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
+
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+    setCurrentPage(1);
+  };
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setShowScopeSuggestions(value.length >= 2);
+    if (!value.trim()) {
+      setSearchScope("");
+      setCurrentPage(1);
+    }
+  };
 
   const handleResetFilters = () => {
-    setStatusFilter("all");
+    setSearchQuery("");
+    setSearchScope("");
     setDateFrom("");
     setDateTo("");
     setSortBy("created_at");
@@ -201,21 +225,40 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total Records
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : totalRedeems}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+                <svg className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Completed
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {loading ? "..." : completed}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
@@ -224,72 +267,54 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
       </div>
 
       {/* Main Content Card */}
-      <Card>
-        <CardContent>
-          <CardHeader className="p-3">
-            <CardTitle className="text-lg">Redeem Merchandise</CardTitle>
-          </CardHeader>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-wrap items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Redeem Merchandise</h2>
+          </div>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-              <div className="relative flex-1 sm:flex-none">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search redeems..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search redeems..."
+                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
+                  onFocus={() => {
+                    if (searchQuery.length >= 2) {
+                      setShowScopeSuggestions(true);
+                    }
                   }}
-                  className="pl-9 min-h-[44px] w-full sm:w-64"
                 />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setCurrentPage(1);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <SearchScopeSuggestions
+                  searchQuery={searchQuery}
+                  scopes={redeemSearchScopes}
+                  onScopeSelect={handleScopeSelect}
+                  isVisible={showScopeSuggestions}
+                  onClose={() => setShowScopeSuggestions(false)}
+                />
               </div>
-              <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value || "all")}>
-                <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
-                  <SelectValue placeholder="All Categories">
-                    {categoryFilter !== "all" ? categories.find(c => c.id === parseInt(categoryFilter))?.category_name || `Category ${categoryFilter}` : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.category_name || `Category ${cat.id}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <TableFilterSortMenu
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                statusOptions={[
-                  { value: "all", label: "All" },
-                  { value: "completed", label: "Completed" },
-                  { value: "rejected", label: "Rejected" },
-                ]}
                 sortByOptions={[
                   { value: "id", label: "ID" },
                   { value: "created_at", label: "Created Date" },
                   { value: "updated_at", label: "Updated Date" },
                 ]}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+                categoryOptions={[
+                  { value: "all", label: "All Categories" },
+                  { value: "uncategorized", label: "No Category" },
+                  ...categories.map(cat => ({ value: cat.id.toString(), label: cat.category_name || `Category ${cat.id}` }))
+                ]}
+                showCategoryFilter={true}
                 dateFrom={dateFrom}
                 onDateFromChange={setDateFrom}
                 dateTo={dateTo}
@@ -299,64 +324,82 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
                   <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, select: !prev.select }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.select && <Check className="h-4 w-4" />}
-                      <span>Select</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: !prev.id }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.id && <Check className="h-4 w-4" />}
-                      <span>ID</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user_id: !prev.user_id }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.user_id && <Check className="h-4 w-4" />}
-                      <span>User ID</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, receiver_name: !prev.receiver_name }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.receiver_name && <Check className="h-4 w-4" />}
-                      <span>Receiver Name</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchandise_name: !prev.merchandise_name }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.merchandise_name && <Check className="h-4 w-4" />}
-                      <span>Merchandise</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: !prev.status }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.status && <Check className="h-4 w-4" />}
-                      <span>Status</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: !prev.created_at }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.created_at && <Check className="h-4 w-4" />}
-                      <span>Created</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, updated_at: !prev.updated_at }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.updated_at && <Check className="h-4 w-4" />}
-                      <span>Updated</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: !prev.actions }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.actions && <Check className="h-4 w-4" />}
-                      <span>Actions</span>
-                    </div>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
+                  {visibleColumns.select && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, select: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Select</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.id && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>ID</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.user_id && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user_id: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>User ID</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.receiver_name && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, receiver_name: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Receiver Name</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.merchandise_name && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchandise_name: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Merchandise</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.status && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Status</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.created_at && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Created</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.updated_at && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, updated_at: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Updated</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.actions && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>Actions</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -375,51 +418,52 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.select && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-12">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-12">
                       Select
                     </TableHead>
                   )}
                   {visibleColumns.id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-20">
                       ID
                     </TableHead>
                   )}
                   {visibleColumns.user_id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-20">
                       User ID
                     </TableHead>
                   )}
                   {visibleColumns.receiver_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
                       Receiver Name
                     </TableHead>
                   )}
                   {visibleColumns.merchandise_name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[160px]">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
                       Merchandise
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-28">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Created
                     </TableHead>
                   )}
                   {visibleColumns.updated_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Updated
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-24">
+                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
@@ -429,37 +473,37 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-5" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-5" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-5" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20" /></TableCell>}
                     </TableRow>
                   </>
                 ) : items.length > 0 ? (
@@ -503,7 +547,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-4 py-3 text-sm text-gray-600">
-                          {item.createdAt ? item.createdAt.split('T')[0] : "-"}
+                          {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.updated_at && (
@@ -514,11 +558,11 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                       {visibleColumns.actions && (
                         <TableCell className="px-4 py-3 text-center">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 hover:text-gray-700 p-0 transition-colors">
+                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 p-0 transition-colors">
                               <MoreVertical className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setViewItem(item)} className="text-sm h-9">
+                              <DropdownMenuItem onClick={() => router.push(`/redeem-merchandise/view/${item.id}`)} className="text-sm h-9">
                                 <Eye className="h-4 w-4 mr-2" />
                                 View
                               </DropdownMenuItem>
@@ -535,13 +579,14 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-8 text-center text-sm text-gray-500">
                       No redeem records found.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Card List - Mobile */}
@@ -565,23 +610,27 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
               </>
             ) : items.length > 0 ? (
               items.map((item) => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div
+                  key={item.id}
+                  onClick={() => router.push(`/redeem-merchandise/view/${item.id}`)}
+                  className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                >
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-gray-900 truncate">#{item.id} – {item.merchandise_name}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">#{item.id} – {item.merchandise_name}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">User ID: {item.user_id}</p>
                         <p className="text-xs text-gray-500 mt-0.5">Receiver: {item.receiver_name}</p>
                       </div>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Created: {item.createdAt ? item.createdAt.split('T')[0] : "-"}</p>
+                    <p className="text-xs text-gray-500 mt-1">Created: {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-sm text-gray-400">
-                No redeem records found.
+              <div className="bg-white border border-gray-100 rounded-xl p-12 text-center shadow-sm">
+                <p className="text-sm text-gray-500">No redeem records found.</p>
               </div>
             )}
           </div>
@@ -596,68 +645,6 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           />
         </CardContent>
       </Card>
-
-      {/* View Dialog */}
-      <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>View Redeem Record</DialogTitle>
-          </DialogHeader>
-          <div className="overflow-y-auto space-y-4 rounded-b-xl">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">ID</label>
-                <div className="text-sm text-gray-900">#{viewItem?.id}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">User ID</label>
-                <div className="text-sm text-gray-900">{viewItem?.user_id}</div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Name</label>
-              <div className="text-sm text-gray-900">{viewItem?.receiver_name}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Phone</label>
-                <div className="text-sm text-gray-900">{viewItem?.receiver_phone}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Email</label>
-                <div className="text-sm text-gray-900">{viewItem?.receiver_email}</div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Receiver Address</label>
-              <div className="text-sm text-gray-900">{viewItem?.receiver_address}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Merchandise</label>
-              <div className="text-sm text-gray-900">{viewItem?.merchandise_name}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-              <div><StatusBadge status={viewItem?.status || ''} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.createdAt)}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.updatedAt)}</div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => setViewItem(null)} className="min-h-[44px]">
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete AlertDialog */}
       <DeleteConfirmDialog

@@ -16,6 +16,7 @@ interface RichTextContentFieldProps {
   onChange: (html: string) => void;
   placeholder?: string;
   isEditMode?: boolean;
+  readOnly?: boolean;
 }
 
 export default function RichTextContentField({ 
@@ -23,7 +24,8 @@ export default function RichTextContentField({
   value, 
   onChange, 
   placeholder = "Enter content...",
-  isEditMode = false 
+  isEditMode = false,
+  readOnly = false
 }: RichTextContentFieldProps) {
   const [isEditing, setIsEditing] = useState(isEditMode);
   
@@ -76,6 +78,38 @@ export default function RichTextContentField({
     return tmp.textContent || tmp.innerText || '';
   };
 
+  // For read-only mode, just show the content
+  if (readOnly) {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {label}
+        </label>
+        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+          <div className="text-gray-600 text-sm prose prose-sm max-w-none">
+            <div dangerouslySetInnerHTML={{ __html: value || '<p>-</p>' }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Prevent SSR rendering of editor components
+  if (typeof window === 'undefined') {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {label}
+        </label>
+        <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+          <div className="text-gray-600 text-sm">
+            {stripHtml(value) || 'No content'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -101,7 +135,7 @@ export default function RichTextContentField({
           <RichTextEditor
             editor={editor}
             onChange={() => {}}
-            onContentChange={() => {}}
+            onContentChange={onChange}
             placeholder={placeholder}
           />
           <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">

@@ -8,7 +8,6 @@ const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const status = searchParams.get('status');
   const sortBy = searchParams.get('sortBy');
   const order = searchParams.get('order') || 'asc';
   const dateFrom = searchParams.get('dateFrom');
@@ -18,12 +17,6 @@ export async function GET(request: NextRequest) {
   // Build WHERE clause for raw SQL
   const conditions: string[] = [];
   const params: any[] = [];
-
-  if (status === 'active') {
-    conditions.push('status = 1');
-  } else if (status === 'inactive') {
-    conditions.push('status = 0');
-  }
 
   if (dateFrom) {
     conditions.push('createdAt >= ?');
@@ -35,8 +28,12 @@ export async function GET(request: NextRequest) {
   }
 
   if (categoryId) {
-    conditions.push('category_id = ?');
-    params.push(parseInt(categoryId));
+    if (categoryId === 'uncategorized') {
+      conditions.push('category_id IS NULL');
+    } else {
+      conditions.push('category_id = ?');
+      params.push(parseInt(categoryId));
+    }
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -57,9 +54,11 @@ export async function GET(request: NextRequest) {
       m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
       DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
       DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
-      c.id as category_id, c.category_name
+      c.id as category_id, c.category_name,
+      COALESCE(u.email, m.editedBy) as display_email
     FROM merchandise m
     LEFT JOIN merchandise_category c ON m.category_id = c.id
+    LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
     ${whereClause}
     ${orderByClause}`,
     ...params
@@ -69,7 +68,7 @@ export async function GET(request: NextRequest) {
   const itemsWithCategory = items.map(item => ({
     ...item,
     id: item.id.toString(),
-    category: item.category_id ? {
+    merchandise_category: item.category_id ? {
       id: item.category_id,
       category_name: item.category_name
     } : null,
@@ -139,16 +138,18 @@ export async function POST(request: NextRequest) {
         m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
         DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
         DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
-        c.id as category_id, c.category_name
+        c.id as category_id, c.category_name,
+        COALESCE(u.email, m.editedBy) as display_email
       FROM merchandise m
       LEFT JOIN merchandise_category c ON m.category_id = c.id
+      LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
       ORDER BY m.id DESC
       LIMIT 1
     ` as any[];
 
     const itemWithCategory = {
       ...newItem[0],
-      category: newItem[0]?.category_id ? {
+      merchandise_category: newItem[0]?.category_id ? {
         id: newItem[0].category_id,
         category_name: newItem[0].category_name
       } : null,

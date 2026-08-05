@@ -11,6 +11,7 @@ export default async function MerchandiseEditPage({ params }: { params: Promise<
 
   const { id } = await params;
   const username = session.user.email?.split("@")[0] || "Admin";
+  const userEmail = session.user.email || null;
 
-  return <MerchandiseEditContentWrapper username={username} merchandiseId={id} />;
+  return <MerchandiseEditContentWrapper username={username} userEmail={userEmail} merchandiseId={id} />;
 }
