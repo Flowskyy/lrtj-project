@@ -12,50 +12,49 @@ import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Link from "next/link";
 
-interface MerchandiseItem {
+interface DailyBenefitItem {
   id: number;
   editedBy?: string;
-  display_email?: string;
   name: string;
   image_url: string;
-  points: number;
-  description: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+  redeem_point: number;
+  term_condition: string;
+  created_at: string | null;
+  updated_at: string | null;
   status: number;
-  category_id: number | null;
-  merchandise_category?: {
-    id: number;
-    category_name: string | null;
-  } | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: number | null;
 }
 
-interface MerchandiseViewContentProps {
-  merchandiseId: string;
+interface DailyBenefitViewContentProps {
+  username: string;
+  userEmail: string | null;
+  dailyBenefitId: string;
 }
 
-export default function MerchandiseViewContent({ merchandiseId }: MerchandiseViewContentProps) {
+export default function DailyBenefitViewContent({ username, userEmail, dailyBenefitId }: DailyBenefitViewContentProps) {
   const router = useRouter();
-  const [item, setItem] = useState<MerchandiseItem | null>(null);
+  const [item, setItem] = useState<DailyBenefitItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteItem, setDeleteItem] = useState<MerchandiseItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<DailyBenefitItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchItem = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/merchandise/${merchandiseId}`);
+        const res = await fetch(`/api/daily-benefit/${dailyBenefitId}`);
         if (res.ok) {
           const data = await res.json();
           setItem(data);
         } else {
-          toast.error("Failed to fetch merchandise");
+          toast.error("Failed to fetch daily benefit");
           router.back();
         }
       } catch (err) {
         console.error("Failed to fetch item", err);
-        toast.error("Failed to fetch merchandise");
+        toast.error("Failed to fetch daily benefit");
         router.back();
       } finally {
         setLoading(false);
@@ -63,24 +62,24 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
     };
 
     fetchItem();
-  }, [merchandiseId, router]);
+  }, [dailyBenefitId, router]);
 
   const handleDelete = async () => {
     if (!deleteItem) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/merchandise/${deleteItem.id}`, {
+      const res = await fetch(`/api/daily-benefit/${deleteItem.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Merchandise deleted successfully");
-        router.push("/merchandise");
+        toast.success("Daily Benefit deleted successfully");
+        router.push("/daily-benefit");
       } else {
-        toast.error("Failed to delete merchandise");
+        toast.error("Failed to delete daily benefit");
       }
     } catch (err) {
       console.error("Failed to delete item", err);
-      toast.error("Failed to delete merchandise");
+      toast.error("Failed to delete daily benefit");
     } finally {
       setIsDeleting(false);
     }
@@ -96,7 +95,7 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <Skeleton className="aspect-video w-full rounded-md" />
+              <Skeleton className="aspect-square w-full rounded-md" />
             </div>
           </div>
           <div className="lg:col-span-2 space-y-6">
@@ -143,7 +142,7 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Merchandise Details</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Daily Benefit Details</h1>
         </div>
       </div>
 
@@ -152,7 +151,7 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
         {/* Left Column - Image */}
         <div className="lg:col-span-1">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div className="aspect-video bg-gray-50 rounded-md overflow-hidden flex items-center justify-center">
+            <div className="aspect-square bg-gray-50 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={getImageUrl(item.image_url)}
                 alt={item.name}
@@ -183,11 +182,11 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
                       Inactive
                     </Badge>
                   )}
-                  <span className="text-sm font-semibold text-[#E5262C]">{item.points} pts</span>
+                  <span className="text-sm font-semibold text-[#E5262C]">{item.redeem_point} pts</span>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Link href={`/merchandise/edit/${item.id}`}>
+                <Link href={`/daily-benefit/edit/${item.id}`}>
                   <Button size="sm" className="h-9">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
@@ -211,20 +210,14 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-                <div className="text-sm text-gray-900">
-                  {item.merchandise_category?.category_name || "Uncategorized"}
-                </div>
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Points Required</label>
                 <div className="text-sm text-gray-900 font-semibold text-[#E5262C]">
-                  {item.points} pts
+                  {item.redeem_point} pts
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Last Edited By</label>
-                <div className="text-sm text-gray-900">{item.display_email || "-"}</div>
+                <div className="text-sm text-gray-900">{item.editedBy || "-"}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
@@ -240,45 +233,83 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
                   )}
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Is Active</label>
+                <div>
+                  {item.is_active === 1 ? (
+                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+                      Yes
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs">
+                      No
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Description Card */}
+          {/* Schedule Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Description</h3>
-            <div className="text-sm text-gray-700 prose prose-sm max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: item.description || '<p>-</p>' }} />
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Schedule</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {item.start_date && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+                  <div className="text-sm text-gray-900">{formatDisplayDate(item.start_date)}</div>
+                </div>
+              )}
+              {item.end_date && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                  <div className="text-sm text-gray-900">{formatDisplayDate(item.end_date)}</div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Terms & Conditions Card */}
+          {item.term_condition && item.term_condition !== '<p>-</p>' && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Terms & Conditions</h3>
+              <div
+                className="text-sm text-gray-700 leading-relaxed [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
+                dangerouslySetInnerHTML={{ __html: item.term_condition }}
+              />
+            </div>
+          )}
 
           {/* Timestamps Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Timestamps</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{formatDisplayDate(item.createdAt)}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{formatDisplayDate(item.updatedAt)}</div>
-              </div>
+              {item.created_at && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Created At</label>
+                  <div className="text-sm text-gray-900">{formatDisplayDate(item.created_at)}</div>
+                </div>
+              )}
+              {item.updated_at && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
+                  <div className="text-sm text-gray-900">{formatDisplayDate(item.updated_at)}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Delete Dialog */}
-      {deleteItem && (
-        <DeleteConfirmDialog
-          open={!!deleteItem}
-          onOpenChange={() => setDeleteItem(null)}
-          onConfirm={handleDelete}
-          title="Delete Merchandise"
-          description={`Are you sure you want to delete "${deleteItem.name}"? This action cannot be undone.`}
-          isDeleting={isDeleting}
-        />
-      )}
+      {/* Delete Confirm Dialog */}
+      <DeleteConfirmDialog
+        open={!!deleteItem}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        title="Delete Daily Benefit"
+        description={`Are you sure you want to delete "${deleteItem?.name}"? This action cannot be undone.`}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

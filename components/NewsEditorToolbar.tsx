@@ -14,7 +14,11 @@ import { FontSizeToolbarButton } from '@/components/ui/font-size-toolbar-button'
 import { ToolbarGroup } from '@/components/ui/toolbar';
 import { UndoToolbarButton, RedoToolbarButton } from '@/components/ui/history-toolbar-button';
 
-export function RichTextEditorToolbar() {
+interface RichTextEditorToolbarProps {
+  disableTable?: boolean;
+}
+
+export function RichTextEditorToolbar({ disableTable = false }: RichTextEditorToolbarProps) {
   return (
     <>
       {/* Undo/Redo */}
@@ -82,11 +86,13 @@ export function RichTextEditorToolbar() {
       </ToolbarGroup>
 
       {/* Table */}
-      <ToolbarGroup>
-        <TableToolbarButton>
-          <Table className="size-4" />
-        </TableToolbarButton>
-      </ToolbarGroup>
+      {!disableTable && (
+        <ToolbarGroup>
+          <TableToolbarButton>
+            <Table className="size-4" />
+          </TableToolbarButton>
+        </ToolbarGroup>
+      )}
 
       {/* Emoji */}
       <ToolbarGroup>

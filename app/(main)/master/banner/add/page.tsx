@@ -92,9 +92,8 @@ export default function AddBannerPage() {
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Banner Image"
-              recommendation="Carousel Banner Image
-Ratio: 2048:777 (≈ 2.64:1 Landscape)
-Recommended Resolution: 2048 × 777 px
+              recommendation="Ratio: 2.37:1 (Ultrawide Landscape)
+Recommended Resolution: 2370 × 1000 px
 Format: JPG / PNG / WebP"
             />
           </div>

@@ -30,7 +30,14 @@ import { HrElement } from '@/components/ui/hr-node';
 import { ParagraphElement } from '@/components/ui/paragraph-node';
 
 export const BasicBlocksKit = [
-  ParagraphPlugin.withComponent(ParagraphElement),
+  ParagraphPlugin.withComponent(ParagraphElement).configure({
+    rules: {
+      break: {
+        default: 'default',
+        empty: 'reset',
+      },
+    },
+  }),
   H1Plugin.configure({
     inputRules: [HeadingRules.markdown()],
     node: {

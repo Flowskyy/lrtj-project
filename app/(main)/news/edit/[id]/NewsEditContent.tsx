@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,19 @@ import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
+import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface NewsItem {
   id: number;
@@ -52,6 +63,11 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
   const [formType, setFormType] = useState("general");
   const [formStatus, setFormStatus] = useState<boolean>(true);
   const [formPublishDate, setFormPublishDate] = useState("");
+  const [hasUnsavedRichTextChanges, setHasUnsavedRichTextChanges] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"save" | "cancel" | null>(null);
+  const richTextFieldIdRef = useRef<RichTextContentFieldRef>(null);
+  const richTextFieldEnRef = useRef<RichTextContentFieldRef>(null);
 
 
   // Fetch news item
@@ -92,6 +108,21 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!item) return;
+    
+    // Check if either rich text field has unsaved changes
+    const hasUnsavedId = richTextFieldIdRef.current?.hasUnsavedChanges();
+    const hasUnsavedEn = richTextFieldEnRef.current?.hasUnsavedChanges();
+    
+    if (hasUnsavedId || hasUnsavedEn) {
+      setPendingAction("save");
+      setShowUnsavedDialog(true);
+      return;
+    }
+    
+    proceedWithSave();
+  };
+
+  const proceedWithSave = async () => {
     setIsSubmitting(true);
     const payload = {
       title: formTitle,
@@ -122,6 +153,50 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    // Check if either rich text field has unsaved changes
+    const hasUnsavedId = richTextFieldIdRef.current?.hasUnsavedChanges();
+    const hasUnsavedEn = richTextFieldEnRef.current?.hasUnsavedChanges();
+    
+    if (hasUnsavedId || hasUnsavedEn) {
+      setPendingAction("cancel");
+      setShowUnsavedDialog(true);
+      return;
+    }
+    
+    router.push("/news");
+  };
+
+  const handleUnsavedDialogConfirm = async () => {
+    if (pendingAction === "save") {
+      // Save rich text content first, then proceed with page save
+      if (richTextFieldIdRef.current) {
+        await richTextFieldIdRef.current.saveContent();
+      }
+      if (richTextFieldEnRef.current) {
+        await richTextFieldEnRef.current.saveContent();
+      }
+      proceedWithSave();
+    } else if (pendingAction === "cancel") {
+      // Discard changes and proceed with cancel
+      router.push("/news");
+    }
+    setShowUnsavedDialog(false);
+    setPendingAction(null);
+  };
+
+  const handleUnsavedDialogDiscard = () => {
+    if (pendingAction === "save") {
+      // Discard rich text changes and proceed with page save using existing content
+      proceedWithSave();
+    } else if (pendingAction === "cancel") {
+      // Discard changes and proceed with cancel
+      router.push("/news");
+    }
+    setShowUnsavedDialog(false);
+    setPendingAction(null);
   };
 
   if (loading) {
@@ -220,7 +295,9 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
               value={formImageUrl}
               onChange={setFormImageUrl}
               label="Featured Image"
-              recommendation="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
+              recommendation="Ratio: 16:9 (Landscape)
+Recommended Resolution: 1920 × 1080 px
+Format: JPG / PNG / WebP"
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -242,16 +319,22 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
           
           <div className="space-y-5">
             <RichTextContentField
+              ref={richTextFieldIdRef}
               label="Content (Indonesian)"
               value={formContent}
               onChange={setFormContent}
               placeholder="Enter news content in Indonesian..."
+              disableTable={true}
+              onDirtyChange={setHasUnsavedRichTextChanges}
             />
             <RichTextContentField
+              ref={richTextFieldEnRef}
               label="Content (English)"
               value={formContentEn}
               onChange={setFormContentEn}
               placeholder="Enter news content in English..."
+              disableTable={true}
+              onDirtyChange={setHasUnsavedRichTextChanges}
             />
           </div>
         </section>
@@ -304,11 +387,14 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
       {/* Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-50">
         <div className="flex gap-3">
-          <Link href="/news" className="flex-1">
-            <Button type="button" variant="outline" className="w-full">
-              Cancel
-            </Button>
-          </Link>
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="flex-1"
+            onClick={handleCancel}
+          >
+            Cancel
+          </Button>
           <Button 
             type="submit" 
             form="news-form"
@@ -319,6 +405,52 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
           </Button>
         </div>
       </div>
+
+      {/* Unsaved Changes Dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction === "save" 
+                ? "You have unsaved changes in the Content editor. Save those changes first, or they will not be included when you save the page."
+                : "You have unsaved changes in the Content editor that will be lost. Are you sure you want to leave?"
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowUnsavedDialog(false);
+              setPendingAction(null);
+            }}>
+              Keep Editing
+            </AlertDialogCancel>
+            {pendingAction === "save" ? (
+              <>
+                <AlertDialogAction
+                  onClick={handleUnsavedDialogConfirm}
+                  className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
+                >
+                  Save Content First
+                </AlertDialogAction>
+                <AlertDialogAction
+                  onClick={handleUnsavedDialogDiscard}
+                  variant="outline"
+                >
+                  Discard and Continue
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                onClick={handleUnsavedDialogDiscard}
+                className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
+              >
+                Discard Changes
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

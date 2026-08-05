@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,7 @@ import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import dynamic from "next/dynamic";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
-import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
+import { Filter, Plus, MoreVertical, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
@@ -64,7 +64,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<DailyBenefitItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<DailyBenefitItem | null>(null);
   const [previewItem, setPreviewItem] = useState<DailyBenefitItem | null>(null);
 
@@ -550,12 +549,12 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
                               <MoreVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                setViewItem(item);
-                              }} className="text-xs h-8">
-                                <Eye className="h-3.5 w-3.5 mr-2" />
-                                View
-                              </DropdownMenuItem>
+                              <Link href={`/daily-benefit/view/${item.id}`}>
+                                <DropdownMenuItem className="text-xs h-8">
+                                  <Eye className="h-3.5 w-3.5 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                              </Link>
                               <Link href={`/daily-benefit/edit/${item.id}`}>
                                 <DropdownMenuItem className="text-xs h-8">
                                   <Pencil className="h-3.5 w-3.5 mr-2" />
@@ -700,113 +699,6 @@ export default function DailyBenefitContent({ username }: DailyBenefitContentPro
           </div>
         </CardContent>
       </Card>
-
-      {/* View Dialog */}
-      <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-2xl md:max-w-3xl max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>{viewItem?.name}</DialogTitle>
-          </DialogHeader>
-          {viewItem && (
-            <div className="overflow-y-auto space-y-4 rounded-b-xl">
-              <div className="flex gap-4 items-start">
-                <div className="h-16 w-16 sm:h-20 sm:w-20 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
-                  <img
-                    src={`/${viewItem.image_url}`}
-                    alt={viewItem.name}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                      (e.target as HTMLImageElement).className = "h-10 w-auto object-contain";
-                    }}
-                  />
-                </div>
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="font-bold text-gray-900 text-base sm:text-lg">{viewItem.name}</div>
-                  <div className="text-[#E5262C] font-bold text-sm sm:text-base">{viewItem.redeem_point} Points</div>
-                  <div>
-                    {viewItem.status === 1 ? (
-                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
-                        Inactive
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-500">Edited by: {viewItem.editedBy || "-"}</div>
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-                  Terms & Condition
-                </div>
-                <div
-                  className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: viewItem.term_condition }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Start Date
-                  </span>
-                  {formatWIBDate(viewItem.start_date)}
-                </div>
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    End Date
-                  </span>
-                  {formatWIBDate(viewItem.end_date)}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Is Active
-                  </span>
-                  {viewItem.is_active === 1 ? "Yes" : "No"}
-                </div>
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Created
-                  </span>
-                  {formatWIBDate(viewItem.created_at)}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Updated
-                  </span>
-                  {formatWIBDate(viewItem.updated_at)}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="pt-4">
-            {viewItem && (
-              <Link href={`/daily-benefit/edit/${viewItem.id}`}>
-                <Button
-                  onClick={() => setViewItem(null)}
-                  variant="outline"
-                  className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
-                >
-                  Edit
-                </Button>
-              </Link>
-            )}
-            <Button
-              onClick={() => setViewItem(null)}
-              variant="outline"
-              className="min-h-[44px]"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Alert Dialog */}
       <DeleteConfirmDialog

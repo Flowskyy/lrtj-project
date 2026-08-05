@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,19 @@ import ImageUpload from "@/components/ImageUpload";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
+import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface MerchandiseAddContentProps {
   username: string;
@@ -37,6 +48,10 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasUnsavedRichTextChanges, setHasUnsavedRichTextChanges] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"save" | "cancel" | null>(null);
+  const richTextFieldRef = useRef<RichTextContentFieldRef>(null);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -56,6 +71,18 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if rich text field has unsaved changes
+    if (richTextFieldRef.current?.hasUnsavedChanges()) {
+      setPendingAction("save");
+      setShowUnsavedDialog(true);
+      return;
+    }
+    
+    proceedWithSave();
+  };
+
+  const proceedWithSave = async () => {
     setIsSubmitting(true);
     const payload = {
       name: formName,
@@ -84,6 +111,44 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    // Check if rich text field has unsaved changes
+    if (richTextFieldRef.current?.hasUnsavedChanges()) {
+      setPendingAction("cancel");
+      setShowUnsavedDialog(true);
+      return;
+    }
+    
+    router.push("/merchandise");
+  };
+
+  const handleUnsavedDialogConfirm = async () => {
+    if (pendingAction === "save") {
+      // Save rich text content first, then proceed with page save
+      if (richTextFieldRef.current) {
+        await richTextFieldRef.current.saveContent();
+      }
+      proceedWithSave();
+    } else if (pendingAction === "cancel") {
+      // Discard changes and proceed with cancel
+      router.push("/merchandise");
+    }
+    setShowUnsavedDialog(false);
+    setPendingAction(null);
+  };
+
+  const handleUnsavedDialogDiscard = () => {
+    if (pendingAction === "save") {
+      // Discard rich text changes and proceed with page save using existing content
+      proceedWithSave();
+    } else if (pendingAction === "cancel") {
+      // Discard changes and proceed with cancel
+      router.push("/merchandise");
+    }
+    setShowUnsavedDialog(false);
+    setPendingAction(null);
   };
 
   return (
@@ -175,6 +240,9 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
               value={formImageUrl}
               onChange={setFormImageUrl}
               label="Image"
+              recommendation="Ratio: 16:9 (Landscape)
+Recommended Resolution: 1920 × 1080 px
+Format: JPG / PNG / WebP"
             />
           </div>
         </section>
@@ -186,10 +254,13 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
           
           <div className="space-y-5">
             <RichTextContentField
+              ref={richTextFieldRef}
               label="Terms & Condition"
               value={formDescription}
               onChange={setFormDescription}
               placeholder="Enter terms and conditions..."
+              disableTable={true}
+              onDirtyChange={setHasUnsavedRichTextChanges}
             />
           </div>
         </section>
@@ -198,11 +269,14 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
       {/* Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-50">
         <div className="flex gap-3">
-          <Link href="/merchandise" className="flex-1">
-            <Button type="button" variant="outline" className="w-full">
-              Cancel
-            </Button>
-          </Link>
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="flex-1"
+            onClick={handleCancel}
+          >
+            Cancel
+          </Button>
           <Button 
             type="submit" 
             form="merchandise-form"
@@ -213,6 +287,52 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
           </Button>
         </div>
       </div>
+
+      {/* Unsaved Changes Dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction === "save" 
+                ? "You have unsaved changes in the Terms & Condition editor. Save those changes first, or they will not be included when you save the page."
+                : "You have unsaved changes in the Terms & Condition editor that will be lost. Are you sure you want to leave?"
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowUnsavedDialog(false);
+              setPendingAction(null);
+            }}>
+              Keep Editing
+            </AlertDialogCancel>
+            {pendingAction === "save" ? (
+              <>
+                <AlertDialogAction
+                  onClick={handleUnsavedDialogConfirm}
+                  className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
+                >
+                  Save Content First
+                </AlertDialogAction>
+                <AlertDialogAction
+                  onClick={handleUnsavedDialogDiscard}
+                  variant="outline"
+                >
+                  Discard and Continue
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                onClick={handleUnsavedDialogDiscard}
+                className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
+              >
+                Discard Changes
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

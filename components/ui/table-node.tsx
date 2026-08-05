@@ -619,7 +619,7 @@ export const TableElement = withHOC(
     const dragIndicatorRef = React.useRef<HTMLDivElement>(null);
     const hoverIndicatorRef = React.useRef<HTMLDivElement>(null);
     const deferColumnResize =
-      colSizes.length * props.element.children.length >
+      (colSizes?.length ?? 0) * (props.element?.children?.length ?? 0) >
       TABLE_DEFERRED_COLUMN_RESIZE_CELL_COUNT;
     const tablePath = useElementSelector(([, path]) => path, [], {
       key: KEYS.table,
@@ -638,7 +638,7 @@ export const TableElement = withHOC(
       wrapperRef,
     });
     const resolvedColSizes = React.useMemo(() => {
-      if (colSizes.length > 0) {
+      if (colSizes && colSizes.length > 0) {
         return colSizes.map((colSize) => colSize || TABLE_DEFAULT_COLUMN_WIDTH);
       }
 
@@ -648,7 +648,7 @@ export const TableElement = withHOC(
       );
     }, [colSizes, props.element]);
     const tableVariableStyle = React.useMemo(() => {
-      if (resolvedColSizes.length === 0) {
+      if (!resolvedColSizes || resolvedColSizes.length === 0) {
         return;
       }
 
@@ -712,7 +712,7 @@ export const TableElement = withHOC(
               style={tableStyle}
               {...tableProps}
             >
-              {resolvedColSizes.length > 0 && (
+              {resolvedColSizes && resolvedColSizes.length > 0 && (
                 <colgroup>
                   {hasControls && (
                     <col
