@@ -39,11 +39,15 @@ export async function GET(
 
     // Clean up the file and job after successful read
     try {
-      await unlink(filePath);
+      if (existsSync(filePath)) {
+        await unlink(filePath);
+      }
       exportJobManager.deleteJob(jobId);
-    } catch (cleanupError) {
-      console.error('Failed to cleanup file/job:', cleanupError);
-      // Don't fail the request if cleanup fails
+    } catch (cleanupError: any) {
+      // Only log if it's not ENOENT (file already deleted by another request)
+      if (cleanupError.code !== 'ENOENT') {
+        console.error('Failed to cleanup file/job:', cleanupError);
+      }
     }
 
     // Return the file

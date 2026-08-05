@@ -11,16 +11,7 @@ import ImageUpload from "@/components/ImageUpload";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
@@ -61,13 +52,13 @@ export default function DailyBenefitAddContent({ username, userEmail }: DailyBen
     proceedWithSave();
   };
 
-  const proceedWithSave = async () => {
+  const proceedWithSave = async (termConditionOverride?: string) => {
     setIsSubmitting(true);
     const payload = {
       name: formName,
       redeem_point: formPoints,
       image_url: formImageUrl,
-      term_condition: formTermCondition,
+      term_condition: termConditionOverride || formTermCondition,
       editedBy: username,
       status: formStatus,
       start_date: formStartDate || null,
@@ -105,17 +96,8 @@ export default function DailyBenefitAddContent({ username, userEmail }: DailyBen
     router.push("/daily-benefit");
   };
 
-  const handleUnsavedDialogConfirm = async () => {
-    if (pendingAction === "save") {
-      // Save rich text content first, then proceed with page save
-      if (richTextFieldRef.current) {
-        await richTextFieldRef.current.saveContent();
-      }
-      proceedWithSave();
-    } else if (pendingAction === "cancel") {
-      // Discard changes and proceed with cancel
-      router.push("/daily-benefit");
-    }
+  const handleUnsavedDialogConfirm = () => {
+    // Keep editing - just close the dialog
     setShowUnsavedDialog(false);
     setPendingAction(null);
   };
@@ -292,50 +274,21 @@ export default function DailyBenefitAddContent({ username, userEmail }: DailyBen
       </div>
 
       {/* Unsaved Changes Dialog */}
-      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingAction === "save" 
-                ? "You have unsaved changes in the Terms & Condition editor. Save those changes first, or they will not be included when you save the page."
-                : "You have unsaved changes in the Terms & Condition editor that will be lost. Are you sure you want to leave?"
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowUnsavedDialog(false);
-              setPendingAction(null);
-            }}>
-              Keep Editing
-            </AlertDialogCancel>
-            {pendingAction === "save" ? (
-              <>
-                <AlertDialogAction
-                  onClick={handleUnsavedDialogConfirm}
-                  className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-                >
-                  Save Content First
-                </AlertDialogAction>
-                <AlertDialogAction
-                  onClick={handleUnsavedDialogDiscard}
-                  variant="outline"
-                >
-                  Discard and Continue
-                </AlertDialogAction>
-              </>
-            ) : (
-              <AlertDialogAction
-                onClick={handleUnsavedDialogDiscard}
-                className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-              >
-                Discard Changes
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onOpenChange={(open) => {
+          setShowUnsavedDialog(open);
+          if (!open) setPendingAction(null);
+        }}
+        onKeepEditing={handleUnsavedDialogConfirm}
+        onDiscard={handleUnsavedDialogDiscard}
+        description={
+          pendingAction === "save"
+            ? "You have unsaved changes in the Terms & Condition editor. If you continue, the page will be saved using the last saved content. Your unsaved editor changes will be discarded."
+            : "You have unsaved changes in the Terms & Condition editor that will be lost. Are you sure you want to leave?"
+        }
+        showIcon={false}
+      />
     </div>
   );
 }

@@ -13,7 +13,6 @@ interface RichTextEditorProps {
 }
 
 export default function RichTextEditor({ editor, onChange, placeholder, disableTable = false }: RichTextEditorProps) {
-  // Simple editor without HTML serialization - that's handled by the parent component
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden relative">
       <Plate editor={editor} onChange={onChange}>

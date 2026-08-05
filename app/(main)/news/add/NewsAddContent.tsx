@@ -11,16 +11,7 @@ import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
@@ -67,13 +58,13 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
     proceedWithSave();
   };
 
-  const proceedWithSave = async () => {
+  const proceedWithSave = async (contentOverride?: string, contentEnOverride?: string) => {
     setIsSubmitting(true);
     const payload = {
       title: formTitle,
       title_en: formTitleEn,
-      content: formContent || '<p>-</p>',
-      content_en: formContentEn || '<p>-</p>',
+      content: contentOverride || formContent || '<p>-</p>',
+      content_en: contentEnOverride || formContentEn || '<p>-</p>',
       img_url: formImageUrl,
       caption_image: formCaptionImage,
       type: formType,
@@ -116,20 +107,8 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
     router.push("/news");
   };
 
-  const handleUnsavedDialogConfirm = async () => {
-    if (pendingAction === "save") {
-      // Save rich text content first, then proceed with page save
-      if (richTextFieldIdRef.current) {
-        await richTextFieldIdRef.current.saveContent();
-      }
-      if (richTextFieldEnRef.current) {
-        await richTextFieldEnRef.current.saveContent();
-      }
-      proceedWithSave();
-    } else if (pendingAction === "cancel") {
-      // Discard changes and proceed with cancel
-      router.push("/news");
-    }
+  const handleUnsavedDialogConfirm = () => {
+    // Keep editing - just close the dialog
     setShowUnsavedDialog(false);
     setPendingAction(null);
   };
@@ -309,50 +288,21 @@ Format: JPG / PNG / WebP"
       </div>
 
       {/* Unsaved Changes Dialog */}
-      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingAction === "save" 
-                ? "You have unsaved changes in the Content editor. Save those changes first, or they will not be included when you save the page."
-                : "You have unsaved changes in the Content editor that will be lost. Are you sure you want to leave?"
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowUnsavedDialog(false);
-              setPendingAction(null);
-            }}>
-              Keep Editing
-            </AlertDialogCancel>
-            {pendingAction === "save" ? (
-              <>
-                <AlertDialogAction
-                  onClick={handleUnsavedDialogConfirm}
-                  className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-                >
-                  Save Content First
-                </AlertDialogAction>
-                <AlertDialogAction
-                  onClick={handleUnsavedDialogDiscard}
-                  variant="outline"
-                >
-                  Discard and Continue
-                </AlertDialogAction>
-              </>
-            ) : (
-              <AlertDialogAction
-                onClick={handleUnsavedDialogDiscard}
-                className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-              >
-                Discard Changes
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onOpenChange={(open) => {
+          setShowUnsavedDialog(open);
+          if (!open) setPendingAction(null);
+        }}
+        onKeepEditing={handleUnsavedDialogConfirm}
+        onDiscard={handleUnsavedDialogDiscard}
+        description={
+          pendingAction === "save"
+            ? "You have unsaved changes in the Content editor. If you continue, the page will be saved using the last saved content. Your unsaved editor changes will be discarded."
+            : "You have unsaved changes in the Content editor that will be lost. Are you sure you want to leave?"
+        }
+        showIcon={false}
+      />
     </div>
   );
 }

@@ -7,18 +7,68 @@ import { type Value } from "platejs";
 import { NewsEditorKit } from "@/components/editor/plugins/news-editor-kit";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
+
+const EditorInstance = ({ 
+  value, 
+  onChange, 
+  onEditorReady,
+  placeholder, 
+  disableTable 
+}: { 
+  value: string; 
+  onChange: () => void; 
+  onEditorReady: (editor: any) => void;
+  placeholder: string; 
+  disableTable?: boolean;
+}) => {
+  const editor = usePlateEditor({
+    plugins: NewsEditorKit,
+    value: (editor) => {
+      if (!value) {
+        return [{ type: 'p', children: [{ text: '' }] }] as Value;
+      }
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(value, 'text/html');
+      const element = doc.body.firstChild as HTMLElement;
+      const deserializedValue = editor.api.html.deserialize({
+        element: element || value,
+        collapseWhiteSpace: false,
+      }) as Value;
+
+      // Normalize: wrap any bare text/leaf nodes at top level in paragraph elements
+      const normalizedValue = deserializedValue.map((node) => {
+        if (node && typeof node === 'object' && !('children' in node)) {
+          // This is a bare text/leaf node, wrap it in a paragraph
+          return { type: 'p', children: [node] };
+        }
+        return node;
+      });
+
+      // Fallback for empty or invalid structure
+      if (!normalizedValue || normalizedValue.length === 0) {
+        return [{ type: 'p', children: [{ text: '' }] }] as Value;
+      }
+
+      return normalizedValue as Value;
+    },
+  });
+
+  useEffect(() => {
+    onEditorReady(editor);
+  }, []);
+
+  return (
+    <RichTextEditor
+      editor={editor}
+      onChange={onChange}
+      placeholder={placeholder}
+      disableTable={disableTable}
+    />
+  );
+};
 
 interface RichTextContentFieldProps {
   label: string;
@@ -33,7 +83,7 @@ interface RichTextContentFieldProps {
 
 export interface RichTextContentFieldRef {
   hasUnsavedChanges: () => boolean;
-  saveContent: () => Promise<void>;
+  saveContent: () => Promise<string>;
 }
 
 const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContentFieldProps>(({ 
@@ -50,60 +100,34 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
-  // Track the last initialized value to avoid unnecessary re-deserialization
-  const lastInitializedValue = useRef<string | null>(null);
+  // Key to force editor remount when entering edit mode
+  const [editorInstanceKey, setEditorInstanceKey] = useState(0);
   
-  // PlateJS editor
-  const editor = usePlateEditor({
-    plugins: NewsEditorKit,
-  });
-
-  // Store editor in ref to ensure stable reference for useEffect
-  const editorRef = useRef(editor);
-  editorRef.current = editor;
-
-  // Initialize editor with value on mount or when value changes externally
-  useEffect(() => {
-    // Only deserialize if the actual HTML content has changed
-    if (value && value !== lastInitializedValue.current) {
-      const slateValue = editorRef.current.api.html.deserialize({ 
-        element: value,
-        collapseWhiteSpace: false,
-      });
-      editorRef.current.tf.setValue(slateValue as Value);
-      lastInitializedValue.current = value;
-      setHasUnsavedChanges(false);
-    }
-  }, [value]);
-
-  // Initialize empty state once on mount for add mode
-  useEffect(() => {
-    if (!value && lastInitializedValue.current === null) {
-      const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
-      editorRef.current.tf.setValue(emptyValue);
-      lastInitializedValue.current = '';
-      setHasUnsavedChanges(false);
-    }
-  }, []);
+  // Ref to store editor instance from child
+  const editorRef = useRef<any>(null);
 
   // Handle content save
   const handleSave = async () => {
     try {
       // Serialize HTML dynamically to avoid SSR issues
       const { serializeHtml } = await import('platejs/static');
-      const html = await serializeHtml(editorRef.current, {
+      let html = await serializeHtml(editorRef.current, {
         stripClassNames: true,
         stripDataAttributes: true,
         preserveClassNames: [],
         preserveWhitespace: true,
       });
-      onChange(html || '<p>-</p>');
+
+      const finalHtml = html || '<p>-</p>';
+      onChange(finalHtml);
       setHasUnsavedChanges(false);
       setIsEditing(false);
       toast.success("Content saved successfully");
+      return finalHtml;
     } catch (err) {
       console.error("Failed to save content", err);
       toast.error("Failed to save content");
+      throw err;
     }
   };
 
@@ -117,17 +141,6 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
   };
 
   const performCancel = () => {
-    // Revert to last saved content
-    if (value) {
-      const slateValue = editorRef.current.api.html.deserialize({ 
-        element: value,
-        collapseWhiteSpace: false,
-      });
-      editorRef.current.tf.setValue(slateValue as Value);
-    } else {
-      const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
-      editorRef.current.tf.setValue(emptyValue);
-    }
     setHasUnsavedChanges(false);
     setIsEditing(false);
     setShowConfirmDialog(false);
@@ -149,7 +162,7 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
   useImperativeHandle(ref, () => ({
     hasUnsavedChanges: () => hasUnsavedChanges,
     saveContent: async () => {
-      await handleSave();
+      return await handleSave();
     }
   }));
 
@@ -209,6 +222,8 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
             size="sm"
             onClick={() => {
               setHasUnsavedChanges(false);
+              // Force editor remount by incrementing key
+              setEditorInstanceKey(prev => prev + 1);
               setIsEditing(true);
             }}
             className="mt-3"
@@ -218,8 +233,10 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
         </div>
       ) : (
         <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <RichTextEditor
-            editor={editorRef.current}
+          <EditorInstance
+            key={editorInstanceKey}
+            onEditorReady={(editor) => { editorRef.current = editor; }}
+            value={value}
             onChange={handleEditorChange}
             placeholder={placeholder}
             disableTable={disableTable}
@@ -246,25 +263,14 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
       )}
 
       {/* Unsaved changes confirmation dialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes in the editor. Are you sure you want to discard them?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={performCancel}
-              className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-            >
-              Discard Changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <UnsavedChangesDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onKeepEditing={() => setShowConfirmDialog(false)}
+        onDiscard={performCancel}
+        description="You have unsaved changes in the Terms & Condition editor. These changes will be lost if you continue."
+        showIcon={true}
+      />
     </div>
   );
 });
