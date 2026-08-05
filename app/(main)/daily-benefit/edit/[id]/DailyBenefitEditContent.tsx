@@ -19,6 +19,7 @@ import type { RichTextContentFieldRef } from "@/components/RichTextContentField"
 
 interface DailyBenefitEditContentProps {
   username: string;
+  userEmail: string | null;
   dailyBenefitId: string;
 }
 
@@ -36,7 +37,7 @@ interface DailyBenefitItem {
   is_active: number | null;
 }
 
-export default function DailyBenefitEditContent({ username, dailyBenefitId }: DailyBenefitEditContentProps) {
+export default function DailyBenefitEditContent({ username, userEmail, dailyBenefitId }: DailyBenefitEditContentProps) {
   const router = useRouter();
   
   // Form states
@@ -107,7 +108,7 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
       redeem_point: formPoints,
       image_url: formImageUrl,
       term_condition: termConditionOverride || formTermCondition,
-      editedBy: username,
+      editedBy: userEmail || username,
       status: formStatus,
       start_date: formStartDate || null,
       end_date: formEndDate || null,
@@ -223,17 +224,17 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
                   placeholder="Enter points required"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={formStatus === 1}
-                    onCheckedChange={(checked) => setFormStatus(checked ? 1 : 0)}
-                  />
-                  <span className="text-sm text-gray-600">{formStatus === 1 ? "Active" : "Inactive"}</span>
-                </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={formStatus === 1}
+                  onCheckedChange={(checked) => setFormStatus(checked ? 1 : 0)}
+                />
+                <span className="text-sm text-gray-600">{formStatus === 1 ? "Active" : "Inactive"}</span>
               </div>
             </div>
           </div>
@@ -249,7 +250,9 @@ export default function DailyBenefitEditContent({ username, dailyBenefitId }: Da
               value={formImageUrl}
               onChange={setFormImageUrl}
               label="Image"
-              recommendation="Recommended: 512x512px square image, max 5MB"
+              recommendation="Ratio: 16:9 (Landscape)
+Recommended Resolution: 1920 × 1080 px
+Format: JPG / PNG / WebP"
             />
           </div>
         </section>

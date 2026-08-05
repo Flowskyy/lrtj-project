@@ -1,23 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
 import { Skeleton } from "@/components/ui/skeleton";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
-import { formatWIBDate } from "@/lib/formatWIBDate";
 import StatusBadge from "@/components/StatusBadge";
 import Pagination from "@/components/Pagination";
+import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
-import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
+import { MoreVertical, Eye, Trash2, Search, Columns, Check, Download, Square } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 interface RedeemBenefitItem {
   id: number;
@@ -42,29 +41,31 @@ interface RedeemBenefitContentProps {
 }
 
 export default function RedeemBenefitContent({ username }: RedeemBenefitContentProps) {
+  const router = useRouter();
   const [items, setItems] = useState<RedeemBenefitItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [completedCount, setCompletedCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   // Filter and Sort states
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("id");
-  const [sortOrder, setSortOrder] = useState<string>("asc");
+  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] = useState<string>("");
+  const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
-
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<RedeemBenefitItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<RedeemBenefitItem | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
-    select: true,
+    select: false,
     id: false,
     user_id: false,
     merchant_id: false,
@@ -76,20 +77,17 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
     actions: true,
   });
 
-  // Row selection states
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-
   // Export job hook
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (statusFilter !== "all") params.status = statusFilter;
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.order = sortOrder;
     if (searchQuery.trim()) params.search = searchQuery.trim();
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
+    if (statusFilter !== "all") params.status = statusFilter;
     return params;
-  }, [statusFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo]);
+  }, [sortBy, sortOrder, searchQuery, dateFrom, dateTo, statusFilter]);
 
   const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/redeem-benefit',
@@ -97,17 +95,26 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
     onError: (msg) => toast.error(msg),
   });
 
+  // Search scopes for Redeem Benefit
+  const redeemBenefitSearchScopes: SearchScope[] = [
+    { field: "name", label: "Receiver Name" },
+    { field: "email", label: "Email" },
+  ];
+
   // Fetch items
   const fetchItems = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+        if (searchScope) params.set("searchScope", searchScope);
+      }
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      if (statusFilter !== "all") params.set("status", statusFilter);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -116,7 +123,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
         const response = await res.json();
         setItems(response.data || []);
         setTotalCount(response.meta?.total || 0);
-        setStatusCounts(response.meta?.statusCounts || {});
+        setCompletedCount(response.meta?.completed || 0);
         setTotalPages(response.meta?.totalPages || 1);
       }
     } catch (err) {
@@ -128,17 +135,35 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo, statusFilter]);
 
   // Count active filters
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (searchQuery.trim() ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
+
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+    setCurrentPage(1);
+  };
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setShowScopeSuggestions(value.length >= 2);
+    if (!value.trim()) {
+      setSearchScope("");
+      setCurrentPage(1);
+    }
+  };
 
   const handleResetFilters = () => {
-    setStatusFilter("all");
+    setSearchQuery("");
+    setSearchScope("");
     setDateFrom("");
     setDateTo("");
-    setSortBy("id");
-    setSortOrder("asc");
+    setSortBy("created_at");
+    setSortOrder("desc");
+    setStatusFilter("all");
   };
 
   // Delete Item
@@ -165,63 +190,47 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
     }
   };
 
-  // Get status badge color for stat cards
-  const getStatusCardColor = (status: string) => {
-    const statusLower = status.toLowerCase();
-    if (statusLower === "completed" || statusLower === "approved") {
-      return { bg: "bg-green-100", text: "text-green-700", svgColor: "text-green-700" };
-    } else if (statusLower === "process" || statusLower === "pending") {
-      return { bg: "bg-yellow-100", text: "text-yellow-700", svgColor: "text-yellow-700" };
-    } else if (statusLower === "rejected" || statusLower === "cancelled") {
-      return { bg: "bg-red-100", text: "text-red-700", svgColor: "text-red-700" };
-    }
-    return { bg: "bg-gray-100", text: "text-gray-500", svgColor: "text-gray-500" };
-  };
-
-  // Get unique status keys for stat cards
-  const statusKeys = Object.keys(statusCounts);
-
-  // Handle row selection
-  const handleSelectRow = (id: number) => {
-    setSelectedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedRows.size === items.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(items.map(item => item.id)));
-    }
-  };
-
-
+  // Computed values
+  const totalRedeems = totalCount;
+  const completed = completedCount;
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total Records
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : totalCount}
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {loading ? "..." : totalRedeems}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <svg className="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+                <svg className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Completed
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {loading ? "..." : completed}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
@@ -230,59 +239,55 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
       </div>
 
       {/* Main Content Card */}
-      <Card>
-        <CardContent>
-          <CardHeader className="p-3">
-            <CardTitle className="text-lg">Redeem Benefit</CardTitle>
-          </CardHeader>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-wrap items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Redeem Benefit</h2>
+          </div>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-              <div className="relative flex-1 sm:flex-none">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search by name, email..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search redeems..."
+                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
+                  onFocus={() => {
+                    if (searchQuery.length >= 2) {
+                      setShowScopeSuggestions(true);
+                    }
                   }}
-                  className="pl-9 min-h-[44px] w-full sm:w-64"
                 />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setCurrentPage(1);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <SearchScopeSuggestions
+                  searchQuery={searchQuery}
+                  scopes={redeemBenefitSearchScopes}
+                  onScopeSelect={handleScopeSelect}
+                  isVisible={showScopeSuggestions}
+                  onClose={() => setShowScopeSuggestions(false)}
+                />
               </div>
               <TableFilterSortMenu
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                statusOptions={[
-                  { value: "all", label: "All" },
-                  ...statusKeys.map((status) => ({ 
-                    value: status, 
-                    label: status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
-                  })),
-                ]}
                 sortByOptions={[
                   { value: "id", label: "ID" },
                   { value: "created_at", label: "Created Date" },
                   { value: "updated_at", label: "Updated Date" },
                 ]}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                statusOptions={[
+                  { value: "all", label: "All Statuses" },
+                  { value: "completed", label: "Completed" },
+                  { value: "pending", label: "Pending" },
+                  { value: "rejected", label: "Rejected" },
+                ]}
+                showStatusFilter={true}
                 dateFrom={dateFrom}
                 onDateFromChange={setDateFrom}
                 dateTo={dateTo}
@@ -292,64 +297,90 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
                   <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: !prev.id }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.id && <Check className="h-4 w-4" />}
-                      <span>ID</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user_id: !prev.user_id }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.user_id && <Check className="h-4 w-4" />}
-                      <span>User ID</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchant_id: !prev.merchant_id }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.merchant_id && <Check className="h-4 w-4" />}
-                      <span>Merchant ID</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, name: !prev.name }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.name && <Check className="h-4 w-4" />}
-                      <span>Name</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, email: !prev.email }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.email && <Check className="h-4 w-4" />}
-                      <span>Email</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: !prev.status }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.status && <Check className="h-4 w-4" />}
-                      <span>Status</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: !prev.created_at }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.created_at && <Check className="h-4 w-4" />}
-                      <span>Created</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, updated_at: !prev.updated_at }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.updated_at && <Check className="h-4 w-4" />}
-                      <span>Updated</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: !prev.actions }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.actions && <Check className="h-4 w-4" />}
-                      <span>Actions</span>
-                    </div>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
+                  {visibleColumns.select && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, select: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Select</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.id && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>ID</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.user_id && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user_id: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>User ID</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.merchant_id && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchant_id: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Merchant ID</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.name && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, name: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Name</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.email && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, email: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Email</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.status && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Status</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.created_at && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Created</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.updated_at && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, updated_at: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Updated</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.actions && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Actions</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -368,68 +399,57 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.select && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-10">
-                      <button
-                        onClick={handleSelectAll}
-                        className="flex items-center justify-center"
-                      >
-                        {selectedRows.size === items.length && items.length > 0 ? (
-                          <CheckSquare className="h-4 w-4" />
-                        ) : (
-                          <Square className="h-4 w-4" />
-                        )}
-                      </button>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-12">
+                      Select
                     </TableHead>
                   )}
                   {visibleColumns.id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                      <div className="flex items-center gap-1">
-                        ID
-                        <ChevronDown className="h-3 w-3" />
-                      </div>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
+                      ID
                     </TableHead>
                   )}
                   {visibleColumns.user_id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
                       User ID
                     </TableHead>
                   )}
                   {visibleColumns.merchant_id && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
                       Merchant ID
                     </TableHead>
                   )}
                   {visibleColumns.name && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
                       Name
                     </TableHead>
                   )}
                   {visibleColumns.email && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
                       Email
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-28">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Created
                     </TableHead>
                   )}
                   {visibleColumns.updated_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Updated
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
@@ -439,115 +459,110 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-5 w-32" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.merchant_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.email && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-5 w-32" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.merchant_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.email && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.merchant_id && <TableCell><Skeleton className="h-5 w-12" /></TableCell>}
-                      {visibleColumns.name && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-5 w-32" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.merchant_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.email && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                   </>
                 ) : items.length > 0 ? (
                   items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.select && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-2 py-1.5">
                           <button
-                            onClick={() => handleSelectRow(item.id)}
                             className="flex items-center justify-center"
                           >
-                            {selectedRows.has(item.id) ? (
-                              <CheckSquare className="h-4 w-4" />
-                            ) : (
-                              <Square className="h-4 w-4" />
-                            )}
+                            <Square className="h-3 w-3" />
                           </button>
                         </TableCell>
                       )}
                       {visibleColumns.id && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 font-medium">
                           #{item.id}
                         </TableCell>
                       )}
                       {visibleColumns.user_id && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 font-medium">
                           {item.user_id}
                         </TableCell>
                       )}
                       {visibleColumns.merchant_id && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 font-medium">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 font-medium">
                           {item.merchant_id}
                         </TableCell>
                       )}
                       {visibleColumns.name && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900">
                           {item.name}
                         </TableCell>
                       )}
                       {visibleColumns.email && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 max-w-[200px]">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900 max-w-[220px]">
                           <span className="block truncate" title={item.email}>
                             {item.email}
                           </span>
                         </TableCell>
                       )}
                       {visibleColumns.status && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-2 py-1.5">
                           <StatusBadge status={item.status} />
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {item.created_at ? item.created_at.split('T')[0] : "-"}
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
+                          {item.created_at ? formatDisplayDate(item.created_at) : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.updated_at && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
                           {item.updated_at ? item.updated_at.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-3 py-1.5 text-center">
+                        <TableCell className="px-2 py-1.5 text-center">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground p-0">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                            <DropdownMenuTrigger className="h-6 w-6 inline-flex items-center justify-center rounded-md hover:bg-gray-100 p-0 transition-colors">
+                              <MoreVertical className="h-3 w-3" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setViewItem(item)} className="text-xs h-8">
-                                <Eye className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => router.push(`/redeem-benefit/view/${item.id}`)} className="text-[10px] h-6">
+                                <Eye className="h-3 w-3 mr-2" />
                                 View
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-xs h-8">
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-[10px] h-6">
+                                <Trash2 className="h-3 w-3 mr-2" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -558,54 +573,58 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-xs text-gray-400">
-                      No redeem benefit records found.
+                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-2 py-6 text-center text-[11px] text-gray-500">
+                      No redeem records found.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Card List - Mobile */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-2">
             {loading ? (
               <>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-4 w-20" />
+                <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-4 w-20" />
+                <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
               </>
             ) : items.length > 0 ? (
               items.map((item) => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
+                <div
+                  key={item.id}
+                  onClick={() => router.push(`/redeem-benefit/view/${item.id}`)}
+                  className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-gray-900 truncate">#{item.id} – {item.name}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">User ID: {item.user_id}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Merchant ID: {item.merchant_id}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Email: {item.email}</p>
+                        <h3 className="text-[11px] font-semibold text-gray-900 truncate">#{item.id} – {item.name}</h3>
+                        <p className="text-[10px] text-gray-500 mt-0.5">User ID: {item.user_id}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Email: {item.email}</p>
                       </div>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Created: {item.created_at ? item.created_at.split('T')[0] : "-"}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Created: {item.created_at ? formatDisplayDate(item.created_at) : "-"}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-sm text-gray-400">
-                No redeem benefit records found.
+              <div className="bg-white border border-gray-100 rounded-xl p-8 text-center shadow-sm">
+                <p className="text-[11px] text-gray-500">No redeem records found.</p>
               </div>
             )}
           </div>
@@ -621,74 +640,12 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
         </CardContent>
       </Card>
 
-      {/* View Dialog */}
-      <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-lg max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto">
-          <DialogHeader>
-            <DialogTitle>View Redeem Benefit</DialogTitle>
-          </DialogHeader>
-          <div className="overflow-y-auto space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">ID</label>
-                <div className="text-sm text-gray-900">#{viewItem?.id}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">User ID</label>
-                <div className="text-sm text-gray-900">{viewItem?.user_id}</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Merchant ID</label>
-                <div className="text-sm text-gray-900">{viewItem?.merchant_id}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                <div><StatusBadge status={viewItem?.status || ''} /></div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Name</label>
-              <div className="text-sm text-gray-900">{viewItem?.name}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
-              <div className="text-sm text-gray-900">{viewItem?.email}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.created_at)}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{formatWIBDate(viewItem?.updated_at)}</div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="pt-4">
-            <Button
-              onClick={() => setViewItem(null)}
-              variant="outline"
-              className="min-h-[44px]"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Alert Dialog */}
+      {/* Delete AlertDialog */}
       <DeleteConfirmDialog
         open={!!deleteItem}
         onOpenChange={() => setDeleteItem(null)}
-        title="Delete Redeem Benefit"
-        description={
-          deleteItem && (
-            <>Are you sure you want to delete this redeem benefit record for <span className="font-bold text-gray-900">"{deleteItem.name}"</span>? This action cannot be undone.</>
-          )
-        }
+        title="Delete Redeem Record"
+        description="Are you sure you want to delete this redeem record? This action cannot be undone."
         onConfirm={handleDelete}
         isDeleting={isDeleting}
       />

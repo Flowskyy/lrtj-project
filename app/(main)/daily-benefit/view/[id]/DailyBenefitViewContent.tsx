@@ -28,12 +28,10 @@ interface DailyBenefitItem {
 }
 
 interface DailyBenefitViewContentProps {
-  username: string;
-  userEmail: string | null;
   dailyBenefitId: string;
 }
 
-export default function DailyBenefitViewContent({ username, userEmail, dailyBenefitId }: DailyBenefitViewContentProps) {
+export default function DailyBenefitViewContent({ dailyBenefitId }: DailyBenefitViewContentProps) {
   const router = useRouter();
   const [item, setItem] = useState<DailyBenefitItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +93,7 @@ export default function DailyBenefitViewContent({ username, userEmail, dailyBene
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <Skeleton className="aspect-square w-full rounded-md" />
+              <Skeleton className="aspect-video w-full rounded-md" />
             </div>
           </div>
           <div className="lg:col-span-2 space-y-6">
@@ -151,7 +149,7 @@ export default function DailyBenefitViewContent({ username, userEmail, dailyBene
         {/* Left Column - Image */}
         <div className="lg:col-span-1">
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div className="aspect-square bg-gray-50 rounded-md overflow-hidden flex items-center justify-center">
+            <div className="aspect-video bg-gray-50 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={getImageUrl(item.image_url)}
                 alt={item.name}
@@ -284,32 +282,30 @@ export default function DailyBenefitViewContent({ username, userEmail, dailyBene
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Timestamps</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {item.created_at && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Created At</label>
-                  <div className="text-sm text-gray-900">{formatDisplayDate(item.created_at)}</div>
-                </div>
-              )}
-              {item.updated_at && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
-                  <div className="text-sm text-gray-900">{formatDisplayDate(item.updated_at)}</div>
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
+                <div className="text-sm text-gray-900">{formatDisplayDate(item.created_at)}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Updated</label>
+                <div className="text-sm text-gray-900">{formatDisplayDate(item.updated_at)}</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Delete Confirm Dialog */}
-      <DeleteConfirmDialog
-        open={!!deleteItem}
-        onOpenChange={(open) => !open && setDeleteItem(null)}
-        title="Delete Daily Benefit"
-        description={`Are you sure you want to delete "${deleteItem?.name}"? This action cannot be undone.`}
-        onConfirm={handleDelete}
-        isDeleting={isDeleting}
-      />
+      {/* Delete Dialog */}
+      {deleteItem && (
+        <DeleteConfirmDialog
+          open={!!deleteItem}
+          onOpenChange={() => setDeleteItem(null)}
+          onConfirm={handleDelete}
+          title="Delete Daily Benefit"
+          description={`Are you sure you want to delete "${deleteItem.name}"? This action cannot be undone.`}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 }

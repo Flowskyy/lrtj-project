@@ -10,10 +10,11 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get('status');
   const sortBy = searchParams.get('sortBy');
-  const order = searchParams.get('order') || 'asc';
+  const order = searchParams.get('order') || 'desc';
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const search = searchParams.get('search');
+  const searchScope = searchParams.get('searchScope');
   const debug = searchParams.get('debug');
   const exportMode = searchParams.get('export') === 'true';
 
@@ -60,8 +61,16 @@ export async function GET(request: NextRequest) {
       searchConditions.push({ merchant_id: searchNum });
     }
 
-    searchConditions.push({ name: { contains: search.trim() } });
-    searchConditions.push({ email: { contains: search.trim() } });
+    // Apply search scope if provided
+    if (searchScope === 'name') {
+      searchConditions.push({ name: { contains: search.trim() } });
+    } else if (searchScope === 'email') {
+      searchConditions.push({ email: { contains: search.trim() } });
+    } else {
+      // Default: search both fields if no scope specified
+      searchConditions.push({ name: { contains: search.trim() } });
+      searchConditions.push({ email: { contains: search.trim() } });
+    }
 
     where.OR = searchConditions;
   }
@@ -74,7 +83,7 @@ export async function GET(request: NextRequest) {
   } else if (sortBy === 'updated_at') {
     orderBy.updated_at = order;
   } else {
-    orderBy.id = 'desc';
+    orderBy.created_at = 'desc';
   }
 
   // Build WHERE clause for reuse
@@ -174,10 +183,14 @@ export async function GET(request: NextRequest) {
     statusCounts.map(sc => [sc.status, sc._count.id])
   );
 
+  // Get completed count
+  const completedCount = statusCountMap.get('completed') || 0;
+
   return NextResponse.json({
     data: redeemBenefits,
     meta: {
       total,
+      completed: completedCount,
       statusCounts: Object.fromEntries(statusCountMap),
       page,
       limit,

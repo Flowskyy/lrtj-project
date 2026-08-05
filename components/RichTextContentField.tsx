@@ -30,29 +30,42 @@ const EditorInstance = ({
       if (!value) {
         return [{ type: 'p', children: [{ text: '' }] }] as Value;
       }
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(value, 'text/html');
-      const element = doc.body.firstChild as HTMLElement;
-      const deserializedValue = editor.api.html.deserialize({
-        element: element || value,
-        collapseWhiteSpace: false,
-      }) as Value;
-
-      // Normalize: wrap any bare text/leaf nodes at top level in paragraph elements
-      const normalizedValue = deserializedValue.map((node) => {
-        if (node && typeof node === 'object' && !('children' in node)) {
-          // This is a bare text/leaf node, wrap it in a paragraph
-          return { type: 'p', children: [node] };
+      
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(value, 'text/html');
+        const element = doc.body.firstChild as HTMLElement;
+        
+        // Ensure we have a valid element to deserialize
+        if (!element) {
+          return [{ type: 'p', children: [{ text: '' }] }] as Value;
         }
-        return node;
-      });
+        
+        const deserializedValue = editor.api.html.deserialize({
+          element: element,
+          collapseWhiteSpace: false,
+        }) as Value;
 
-      // Fallback for empty or invalid structure
-      if (!normalizedValue || normalizedValue.length === 0) {
+        // Normalize: wrap any bare text/leaf nodes at top level in paragraph elements
+        const normalizedValue = deserializedValue.map((node) => {
+          if (node && typeof node === 'object' && !('children' in node)) {
+            // This is a bare text/leaf node, wrap it in a paragraph
+            return { type: 'p', children: [node] };
+          }
+          return node;
+        });
+
+        // Fallback for empty or invalid structure
+        if (!normalizedValue || normalizedValue.length === 0) {
+          return [{ type: 'p', children: [{ text: '' }] }] as Value;
+        }
+
+        return normalizedValue as Value;
+      } catch (err) {
+        console.error("Failed to deserialize HTML value:", err);
+        // Fallback to empty paragraph on error
         return [{ type: 'p', children: [{ text: '' }] }] as Value;
       }
-
-      return normalizedValue as Value;
     },
   });
 
