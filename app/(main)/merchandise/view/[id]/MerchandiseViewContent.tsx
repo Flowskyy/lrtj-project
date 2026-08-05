@@ -3,16 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getImageUrl } from "@/lib/utils";
-import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
-import { ArrowLeft, Loader2, Package, MapPin, Edit, Trash2 } from "lucide-react";
+import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { ArrowLeft, Loader2, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Link from "next/link";
-import RichTextContentField from "@/components/RichTextContentField";
 
 interface MerchandiseItem {
   id: number;
@@ -90,22 +88,33 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9" />
           <Skeleton className="h-6 w-48" />
         </div>
-        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-32" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <Skeleton className="aspect-square w-full rounded-md" />
             </div>
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardContent>
-        </Card>
+          </div>
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-6 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-1/4" />
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-16 mb-4" />
+              <div className="grid grid-cols-2 gap-6">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -122,134 +131,130 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => router.back()}
-          className="h-10 w-10"
+          className="h-9 w-9"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Merchandise Details</h1>
-          <p className="text-sm text-gray-500 mt-1">View complete information about this merchandise item</p>
+          <h1 className="text-xl font-semibold text-gray-900">Merchandise Details</h1>
         </div>
       </div>
 
-      {/* Content Card */}
-      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-        <CardContent className="p-6">
-          {/* Action Bar */}
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{item.name}</h2>
-              <div className="flex items-center gap-2 mt-2">
-                {item.status === 1 ? (
-                  <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
-                    Active
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs">
-                    Inactive
-                  </Badge>
-                )}
-                <span className="text-sm font-semibold text-[#E5262C]">{item.points} pts</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Link href={`/merchandise/edit/${item.id}`}>
-                <Button size="sm" className="min-h-[44px]">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setDeleteItem(item)}
-                className="min-h-[44px]"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            </div>
-          </div>
-          {/* Image */}
-          <div className="flex justify-center mb-8">
-            <div className="h-64 w-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center">
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column - Image */}
+        <div className="lg:col-span-1">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div className="aspect-square bg-gray-50 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={getImageUrl(item.image_url)}
                 alt={item.name}
                 className="h-full w-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                  (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
+                  (e.target as HTMLImageElement).className = "h-12 w-auto object-contain brightness-95";
                 }}
               />
             </div>
           </div>
+        </div>
 
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                Category
-              </label>
-              <div className="text-sm text-gray-900">
-                {item.merchandise_category?.category_name || "Uncategorized"}
+        {/* Right Column - Details */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Title & Status Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">{item.name}</h2>
+                <div className="flex items-center gap-3">
+                  {item.status === 1 ? (
+                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs">
+                      Inactive
+                    </Badge>
+                  )}
+                  <span className="text-sm font-semibold text-[#E5262C]">{item.points} pts</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Link href={`/merchandise/edit/${item.id}`}>
+                  <Button size="sm" className="h-9">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </Link>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setDeleteItem(item)}
+                  className="h-9"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                Points Required
-              </label>
-              <div className="text-sm text-gray-900 font-semibold text-[#E5262C]">
-                {item.points} pts
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                Last Edited By
-              </label>
-              <div className="text-sm text-gray-900">{item.display_email || "-"}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                Status
-              </label>
+          </div>
+
+          {/* Basic Info Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                {item.status === 1 ? (
-                  <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
-                    Active
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs">
-                    Inactive
-                  </Badge>
-                )}
+                <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                <div className="text-sm text-gray-900">
+                  {item.merchandise_category?.category_name || "Uncategorized"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Points Required</label>
+                <div className="text-sm text-gray-900 font-semibold text-[#E5262C]">
+                  {item.points} pts
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Last Edited By</label>
+                <div className="text-sm text-gray-900">{item.display_email || "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                <div>
+                  {item.status === 1 ? (
+                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-xs">
+                      Inactive
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Description */}
-          <div className="mb-8">
-            <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-              Description
-            </label>
-            <div className="text-sm text-gray-900 prose prose-sm max-w-none">
-              <RichTextContentField label="" value={item.description} onChange={() => {}} readOnly />
+          {/* Description Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Description</h3>
+            <div className="text-sm text-gray-700 prose prose-sm max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: item.description || '<p>-</p>' }} />
             </div>
           </div>
 
-          {/* Timestamps */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Timestamps
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Timestamps Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Timestamps</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
                 <div className="text-sm text-gray-900">{formatDisplayDate(item.createdAt)}</div>
@@ -260,18 +265,20 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Delete Dialog */}
-      <DeleteConfirmDialog
-        open={!!deleteItem}
-        onOpenChange={() => setDeleteItem(null)}
-        title="Delete Merchandise"
-        description="Are you sure you want to delete this merchandise item? This action cannot be undone."
-        onConfirm={handleDelete}
-        isDeleting={isDeleting}
-      />
+      {deleteItem && (
+        <DeleteConfirmDialog
+          open={!!deleteItem}
+          onOpenChange={() => setDeleteItem(null)}
+          onConfirm={handleDelete}
+          title="Delete Merchandise"
+          description={`Are you sure you want to delete "${deleteItem.name}"? This action cannot be undone.`}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 }

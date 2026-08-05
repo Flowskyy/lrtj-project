@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
-import RichTextContentField from "@/components/RichTextContentField";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
+
+const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 
 interface DailyBenefitEditContentProps {
   username: string;

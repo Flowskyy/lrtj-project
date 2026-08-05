@@ -14,13 +14,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
-import RichTextContentField from "@/components/RichTextContentField";
+import dynamic from "next/dynamic";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
+
+const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import {
   DropdownMenu,
   DropdownMenuContent,

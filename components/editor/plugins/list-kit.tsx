@@ -2,18 +2,25 @@
 
 import {
   BulletedListRules,
-  isOrderedList,
   OrderedListRules,
   TaskListRules,
-} from '@platejs/list';
-import { ListPlugin } from '@platejs/list/react';
-import { KEYS } from 'platejs';
+} from '@platejs/list-classic';
+import {
+  ListPlugin,
+  BulletedListPlugin,
+  NumberedListPlugin,
+  TaskListPlugin,
+  ListItemPlugin,
+} from '@platejs/list-classic/react';
 
-import { IndentKit } from '@/components/editor/plugins/indent-kit';
-import { BlockList } from '@/components/ui/block-list';
+import {
+  BulletedListElement,
+  NumberedListElement,
+  TaskListElement,
+  ListItemElement,
+} from '@/components/ui/list-classic-node';
 
 export const ListKit = [
-  ...IndentKit,
   ListPlugin.configure({
     inputRules: [
       BulletedListRules.markdown({ variant: '-' }),
@@ -23,45 +30,25 @@ export const ListKit = [
       TaskListRules.markdown({ checked: false }),
       TaskListRules.markdown({ checked: true }),
     ],
-    inject: {
-      nodeProps: {
-        nodeKey: KEYS.listType,
-        query: ({ nodeProps }) => {
-          const element = nodeProps.element;
-
-          return !!element?.listStyleType && !isOrderedList(element);
-        },
-        transformProps: ({ props }) => ({
-          ...props,
-          role: 'listitem',
-          style: {
-            ...props.style,
-            display: 'list-item',
-          },
-        }),
-      },
-      targetPlugins: [
-        ...KEYS.heading,
-        KEYS.p,
-        KEYS.blockquote,
-        KEYS.codeBlock,
-        KEYS.toggle,
-        KEYS.img,
-      ],
+  }),
+  BulletedListPlugin.configure({
+    node: {
+      component: BulletedListElement,
     },
-    render: {
-      belowNodes: BlockList,
+  }),
+  NumberedListPlugin.configure({
+    node: {
+      component: NumberedListElement,
     },
-    rules: {
-      break: {
-        default: 'default',
-        empty: 'exit',
-      },
-      match: ({ editor, rule, node }) => {
-        const isList = rule === 'break.default' || rule === 'break.empty';
-        const hasListStyle = Boolean(node?.listStyleType);
-        return isList && hasListStyle;
-      },
+  }),
+  TaskListPlugin.configure({
+    node: {
+      component: TaskListElement,
+    },
+  }),
+  ListItemPlugin.configure({
+    node: {
+      component: ListItemElement,
     },
   }),
 ];

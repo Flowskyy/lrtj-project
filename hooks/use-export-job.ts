@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
 interface ExportParams {
   [key: string]: string | undefined;
@@ -22,11 +22,7 @@ export function useExportJob({ moduleEndpoint, params, onComplete, onError }: Us
   // Stable, memoized params object - THIS is what was missing/undefined before.
   // Only re-create when the actual param VALUES change, not on every render.
   const paramsKey = JSON.stringify(params);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoizedParams = useState(() => params)[0]; 
-  // ^ NOTE: if params can change during the component's life (e.g. filters), 
-  // replace the line above with a proper useMemo keyed on paramsKey instead:
-  // const memoizedParams = useMemo(() => params, [paramsKey]);
+  const memoizedParams = useMemo(() => params, [paramsKey]);
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {

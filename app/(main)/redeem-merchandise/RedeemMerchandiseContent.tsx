@@ -331,7 +331,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.select && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, select: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Select</span>
                       </div>
                     </DropdownMenuItem>
@@ -339,7 +339,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.id && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>ID</span>
                       </div>
                     </DropdownMenuItem>
@@ -347,7 +347,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.user_id && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user_id: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>User ID</span>
                       </div>
                     </DropdownMenuItem>
@@ -355,7 +355,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.receiver_name && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, receiver_name: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Receiver Name</span>
                       </div>
                     </DropdownMenuItem>
@@ -363,7 +363,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.merchandise_name && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchandise_name: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Merchandise</span>
                       </div>
                     </DropdownMenuItem>
@@ -371,7 +371,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.status && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Status</span>
                       </div>
                     </DropdownMenuItem>
@@ -379,7 +379,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.created_at && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Created</span>
                       </div>
                     </DropdownMenuItem>
@@ -387,7 +387,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.updated_at && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, updated_at: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Updated</span>
                       </div>
                     </DropdownMenuItem>
@@ -395,7 +395,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   {visibleColumns.actions && (
                     <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
                       <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3" />
                         <span>Actions</span>
                       </div>
                     </DropdownMenuItem>
@@ -423,47 +423,47 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
                   {visibleColumns.select && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-12">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-12">
                       Select
                     </TableHead>
                   )}
                   {visibleColumns.id && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-20">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
                       ID
                     </TableHead>
                   )}
                   {visibleColumns.user_id && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-20">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
                       User ID
                     </TableHead>
                   )}
                   {visibleColumns.receiver_name && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
                       Receiver Name
                     </TableHead>
                   )}
                   {visibleColumns.merchandise_name && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
                       Merchandise
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-28">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-28">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-32">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Created
                     </TableHead>
                   )}
                   {visibleColumns.updated_at && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider w-32">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Updated
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
@@ -473,102 +473,102 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.select && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.status && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.status && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.user_id && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.receiver_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.merchandise_name && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.status && <TableCell className="px-4 py-3"><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.updated_at && <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.select && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-4" /></TableCell>}
+                      {visibleColumns.id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.user_id && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.receiver_name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.merchandise_name && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.status && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.updated_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                   </>
                 ) : items.length > 0 ? (
                   items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.select && (
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-2 py-1.5">
                           <button
                             className="flex items-center justify-center"
                           >
-                            <Square className="h-4 w-4" />
+                            <Square className="h-3 w-3" />
                           </button>
                         </TableCell>
                       )}
                       {visibleColumns.id && (
-                        <TableCell className="px-4 py-3 text-sm text-gray-600 font-medium">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 font-medium">
                           #{item.id}
                         </TableCell>
                       )}
                       {visibleColumns.user_id && (
-                        <TableCell className="px-4 py-3 text-sm text-gray-600 font-medium">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 font-medium">
                           {item.user_id}
                         </TableCell>
                       )}
                       {visibleColumns.receiver_name && (
-                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900">
                           {item.receiver_name}
                         </TableCell>
                       )}
                       {visibleColumns.merchandise_name && (
-                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[220px]">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900 max-w-[220px]">
                           <span className="block truncate" title={item.merchandise_name}>
                             {item.merchandise_name}
                           </span>
                         </TableCell>
                       )}
                       {visibleColumns.status && (
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-2 py-1.5">
                           <StatusBadge status={item.status} />
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
-                        <TableCell className="px-4 py-3 text-sm text-gray-600">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
                           {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.updated_at && (
-                        <TableCell className="px-4 py-3 text-sm text-gray-600">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
                           {item.updatedAt ? item.updatedAt.split('T')[0] : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-4 py-3 text-center">
+                        <TableCell className="px-2 py-1.5 text-center">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 p-0 transition-colors">
-                              <MoreVertical className="h-4 w-4" />
+                            <DropdownMenuTrigger className="h-6 w-6 inline-flex items-center justify-center rounded-md hover:bg-gray-100 p-0 transition-colors">
+                              <MoreVertical className="h-3 w-3" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => router.push(`/redeem-merchandise/view/${item.id}`)} className="text-sm h-9">
-                                <Eye className="h-4 w-4 mr-2" />
+                              <DropdownMenuItem onClick={() => router.push(`/redeem-merchandise/view/${item.id}`)} className="text-[10px] h-6">
+                                <Eye className="h-3 w-3 mr-2" />
                                 View
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-sm h-9">
-                                <Trash2 className="h-4 w-4 mr-2" />
+                              <DropdownMenuItem onClick={() => setDeleteItem(item)} variant="destructive" className="text-[10px] h-6">
+                                <Trash2 className="h-3 w-3 mr-2" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -579,7 +579,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-2 py-6 text-center text-[11px] text-gray-500">
                       No redeem records found.
                     </TableCell>
                   </TableRow>
@@ -590,21 +590,21 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </div>
 
           {/* Card List - Mobile */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-2">
             {loading ? (
               <>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-4 w-20" />
+                <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-4 w-20" />
+                <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
               </>
@@ -613,24 +613,24 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
                 <div
                   key={item.id}
                   onClick={() => router.push(`/redeem-merchandise/view/${item.id}`)}
-                  className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">#{item.id} – {item.merchandise_name}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">User ID: {item.user_id}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Receiver: {item.receiver_name}</p>
+                        <h3 className="text-[11px] font-semibold text-gray-900 truncate">#{item.id} – {item.merchandise_name}</h3>
+                        <p className="text-[10px] text-gray-500 mt-0.5">User ID: {item.user_id}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Receiver: {item.receiver_name}</p>
                       </div>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Created: {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Created: {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="bg-white border border-gray-100 rounded-xl p-12 text-center shadow-sm">
-                <p className="text-sm text-gray-500">No redeem records found.</p>
+              <div className="bg-white border border-gray-100 rounded-xl p-8 text-center shadow-sm">
+                <p className="text-[11px] text-gray-500">No redeem records found.</p>
               </div>
             )}
           </div>

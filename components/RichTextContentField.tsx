@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { usePlateEditor } from "platejs/react";
 import { type Value } from "platejs";
-import { serializeHtml } from "platejs/static";
 import { NewsEditorKit } from "@/components/editor/plugins/news-editor-kit";
 import dynamic from "next/dynamic";
 
@@ -29,6 +28,9 @@ export default function RichTextContentField({
 }: RichTextContentFieldProps) {
   const [isEditing, setIsEditing] = useState(isEditMode);
   
+  // Track the last initialized value to avoid unnecessary re-deserialization
+  const lastInitializedValue = useRef<string | null>(null);
+  
   // PlateJS editor
   const editor = usePlateEditor({
     plugins: NewsEditorKit,
@@ -36,23 +38,36 @@ export default function RichTextContentField({
 
   // Initialize editor with value on mount or when value changes externally
   useEffect(() => {
-    if (value && !isEditing) {
-      const slateValue = editor.api.html.deserialize({ element: value });
+    // Only deserialize if the actual HTML content has changed
+    if (value && value !== lastInitializedValue.current) {
+      const slateValue = editor.api.html.deserialize({ 
+        element: value,
+        collapseWhiteSpace: false,
+      });
       editor.tf.setValue(slateValue as Value);
+      lastInitializedValue.current = value;
     }
-  }, [value, editor, isEditing]);
+  }, [value, editor]);
 
   // Initialize empty state on mount for add mode
   useEffect(() => {
-    if (!value && !isEditing) {
+    if (!value && lastInitializedValue.current !== null) {
       const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
       editor.tf.setValue(emptyValue);
+      lastInitializedValue.current = null;
     }
-  }, [editor, value, isEditing]);
+  }, [editor, value]);
 
   // Handle content save
   const handleSave = async () => {
-    const html = await serializeHtml(editor);
+    // Serialize HTML dynamically to avoid SSR issues
+    const { serializeHtml } = await import('platejs/static');
+    const html = await serializeHtml(editor, {
+      stripClassNames: true,
+      stripDataAttributes: true,
+      preserveClassNames: [],
+      preserveWhitespace: true,
+    });
     onChange(html || '<p>-</p>');
     setIsEditing(false);
   };
@@ -61,7 +76,10 @@ export default function RichTextContentField({
   const handleCancel = () => {
     // Revert to last saved content
     if (value) {
-      const slateValue = editor.api.html.deserialize({ element: value });
+      const slateValue = editor.api.html.deserialize({ 
+        element: value,
+        collapseWhiteSpace: false,
+      });
       editor.tf.setValue(slateValue as Value);
     } else {
       const emptyValue = [{ type: 'p', children: [{ text: '' }] }] as Value;
@@ -135,7 +153,6 @@ export default function RichTextContentField({
           <RichTextEditor
             editor={editor}
             onChange={() => {}}
-            onContentChange={onChange}
             placeholder={placeholder}
           />
           <div className="border-t border-gray-300 p-3 bg-gray-50 flex gap-2">

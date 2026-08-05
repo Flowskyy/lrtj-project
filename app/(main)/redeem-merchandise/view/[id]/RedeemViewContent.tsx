@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/StatusBadge";
-import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
 interface RedeemItem {
   id: number;
@@ -32,6 +32,8 @@ export default function RedeemViewContent({ redeemId }: RedeemViewContentProps) 
   const router = useRouter();
   const [item, setItem] = useState<RedeemItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteItem, setDeleteItem] = useState<RedeemItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -57,24 +59,64 @@ export default function RedeemViewContent({ redeemId }: RedeemViewContentProps) 
     fetchItem();
   }, [redeemId, router]);
 
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/redeem/${deleteItem.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Redeem record deleted successfully");
+        router.push("/redeem-merchandise");
+      } else {
+        toast.error("Failed to delete redeem record");
+      }
+    } catch (err) {
+      console.error("Failed to delete item", err);
+      toast.error("Failed to delete redeem record");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9" />
           <Skeleton className="h-6 w-48" />
         </div>
-        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-32" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-6 w-3/4 mb-4" />
+              <Skeleton className="h-4 w-1/4" />
             </div>
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardContent>
-        </Card>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-16 mb-4" />
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-20 mb-4" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-16 mb-4" />
+              <div className="grid grid-cols-2 gap-6">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -91,50 +133,51 @@ export default function RedeemViewContent({ redeemId }: RedeemViewContentProps) 
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => router.back()}
-          className="h-10 w-10"
+          className="h-9 w-9"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Redeem Record Details</h1>
-          <p className="text-sm text-gray-500 mt-1">View complete information about this redemption</p>
+          <h1 className="text-xl font-semibold text-gray-900">Redeem Record Details</h1>
         </div>
       </div>
 
-      {/* Content Card */}
-      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-        <CardContent className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Redeem #{item.id}</h2>
-
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                User ID
-              </label>
-              <div className="text-sm text-gray-900 font-medium">{item.user_id}</div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                Status
-              </label>
-              <div><StatusBadge status={item.status} /></div>
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Title & Status Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">Redeem #{item.id}</h2>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={item.status} />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setDeleteItem(item)}
+                className="h-9"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
             </div>
           </div>
 
-          {/* Receiver Info */}
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Receiver Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Receiver Info Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Receiver Information</h3>
+            <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
                 <div className="text-sm text-gray-900">{item.receiver_name}</div>
@@ -147,30 +190,39 @@ export default function RedeemViewContent({ redeemId }: RedeemViewContentProps) 
                 <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
                 <div className="text-sm text-gray-900">{item.receiver_email}</div>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
+                <div className="text-sm text-gray-900">{item.receiver_address}</div>
+              </div>
             </div>
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
-              <div className="text-sm text-gray-900">{item.receiver_address}</div>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Merchandise Info Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Merchandise Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Merchandise Name</label>
+                <div className="text-sm text-gray-900 font-medium">{item.merchandise_name}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">User ID</label>
+                <div className="text-sm text-gray-900">{item.user_id}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Merchandise ID</label>
+                <div className="text-sm text-gray-900">{item.merchandise_id}</div>
+              </div>
             </div>
           </div>
 
-          {/* Merchandise Info */}
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Merchandise Information
-            </h3>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Merchandise Name</label>
-              <div className="text-sm text-gray-900 font-medium">{item.merchandise_name}</div>
-            </div>
-          </div>
-
-          {/* Timestamps */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Timestamps
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Timestamps Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Timestamps</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
                 <div className="text-sm text-gray-900">{formatDisplayDate(item.createdAt)}</div>
@@ -181,8 +233,20 @@ export default function RedeemViewContent({ redeemId }: RedeemViewContentProps) 
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Delete Dialog */}
+      {deleteItem && (
+        <DeleteConfirmDialog
+          open={!!deleteItem}
+          onOpenChange={() => setDeleteItem(null)}
+          onConfirm={handleDelete}
+          title="Delete Redeem Record"
+          description={`Are you sure you want to delete redeem record #${deleteItem.id}? This action cannot be undone.`}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 }

@@ -10,7 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import RichTextContentField from "@/components/RichTextContentField";
+import dynamic from "next/dynamic";
+
+const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 
 interface NewsAddContentProps {
   username: string;

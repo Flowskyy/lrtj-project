@@ -245,10 +245,20 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Edit Merchandise",
         breadcrumb: ["Merchandise", "Edit Merchandise"],
       }
+    : pathname.startsWith("/merchandise/view/")
+    ? {
+        title: "View Merchandise",
+        breadcrumb: ["Merchandise", "View Merchandise"],
+      }
     : pathname === "/redeem-merchandise"
     ? {
         title: "Redeem Merchandise",
         breadcrumb: ["Merchandise", "Redeem Merchandise"],
+      }
+    : pathname.startsWith("/redeem-merchandise/view/")
+    ? {
+        title: "View Redeem",
+        breadcrumb: ["Merchandise", "Redeem Merchandise", "View Redeem"],
       }
     : pathname === "/daily-benefit"
     ? {
