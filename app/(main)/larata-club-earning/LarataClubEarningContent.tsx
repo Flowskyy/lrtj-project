@@ -333,7 +333,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6">
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
