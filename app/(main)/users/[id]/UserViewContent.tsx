@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, CreditCard, Award, Activity, Bell, Shield, Globe } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { formatWIBDate } from "@/lib/formatWIBDate";
+import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { ArrowLeft, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
 interface MemberItem {
   id: number;
@@ -49,9 +50,11 @@ interface UserViewContentProps {
 }
 
 export default function UserViewContent({ userId }: UserViewContentProps) {
+  const router = useRouter();
   const [item, setItem] = useState<MemberItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [deleteItem, setDeleteItem] = useState<MemberItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -61,16 +64,44 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
         if (res.ok) {
           const data = await res.json();
           setItem(data);
+        } else {
+          toast.error("Failed to fetch user");
+          router.back();
         }
       } catch (err) {
         console.error("Failed to fetch user", err);
+        toast.error("Failed to fetch user");
+        router.back();
       } finally {
         setLoading(false);
       }
     };
 
     fetchUser();
-  }, [userId]);
+  }, [userId, router]);
+
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/users/${deleteItem.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const result = await res.json();
+        toast.success(result.message || "User permanently deleted successfully");
+        router.push("/users");
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to delete user");
+      }
+    } catch (err) {
+      console.error("Failed to delete user", err);
+      toast.error("Failed to delete user");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const maskNIK = (nik: string | null) => {
     if (!nik) return "-";
@@ -78,33 +109,63 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
     return nik.substring(0, 4) + "*".repeat(nik.length - 4);
   };
 
-  const getStatusBadge = () => {
-    if (item?.status === 1) {
+  const getSlcBadge = () => {
+    if (item?.activation_slc === 1) {
       return (
-        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Active</Badge>
+        <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+          SLC
+        </Badge>
       );
     }
-    return (
-      <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">Inactive</Badge>
-    );
+    return null;
+  };
+
+  const getLrtjPayBadge = () => {
+    if (item?.activation_lrtjpay === 1) {
+      return (
+        <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+          LRTJ Pay
+        </Badge>
+      );
+    }
+    return null;
   };
 
   if (loading) {
     return (
-      <div className="min-h-0 flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Details</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View user information</p>
-          </div>
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9" />
+          <Skeleton className="h-6 w-48" />
         </div>
-        <div className="space-y-4">
-          <div className="h-32 bg-gray-50 rounded-lg animate-pulse" />
-          <div className="h-48 bg-gray-50 rounded-lg animate-pulse" />
-          <div className="h-32 bg-gray-50 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-6 w-3/4 mb-4" />
+              <Skeleton className="h-4 w-1/4" />
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-16 mb-4" />
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-20 mb-4" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <Skeleton className="h-4 w-16 mb-4" />
+              <div className="grid grid-cols-2 gap-6">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -112,285 +173,212 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
 
   if (!item) {
     return (
-      <div className="min-h-0 flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Details</h1>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-gray-500">User not found.</p>
         </div>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-12 text-center">
-            <p className="text-sm text-gray-500">User not found.</p>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-0 flex flex-col">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/users")}
-            className="h-8 w-8 p-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Details</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View user information</p>
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          className="h-9 w-9"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">User Details</h1>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Title & Status Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">{item.name || "Unknown User"}</h2>
+                <div className="flex items-center gap-3">
+                  {getSlcBadge()}
+                  {getLrtjPayBadge()}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setDeleteItem(item)}
+                  className="h-9"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Info Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <div className="text-sm text-gray-900">{item.email}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
+                <div className="text-sm text-gray-900">{item.no_telepon || "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Gender</label>
+                <div className="text-sm text-gray-900">
+                  {item.jenis_kelamin === "L" ? "Laki-laki" : item.jenis_kelamin === "P" ? "Perempuan" : item.jenis_kelamin || "-"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
+                <div className="text-sm text-gray-900">{item.alamat || "-"}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Info Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">NIK</label>
+                <div className="text-sm text-gray-900">{maskNIK(item.nik)}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Place of Birth</label>
+                <div className="text-sm text-gray-900">{item.tempat_lahir || "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Birthday</label>
+                <div className="text-sm text-gray-900">{item.birthday || "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
+                <div className="text-sm text-gray-900">
+                  {item.province_name && item.regency_name 
+                    ? `${item.regency_name}, ${item.province_name}` 
+                    : item.province_name || item.regency_name || "-"}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        {getStatusBadge()}
-      </div>
 
-      {/* Content */}
-      <div className="space-y-4">
-        {/* Quick Stats */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Stats Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Account Statistics</h3>
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Award className="h-4 w-4 text-[#E5262C]" />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">SLC Points</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{item.slc_point.toLocaleString()}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">SLC Points</label>
+                <div className="text-sm text-gray-900 font-semibold">{item.slc_point.toLocaleString()}</div>
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-4 w-4 text-[#E5262C]" />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Trips</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{item.trip_count.toLocaleString()}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Trips</label>
+                <div className="text-sm text-gray-900 font-semibold">{item.trip_count.toLocaleString()}</div>
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <CreditCard className="h-4 w-4 text-[#E5262C]" />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">LRTJ Saldo</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{item.lrtj_saldo || "-"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Saldo</label>
+                <div className="text-sm text-gray-900 font-semibold">{item.lrtj_saldo || "-"}</div>
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="h-4 w-4 text-[#E5262C]" />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Membership</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{item.membership_name || "-"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Membership</label>
+                <div className="text-sm text-gray-900 font-semibold">{item.membership_name || "-"}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Basic Information */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <User className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Basic Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
+          {/* Activation Info Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Activation Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Name</p>
-                <p className="text-gray-900 font-medium">{item.name || "-"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">SLC Activation</label>
+                <div className="text-sm text-gray-900">{item.activation_slc === 1 ? "Activated" : "Not Activated"}</div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email</p>
-                <p className="text-gray-900 font-medium break-all">{item.email}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">SLC Activation Date</label>
+                <div className="text-sm text-gray-900">{item.activation_slc_at ? formatDisplayDate(item.activation_slc_at) : "-"}</div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Phone</p>
-                <p className="text-gray-900 font-medium">{item.no_telepon || "-"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Pay Activation</label>
+                <div className="text-sm text-gray-900">{item.activation_lrtjpay === 1 ? "Activated" : "Not Activated"}</div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Gender</p>
-                <p className="text-gray-900 font-medium">
-                  {item.jenis_kelamin === "L" ? "Laki-laki" : item.jenis_kelamin === "P" ? "Perempuan" : item.jenis_kelamin || "-"}
-                </p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Address</p>
-                <p className="text-gray-900 font-medium break-all">{item.alamat || "-"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Pay Activation Date</label>
+                <div className="text-sm text-gray-900">{item.activation_lrtjpay_at ? formatDisplayDate(item.activation_lrtjpay_at) : "-"}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Identity Information */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Shield className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Identity Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">NIK</p>
-                <p className="text-gray-900 font-medium break-all">{maskNIK(item.nik)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Birthplace</p>
-                <p className="text-gray-900 font-medium">{item.tempat_lahir || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Birthday</p>
-                <p className="text-gray-900 font-medium">{formatWIBDate(item.birthday)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Verified At</p>
-                <p className="text-gray-900 font-medium">{formatWIBDate(item.verified_at)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Location Information */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Globe className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Location Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Province</p>
-                <p className="text-gray-900 font-medium">{item.province_name || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Regency</p>
-                <p className="text-gray-900 font-medium">{item.regency_name || "-"}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card Information */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <CreditCard className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Card Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">KUE 1</p>
-                <p className="text-gray-900 font-medium break-all">{item.ecard || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">KUE 2</p>
-                <p className="text-gray-900 font-medium break-all">{item.ecard2 || "-"}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Activation Information */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Activity className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Activation Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">SLC Activation</p>
-                <p className="text-gray-900 font-medium">{item.activation_slc === 1 ? "Active" : "Inactive"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">SLC Activation Date</p>
-                <p className="text-gray-900 font-medium">{formatWIBDate(item.activation_slc_at)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">LRTJ Pay Activation</p>
-                <p className="text-gray-900 font-medium">{item.activation_lrtjpay === 1 ? "Active" : "Inactive"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">LRTJ Pay Activation Date</p>
-                <p className="text-gray-900 font-medium">{formatWIBDate(item.activation_lrtjpay_at)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notification Preferences */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Bell className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Notification Preferences</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
+          {/* Notification Preferences Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Notification Preferences</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Push Notifications</p>
-                <p className="text-gray-900 font-medium">{item.push_notification === 1 ? "Enabled" : "Disabled"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Push</label>
+                <div className="text-sm text-gray-900">{item.push_notification === 1 ? "Enabled" : "Disabled"}</div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email Notifications</p>
-                <p className="text-gray-900 font-medium">{item.email_notification === 1 ? "Enabled" : "Disabled"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <div className="text-sm text-gray-900">{item.email_notification === 1 ? "Enabled" : "Disabled"}</div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">New Content Notifications</p>
-                <p className="text-gray-900 font-medium">{item.new_content_notification === 1 ? "Enabled" : "Disabled"}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">New Content</label>
+                <div className="text-sm text-gray-900">{item.new_content_notification === 1 ? "Enabled" : "Disabled"}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Timestamps */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-gray-600" />
-              </div>
-              <CardTitle className="text-base font-semibold text-gray-900">Timestamps</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
+          {/* Metadata Card */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Metadata</h3>
+            <p className="text-xs text-gray-500 mb-4">Read-only information about this user</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Created At</p>
-                <p className="text-gray-900 font-medium">{formatWIBDate(item.created_at)}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Verified At</label>
+                <div className="text-sm text-gray-900">{item.verified_at ? formatDisplayDate(item.verified_at) : "-"}</div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Updated At</p>
-                <p className="text-gray-900 font-medium">{formatWIBDate(item.updated_at)}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
+                <div className="text-sm text-gray-900">{item.created_at ? formatDisplayDate(item.created_at) : "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
+                <div className="text-sm text-gray-900">{item.updated_at ? formatDisplayDate(item.updated_at) : "-"}</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteItem && (
+        <DeleteConfirmDialog
+          open={!!deleteItem}
+          onOpenChange={() => setDeleteItem(null)}
+          title="Permanently Delete User"
+          description={`Are you sure you want to permanently delete "${deleteItem.name}"? This action cannot be undone and the user will be completely removed from the database.`}
+          onConfirm={handleDelete}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 }

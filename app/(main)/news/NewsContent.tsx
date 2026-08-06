@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +14,8 @@ import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
-import { useDebouncedSearch } from "@/hooks/use-debounced-search";
+import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
+import { formatDisplayDate } from "@/lib/formatWIBDate";
 import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
 import Link from "next/link";
 import {
@@ -60,13 +60,13 @@ export default function NewsContent({ username }: NewsContentProps) {
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] = useState<string>("");
+  const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
   // Modal and CRUD states
-  const [viewItem, setViewItem] = useState<NewsItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<NewsItem | null>(null);
   const [previewItem, setPreviewItem] = useState<NewsItem | null>(null);
-  const [loadingViewItem, setLoadingViewItem] = useState(false);
 
 
   // Column visibility states
@@ -109,29 +109,53 @@ export default function NewsContent({ username }: NewsContentProps) {
     fetchItems();
   }, [statusFilter, sortBy, sortOrder]);
 
-  // Debounced search
-  const { handleSearchChange } = useDebouncedSearch({ delay: 300 });
+  // Search scopes for News
+  const newsSearchScopes: SearchScope[] = [
+    { field: "createdBy", label: "Created By" },
+    { field: "title", label: "News Title" },
+  ];
 
-  const onSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    handleSearchChange(() => {
-      // Search filtering is done client-side via filteredItems
-    });
-  }, [handleSearchChange]);
-
-  // Filter items based on search query (memoized for performance)
-  const filteredItems = items.filter(item =>
-    item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.title_en?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.createdBy?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
+  // Filter items based on search query and scope (memoized for performance)
+  const filteredItems = items.filter(item => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    if (searchScope === 'createdBy') {
+      return item.createdBy?.toLowerCase().includes(query) || item.creatorEmail?.toLowerCase().includes(query);
+    } else if (searchScope === 'title') {
+      return item.title?.toLowerCase().includes(query) || item.title_en?.toLowerCase().includes(query);
+    } else {
+      // Default: search both title and createdBy
+      return item.title?.toLowerCase().includes(query) ||
+             item.title_en?.toLowerCase().includes(query) ||
+             item.createdBy?.toLowerCase().includes(query) ||
+             item.creatorEmail?.toLowerCase().includes(query);
+    }
+  });
+  const activeFilterCount = (searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0);
 
   const handleResetFilters = () => {
+    setSearchQuery("");
+    setSearchScope("");
+    setShowScopeSuggestions(false);
     setStatusFilter("all");
     setTypeFilter("all");
     setSortBy("created_at");
     setSortOrder("desc");
+  };
+
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+  };
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setShowScopeSuggestions(value.length >= 2);
+    if (!value.trim()) {
+      setSearchScope("");
+    }
   };
 
   // Delete Item
@@ -158,25 +182,6 @@ export default function NewsContent({ username }: NewsContentProps) {
     }
   };
 
-  // View Item - fetch full data including creator email
-  const handleViewItem = async (item: NewsItem) => {
-    setLoadingViewItem(true);
-    try {
-      const res = await fetch(`/api/news/${item.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setViewItem(data);
-      } else {
-        toast.error("Failed to fetch news details");
-      }
-    } catch (err) {
-      console.error("Failed to fetch item", err);
-      toast.error("Failed to fetch news details");
-    } finally {
-      setLoadingViewItem(false);
-    }
-  };
-
   // Helper to check if HTML content is actually empty
   const isHtmlContentEmpty = (html: string | undefined | null): boolean => {
     if (!html) return true;
@@ -193,21 +198,21 @@ export default function NewsContent({ username }: NewsContentProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total News
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : totalNews}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-primary"
+                  className="h-6 w-6 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -223,20 +228,20 @@ export default function NewsContent({ username }: NewsContentProps) {
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Active
                 </p>
-                <p className="text-2xl font-bold text-green-700 mt-1">
+                <p className="text-3xl font-bold text-green-700 mt-2">
                   {loading ? "..." : active}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-green-700"
+                  className="h-6 w-6 text-green-700"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -252,20 +257,20 @@ export default function NewsContent({ username }: NewsContentProps) {
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Inactive
                 </p>
-                <p className="text-2xl font-bold text-gray-500 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : inactive}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-gray-500"
+                  className="h-6 w-6 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -284,7 +289,7 @@ export default function NewsContent({ username }: NewsContentProps) {
       </div>
 
       {/* Main Content Card */}
-      <Card>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
         <CardContent>
           <CardHeader className="p-3">
             <div className="flex flex-wrap items-center justify-between">
@@ -306,8 +311,8 @@ export default function NewsContent({ username }: NewsContentProps) {
                 <Input
                   placeholder="Search news..."
                   value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-9 min-h-[44px] w-full sm:w-64"
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-9 h-10 border border-gray-200 rounded-lg focus:border-gray-300 w-full sm:w-64"
                 />
                 {searchQuery && (
                   <Button
@@ -319,6 +324,13 @@ export default function NewsContent({ username }: NewsContentProps) {
                     <X className="h-4 w-4" />
                   </Button>
                 )}
+                <SearchScopeSuggestions
+                  searchQuery={searchQuery}
+                  scopes={newsSearchScopes}
+                  onScopeSelect={handleScopeSelect}
+                  isVisible={showScopeSuggestions}
+                  onClose={() => setShowScopeSuggestions(false)}
+                />
               </div>
               <TableFilterSortMenu
                 statusFilter={statusFilter}
@@ -334,6 +346,7 @@ export default function NewsContent({ username }: NewsContentProps) {
                   { value: "active", label: "Active" },
                   { value: "inactive", label: "Inactive" },
                 ]}
+                showStatusFilter={true}
                 showTypeFilter={true}
                 sortByOptions={[
                   { value: "created_at", label: "Created Date" },
@@ -344,75 +357,91 @@ export default function NewsContent({ username }: NewsContentProps) {
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px]">
                   <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, image: !prev.image }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.image && <Check className="h-4 w-4" />}
-                      <span>Image</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, title: !prev.title }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.title && <Check className="h-4 w-4" />}
-                      <span>Title</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, type: !prev.type }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.type && <Check className="h-4 w-4" />}
-                      <span>Type</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: !prev.status }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.status && <Check className="h-4 w-4" />}
-                      <span>Status</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, publish_date: !prev.publish_date }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.publish_date && <Check className="h-4 w-4" />}
-                      <span>Publish Date</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, views: !prev.views }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.views && <Check className="h-4 w-4" />}
-                      <span>Views</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, createdBy: !prev.createdBy }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.createdBy && <Check className="h-4 w-4" />}
-                      <span>Created By</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: !prev.actions }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.actions && <Check className="h-4 w-4" />}
-                      <span>Actions</span>
-                    </div>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
+                  {visibleColumns.image && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, image: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Image</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.title && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, title: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Title</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.type && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, type: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Type</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.status && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Status</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.publish_date && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, publish_date: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Publish Date</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.views && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, views: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Views</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.createdBy && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, createdBy: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Created By</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.actions && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Actions</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
 
           {/* Table - Desktop */}
-          <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
+          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
+              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
                 <TableRow>
                   {visibleColumns.image && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-40">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-40">
                       Image
                     </TableHead>
                   )}
                   {visibleColumns.title && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px] max-w-[140px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px] max-w-[140px]">
                       <div className="flex items-center gap-1">
                         Title
                         <ChevronDown className="h-3 w-3" />
@@ -420,144 +449,144 @@ export default function NewsContent({ username }: NewsContentProps) {
                     </TableHead>
                   )}
                   {visibleColumns.type && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
                       Type
                     </TableHead>
                   )}
                   {visibleColumns.status && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-24">
                       Status
                     </TableHead>
                   )}
                   {visibleColumns.publish_date && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-28">
                       Publish Date
                     </TableHead>
                   )}
                   {visibleColumns.views && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-20">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-20">
                       Views
                     </TableHead>
                   )}
                   {visibleColumns.createdBy && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[100px] max-w-[120px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[100px] max-w-[120px]">
                       Created By
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider text-center w-32">
                       Actions
                     </TableHead>
                   )}
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-50">
+              <TableBody className="divide-y divide-gray-200">
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
-                      {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.publish_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.views && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.createdBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="aspect-video w-28 rounded" /></TableCell>}
+                      {visibleColumns.title && <TableCell><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.type && <TableCell><Skeleton className="h-3 w-20" /></TableCell>}
+                      {visibleColumns.status && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.publish_date && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.views && <TableCell><Skeleton className="h-3 w-16" /></TableCell>}
+                      {visibleColumns.createdBy && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
-                      {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.publish_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.views && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.createdBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="aspect-video w-28 rounded" /></TableCell>}
+                      {visibleColumns.title && <TableCell><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.type && <TableCell><Skeleton className="h-3 w-20" /></TableCell>}
+                      {visibleColumns.status && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.publish_date && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.views && <TableCell><Skeleton className="h-3 w-16" /></TableCell>}
+                      {visibleColumns.createdBy && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.image && <TableCell><Skeleton className="h-32 w-40 rounded" /></TableCell>}
-                      {visibleColumns.title && <TableCell><Skeleton className="h-4 w-40" /></TableCell>}
-                      {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.status && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-                      {visibleColumns.publish_date && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.views && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.createdBy && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.image && <TableCell><Skeleton className="aspect-video w-28 rounded" /></TableCell>}
+                      {visibleColumns.title && <TableCell><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.type && <TableCell><Skeleton className="h-3 w-20" /></TableCell>}
+                      {visibleColumns.status && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.publish_date && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.views && <TableCell><Skeleton className="h-3 w-16" /></TableCell>}
+                      {visibleColumns.createdBy && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                   </>
                 ) : filteredItems.length > 0 ? (
                   filteredItems.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.image && (
-                        <TableCell className="px-3 py-1.5">
-                          <div className="h-32 w-40 rounded bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                        <TableCell className="px-2 py-1.5">
+                          <div className="aspect-video w-28 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                             <img
                               src={getImageUrl(item.img_url)}
                               alt={item.title || "News"}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                                (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
+                                (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";
                               }}
                             />
                           </div>
                         </TableCell>
                       )}
                       {visibleColumns.title && (
-                        <TableCell className="px-3 py-1.5 text-xs font-medium text-gray-900 max-w-[140px]">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900 max-w-[140px]">
                           <span className="block truncate" title={item.title || item.title_en || ""}>
                             {item.title || item.title_en || "-"}
                           </span>
                         </TableCell>
                       )}
                       {visibleColumns.type && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-2 py-1.5">
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {item.type || "general"}
                           </Badge>
                         </TableCell>
                       )}
                       {visibleColumns.status && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-2 py-1.5">
                           {item.status === 1 ? (
-                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px]">
+                            <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-[10px] px-1.5 py-0.5">
                               Active
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px]">
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px] px-1.5 py-0.5">
                               Inactive
                             </Badge>
                           )}
                         </TableCell>
                       )}
                       {visibleColumns.publish_date && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
-                          {item.publish_date ? item.publish_date.split('T')[0] : "-"}
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
+                          {formatDisplayDate(item.publish_date)}
                         </TableCell>
                       )}
                       {visibleColumns.views && (
-                        <TableCell className="px-3 py-1.5 text-xs font-semibold text-gray-700">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-semibold text-gray-700">
                           {item.views.toString()}
                         </TableCell>
                       )}
                       {visibleColumns.createdBy && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 truncate max-w-[140px]" title={item.createdBy || ""}>
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 truncate max-w-[140px]" title={item.createdBy || ""}>
                           {item.createdBy || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-3 py-1.5 text-center">
+                        <TableCell className="px-2 py-1.5 text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground p-0">
                               <MoreVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                handleViewItem(item);
-                              }} className="text-xs h-8">
-                                <Eye className="h-3.5 w-3.5 mr-2" />
-                                View
-                              </DropdownMenuItem>
+                              <Link href={`/news/view/${item.id}`}>
+                                <DropdownMenuItem className="text-xs h-8">
+                                  <Eye className="h-3.5 w-3.5 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                              </Link>
                               <Link href={`/news/edit/${item.id}`}>
                                 <DropdownMenuItem className="text-xs h-8">
                                   <Pencil className="h-3.5 w-3.5 mr-2" />
@@ -590,32 +619,32 @@ export default function NewsContent({ username }: NewsContentProps) {
           <div className="md:hidden space-y-3">
             {loading ? (
               <>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="flex gap-3 items-start">
-                    <Skeleton className="h-32 w-24 rounded-lg" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                  <div className="flex gap-2 items-start">
+                    <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
-                      <Skeleton className="h-5 w-32" />
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-24" />
-                      <div className="flex gap-2 mt-3">
-                        <Skeleton className="h-11 w-11" />
-                        <Skeleton className="h-11 w-11" />
-                        <Skeleton className="h-11 w-11" />
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-24" />
+                      <div className="flex gap-2 mt-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="flex gap-3 items-start">
-                    <Skeleton className="h-32 w-24 rounded-lg" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                  <div className="flex gap-2 items-start">
+                    <Skeleton className="h-20 w-16 rounded-lg" />
                     <div className="flex-1 min-w-0 space-y-2">
-                      <Skeleton className="h-5 w-32" />
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-24" />
-                      <div className="flex gap-2 mt-3">
-                        <Skeleton className="h-11 w-11" />
-                        <Skeleton className="h-11 w-11" />
-                        <Skeleton className="h-11 w-11" />
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-24" />
+                      <div className="flex gap-2 mt-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
                       </div>
                     </div>
                   </div>
@@ -623,73 +652,65 @@ export default function NewsContent({ username }: NewsContentProps) {
               </>
             ) : filteredItems.length > 0 ? (
               filteredItems.map((item) => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="flex gap-3 items-start">
-                    <div className="h-32 w-24 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100 flex-shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
+                <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                  <div className="flex gap-2 items-start">
+                    <div className="h-20 w-16 rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-200 shrink-0 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setPreviewItem(item)}>
                       <img
                         src={getImageUrl(item.img_url)}
                         alt={item.title || "News"}
                         className="h-full w-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/logo-lrtj.png";
-                          (e.target as HTMLImageElement).className = "h-8 w-auto object-contain brightness-95";
+                          (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";
                         }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">
-                          {item.title || item.title_en || "-"}
-                        </h3>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="text-[11px] font-semibold text-gray-900 truncate">{item.title || item.title_en || "-"}</h3>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{item.views.toString()} views</p>
+                        </div>
                         {item.status === 1 ? (
-                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 text-[10px] shrink-0">
+                          <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-[10px] px-1.5 py-0.5 shrink-0">
                             Active
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] shrink-0">
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px] px-1.5 py-0.5 shrink-0">
                             Inactive
                           </Badge>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {item.type || "general"}
-                        </Badge>
-                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                        {item.publish_date ? item.publish_date.split('T')[0] : "-"}
-                        </span>
-                        <span className="text-[10px] text-gray-500">
-                          {item.views.toString()} views
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewItem(item)}
-                          className="min-h-[44px] px-3"
-                          aria-label="View"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                      <p className="text-[10px] text-gray-500 mt-1 truncate">Created by: {item.createdBy || "-"}</p>
+                      <div className="flex gap-2 mt-2">
+                        <Link href={`/news/view/${item.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="min-h-[32px] px-2 h-8"
+                            aria-label="View"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </Link>
                         <Link href={`/news/edit/${item.id}`}>
                           <Button
-                            size="sm"
                             variant="outline"
-                            className="min-h-[44px] px-3"
+                            size="sm"
+                            className="min-h-[32px] px-2 h-8 border-[#E5262C]/30 text-[#E5262C] hover:bg-[#E5262C]/5"
                             aria-label="Edit"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3 w-3" />
                           </Button>
                         </Link>
                         <Button
-                          size="sm"
                           variant="outline"
+                          size="sm"
                           onClick={() => setDeleteItem(item)}
-                          className="min-h-[44px] px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="min-h-[32px] px-2 h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                           aria-label="Delete"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -697,165 +718,13 @@ export default function NewsContent({ username }: NewsContentProps) {
                 </div>
               ))
             ) : (
-              <div className="bg-white border border-gray-100 rounded-xl p-12 text-center shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-lg p-12 text-center shadow-sm">
                 <p className="text-xs text-gray-400">No news items found.</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
-
-
-      {/* View Dialog */}
-      <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="max-w-md sm:max-w-2xl md:max-w-3xl max-h-[85vh] flex flex-col w-[calc(100%-2rem)] sm:w-auto overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>News Details</DialogTitle>
-          </DialogHeader>
-          {viewItem && (
-            <div className="overflow-y-auto space-y-4 rounded-b-xl scrollbar-hide">
-              {/* Featured Image */}
-              {viewItem.img_url && (
-                <div className="flex justify-center">
-                  <div className="rounded-lg overflow-hidden max-w-lg w-full">
-                    <img
-                      src={getImageUrl(viewItem.img_url)}
-                      alt={viewItem.title || "News"}
-                      className="w-full h-auto object-cover"
-                    />
-                    {viewItem.caption_image && (
-                      <p className="text-xs text-gray-500 mt-2 italic px-1">{viewItem.caption_image}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {/* Title as H1 */}
-              {(viewItem.title || viewItem.title_en) && (
-                <h1 className="text-[12px] sm:text-[18px] font-bold text-gray-900 leading-tight">
-                  {viewItem.title || viewItem.title_en}
-                </h1>
-              )}
-              {/* Type and Status */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
-                {viewItem.type && (
-                  <div>
-                    <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                      Type
-                    </span>
-                    <Badge variant="outline" className="text-[10px] capitalize">
-                      {viewItem.type}
-                    </Badge>
-                  </div>
-                )}
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Status
-                  </span>
-                  {viewItem.status === 1 ? (
-                    <Badge variant="default" className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100">
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
-                      Inactive
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              {/* Publish Date and Views */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700">
-                {viewItem.publish_date && (
-                  <div>
-                    <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                      Publish Date
-                    </span>
-                    {viewItem.publish_date.split('T')[0]}
-                  </div>
-                )}
-                <div>
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Views
-                  </span>
-                  {viewItem.views.toString()}
-                </div>
-              </div>
-              {/* Created By */}
-              {viewItem.createdBy && (
-                <div className="text-xs sm:text-sm text-gray-700">
-                  <span className="block text-[10px] sm:text-xs uppercase font-semibold text-gray-600 mb-0.5 tracking-wider">
-                    Created By
-                  </span>
-                  <div>
-                    <div className="font-medium">{viewItem.createdBy}</div>
-                    {viewItem.creatorEmail && (
-                      <div className="text-gray-500 text-xs">{viewItem.creatorEmail}</div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {/* Title (Indonesian) - only if different from main title */}
-              {viewItem.title && viewItem.title_en && (
-                <div>
-                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-                    Title (Indonesian)
-                  </div>
-                  <div className="text-sm text-gray-700">{viewItem.title}</div>
-                </div>
-              )}
-              {/* Title (English) - only if different from main title */}
-              {viewItem.title_en && viewItem.title && (
-                <div>
-                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-                    Title (English)
-                  </div>
-                  <div className="text-sm text-gray-700">{viewItem.title_en}</div>
-                </div>
-              )}
-              {/* Content (Indonesian) */}
-              {!isHtmlContentEmpty(viewItem.content) && (
-                <div>
-                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-                    Content (Indonesian)
-                  </div>
-                  <div
-                    className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-3 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2"
-                    dangerouslySetInnerHTML={{ __html: viewItem.content || "" }}
-                  />
-                </div>
-              )}
-              {/* Content (English) */}
-              {!isHtmlContentEmpty(viewItem.content_en) && (
-                <div>
-                  <div className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 sm:mb-2">
-                    Content (English)
-                  </div>
-                  <div
-                    className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-3 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2"
-                    dangerouslySetInnerHTML={{ __html: viewItem.content_en || "" }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter className="pt-4">
-            <Link href={`/news/edit/${viewItem?.id}`}>
-              <Button
-                variant="outline"
-                className="min-h-[44px] border-primary/30 text-primary hover:bg-primary/5"
-              >
-                Edit
-              </Button>
-            </Link>
-            <Button
-              onClick={() => setViewItem(null)}
-              variant="outline"
-              className="min-h-[44px]"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog

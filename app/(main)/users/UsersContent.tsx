@@ -14,8 +14,8 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Pagination from "@/components/Pagination";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
-import { formatWIBDate } from "@/lib/formatWIBDate";
-import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter, Download, CheckSquare, Square } from "lucide-react";
+import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
+import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -75,7 +75,6 @@ export default function UsersContent({ username }: UsersContentProps) {
   // Filter and Sort states
   const [activationSlcFilter, setActivationSlcFilter] = useState<string>("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -88,21 +87,17 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState({
-    select: true,
     nama: true,
     email: true,
+    activation_slc: true,
     tier: true,
     created_at: true,
     actions: true,
   });
 
-  // Row selection states
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-
   // Export job hook
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (statusFilter !== "all") params.status = statusFilter;
     if (activationSlcFilter !== "all") params.activation_slc = activationSlcFilter;
     if (tierFilter !== "all") params.tier = tierFilter;
     if (sortBy) params.sortBy = sortBy;
@@ -111,14 +106,14 @@ export default function UsersContent({ username }: UsersContentProps) {
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
     return params;
-  }, [statusFilter, activationSlcFilter, tierFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo]);
 
   const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/users',
     params: exportParams,
     onError: (msg) => toast.error(msg),
   });
-  
+
   // Membership options for tier filter
   const [membershipOptions, setMembershipOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All" },
@@ -129,7 +124,6 @@ export default function UsersContent({ username }: UsersContentProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
       if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
       if (tierFilter !== "all") params.set("tier", tierFilter);
       if (sortBy) params.set("sortBy", sortBy);
@@ -181,17 +175,16 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
 
-  const activeFilterCount = (statusFilter !== "active" ? 1 : 0) + (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const handleResetFilters = () => {
-    setStatusFilter("active");
     setActivationSlcFilter("all");
     setTierFilter("all");
     setDateFrom("");
@@ -202,7 +195,7 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   // Delete Item
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   const handleDelete = async () => {
     if (!deleteItem) return;
     setIsDeleting(true);
@@ -237,29 +230,6 @@ export default function UsersContent({ username }: UsersContentProps) {
   const activeSlc = activeSlcCount;
   const inactiveSlc = inactiveSlcCount;
 
-  // Handle row selection
-  const handleSelectRow = (id: number) => {
-    setSelectedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedRows.size === items.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(items.map(item => item.id)));
-    }
-  };
-
-
-
   // Helper function to get badge color based on membership name
   const getTierBadgeColor = (membershipName: string | null) => {
     if (!membershipName) {
@@ -276,6 +246,22 @@ export default function UsersContent({ username }: UsersContentProps) {
     return "bg-gray-100 text-gray-600";
   };
 
+  // Helper function to get activation SLC badge
+  const getActivationSlcBadge = (activationSlc: number) => {
+    if (activationSlc === 1) {
+      return (
+        <Badge className="bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-[10px] px-1.5 py-0.5">
+          Activated
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 text-[10px] px-1.5 py-0.5">
+        Not Activated
+      </Badge>
+    );
+  };
+
   const getTierDisplay = (membershipName: string | null) => {
     if (!membershipName) return "-";
     return membershipName;
@@ -285,38 +271,67 @@ export default function UsersContent({ username }: UsersContentProps) {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Total Records
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Total Users
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : totalUsers}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="h-5 w-5 text-primary" />
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+                <Users className="h-6 w-6 text-gray-600" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent>
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Inactive SLC Users
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Active SLC
                 </p>
-                <p className="text-2xl font-bold text-gray-500 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {loading ? "..." : activeSlc}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+                <svg
+                  className="h-6 w-6 text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Inactive SLC
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : inactiveSlc}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-gray-500"
+                  className="h-6 w-6 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -335,7 +350,7 @@ export default function UsersContent({ username }: UsersContentProps) {
       </div>
 
       {/* Main Content Card */}
-      <Card>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
         <CardContent>
           <CardHeader className="p-3">
             <CardTitle className="text-lg">User Management</CardTitle>
@@ -350,7 +365,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                   placeholder="Search by name, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 min-h-[44px] w-full sm:w-64"
+                  className="pl-9 min-h-[44px] w-full sm:w-64 shadow-sm"
                 />
                 {searchQuery && (
                   <Button
@@ -364,8 +379,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                 )}
               </div>
               <TableFilterSortMenu
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
                 activationSlcFilter={activationSlcFilter}
                 onActivationSlcFilterChange={setActivationSlcFilter}
                 tierFilter={tierFilter}
@@ -374,7 +387,6 @@ export default function UsersContent({ username }: UsersContentProps) {
                 onSortByChange={setSortBy}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                showStatusFilter={true}
                 showActivationSlcFilter={true}
                 showTierFilter={true}
                 tierOptions={membershipOptions}
@@ -391,7 +403,7 @@ export default function UsersContent({ username }: UsersContentProps) {
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
                   <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -405,6 +417,12 @@ export default function UsersContent({ username }: UsersContentProps) {
                     <div className="flex items-center gap-2">
                       {visibleColumns.email && <Check className="h-4 w-4" />}
                       <span>Email</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, activation_slc: !prev.activation_slc }))}>
+                    <div className="flex items-center gap-2">
+                      {visibleColumns.activation_slc && <Check className="h-4 w-4" />}
+                      <span>Activation SLC</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, tier: !prev.tier }))}>
@@ -445,45 +463,37 @@ export default function UsersContent({ username }: UsersContentProps) {
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
                 <TableRow>
-                  {visibleColumns.select && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-10">
-                      <button
-                        onClick={handleSelectAll}
-                        className="flex items-center justify-center"
-                      >
-                        {selectedRows.size === items.length && items.length > 0 ? (
-                          <CheckSquare className="h-4 w-4" />
-                        ) : (
-                          <Square className="h-4 w-4" />
-                        )}
-                      </button>
-                    </TableHead>
-                  )}
                   {visibleColumns.nama && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[140px] max-w-[180px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
                       Name
                     </TableHead>
                   )}
                   {visibleColumns.email && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[160px] max-w-[220px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
                       Email
                     </TableHead>
                   )}
+                  {visibleColumns.activation_slc && (
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-28">
+                      Activation SLC
+                    </TableHead>
+                  )}
                   {visibleColumns.tier && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-24">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-24">
                       Tier
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
-                      Created At
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">
+                      Created
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-2 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-32">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
@@ -493,85 +503,76 @@ export default function UsersContent({ username }: UsersContentProps) {
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.tier && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.nama && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.email && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.activation_slc && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.tier && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.tier && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.nama && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.email && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.activation_slc && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.tier && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.select && <TableCell><Skeleton className="h-5 w-5" /></TableCell>}
-                      {visibleColumns.nama && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.email && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.tier && <TableCell><Skeleton className="h-4 w-16" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-20" /></TableCell>}
+                      {visibleColumns.nama && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.email && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-40" /></TableCell>}
+                      {visibleColumns.activation_slc && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.tier && <TableCell className="px-2 py-1.5"><Skeleton className="h-4 w-16" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.actions && <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-20" /></TableCell>}
                     </TableRow>
                   </>
                 ) : items.length > 0 ? (
                   items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                      {visibleColumns.select && (
-                        <TableCell className="px-2 py-1">
-                          <button
-                            onClick={() => handleSelectRow(item.id)}
-                            className="flex items-center justify-center"
-                          >
-                            {selectedRows.has(item.id) ? (
-                              <CheckSquare className="h-4 w-4" />
-                            ) : (
-                              <Square className="h-4 w-4" />
-                            )}
-                          </button>
-                        </TableCell>
-                      )}
                       {visibleColumns.nama && (
-                        <TableCell className="px-2 py-1 text-xs font-medium text-gray-900 max-w-[140px]">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900 max-w-[140px]">
                           <span className="block truncate" title={item.name || ""}>
                             {item.name || "-"}
                           </span>
                         </TableCell>
                       )}
                       {visibleColumns.email && (
-                        <TableCell className="px-2 py-1 text-xs text-gray-600 truncate max-w-[160px]" title={item.email || ""}>
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600 truncate max-w-[160px]" title={item.email || ""}>
                           {item.email}
                         </TableCell>
                       )}
+                      {visibleColumns.activation_slc && (
+                        <TableCell className="px-2 py-1.5">
+                          {getActivationSlcBadge(item.activation_slc)}
+                        </TableCell>
+                      )}
                       {visibleColumns.tier && (
-                        <TableCell className="px-2 py-1">
-                          <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getTierBadgeColor(item.membership_name)}`}>
+                        <TableCell className="px-2 py-1.5">
+                          <Badge className={`text-[10px] px-2 py-1 rounded-full font-medium ${getTierBadgeColor(item.membership_name)}`}>
                             {getTierDisplay(item.membership_name)}
                           </Badge>
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
-                        <TableCell className="px-2 py-1 text-xs text-gray-600">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
                           {formatWIBDate(item.created_at)}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-2 py-1 text-center">
+                        <TableCell className="px-2 py-1.5 text-center">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground p-0">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                            <DropdownMenuTrigger className="h-6 w-6 inline-flex items-center justify-center rounded-md hover:bg-gray-100 p-0 transition-colors">
+                              <MoreVertical className="h-3 w-3" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => router.push(`/users/${item.id}`)} className="text-xs h-8">
-                                <Eye className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => router.push(`/users/${item.id}`)} className="text-[10px] h-6">
+                                <Eye className="h-3 w-3 mr-2" />
                                 View
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => confirmDelete(item)} variant="destructive" className="text-xs h-8">
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              <DropdownMenuItem onClick={() => confirmDelete(item)} variant="destructive" className="text-[10px] h-6">
+                                <Trash2 className="h-3 w-3 mr-2" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -582,85 +583,85 @@ export default function UsersContent({ username }: UsersContentProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 py-12 text-center text-xs text-gray-400">
+                    <TableCell colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-2 py-6 text-center text-[11px] text-gray-500">
                       No users found.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Card List - Mobile */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-2">
             {loading ? (
               <>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-24" />
-                    <div className="flex gap-2 mt-3">
-                      <Skeleton className="h-10 flex-1" />
-                      <Skeleton className="h-10 flex-1" />
-                      <Skeleton className="h-10 flex-1" />
-                    </div>
+                <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-24" />
-                    <div className="flex gap-2 mt-3">
-                      <Skeleton className="h-10 flex-1" />
-                      <Skeleton className="h-10 flex-1" />
-                      <Skeleton className="h-10 flex-1" />
-                    </div>
+                <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
                 </div>
               </>
             ) : items.length > 0 ? (
               items.map((item) => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">{item.name || "-"}</h3>
-                      <p className="text-xs text-gray-600 truncate">{item.email}</p>
-                      {visibleColumns.tier && (
-                        <div className="mt-2">
-                          <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getTierBadgeColor(item.membership_name)}`}>
-                            {getTierDisplay(item.membership_name)}
-                          </Badge>
+                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="text-[11px] font-semibold text-gray-900 truncate">{item.name || "-"}</h3>
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">{item.email}</p>
+                        <div className="flex gap-1.5 mt-1">
+                          {visibleColumns.activation_slc && (
+                            <div>
+                              {getActivationSlcBadge(item.activation_slc)}
+                            </div>
+                          )}
+                          {visibleColumns.tier && (
+                            <div>
+                              <Badge className={`text-[10px] px-2 py-1 rounded-full font-medium ${getTierBadgeColor(item.membership_name)}`}>
+                                {getTierDisplay(item.membership_name)}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/users/${item.id}`)}
-                      className="flex-1 min-h-[36px] text-xs"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => confirmDelete(item)}
-                      className="flex-1 min-h-[36px] text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Delete
-                    </Button>
+                    <div className="flex gap-2 mt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/users/${item.id}`)}
+                        className="flex-1 min-h-[28px] text-[10px]"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => confirmDelete(item)}
+                        className="flex-1 min-h-[28px] text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="bg-white border border-gray-100 rounded-xl p-8 shadow-sm text-center">
-                <p className="text-xs text-gray-400">No users found.</p>
+                <p className="text-[11px] text-gray-500">No users found.</p>
               </div>
             )}
           </div>
@@ -682,14 +683,7 @@ export default function UsersContent({ username }: UsersContentProps) {
         open={!!deleteItem}
         onOpenChange={(open) => !open && setDeleteItem(null)}
         title="Permanently Delete User"
-        description={
-          <>
-            Are you sure you want to permanently delete "{deleteItem?.name}"? This action cannot be undone and the user will be completely removed from the database.
-            <span className="block mt-2 text-red-600 font-medium">
-              Warning: This is a permanent hard delete. The user account and all associated data will be irretrievably lost.
-            </span>
-          </>
-        }
+        description={`Are you sure you want to permanently delete "${deleteItem?.name}"? This action cannot be undone and the user will be completely removed from the database. Warning: This is a permanent hard delete. The user account and all associated data will be irretrievably lost.`}
         onConfirm={handleDelete}
         isDeleting={isDeleting}
       />

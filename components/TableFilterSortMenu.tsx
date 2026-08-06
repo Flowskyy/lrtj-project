@@ -169,10 +169,34 @@ export default function TableFilterSortMenu({
               </div>
             </div>
           )}
-          
+
+          {showTypeFilter && onTypeFilterChange && (
+            <div className="space-y-1.5">
+              <div className="px-2 py-0.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Type</label>
+              </div>
+              <div className="px-2 pb-1.5">
+                <Select value={typeFilter} onValueChange={(v) => onTypeFilterChange(v || 'all')}>
+                  <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectValue placeholder="Select type">
+                      {typeOptions.find(opt => opt.value === typeFilter)?.label || "Select type"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent side="bottom">
+                    {typeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {showGenderFilter && onGenderFilterChange && (
             <>
-              <DropdownMenuSeparator className="my-1.5" />
+              {(showStatusFilter || showTypeFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Gender</label>
@@ -199,7 +223,7 @@ export default function TableFilterSortMenu({
           
           {showVerifiedFilter && onVerifiedFilterChange && (
             <>
-              <DropdownMenuSeparator className="my-1.5" />
+              {(showStatusFilter || showTypeFilter || showGenderFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Verified</label>
@@ -226,7 +250,7 @@ export default function TableFilterSortMenu({
 
           {showActivationSlcFilter && onActivationSlcFilterChange && (
             <>
-              <DropdownMenuSeparator className="my-1.5" />
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Activation SLC</label>
@@ -253,7 +277,7 @@ export default function TableFilterSortMenu({
 
           {showTierFilter && onTierFilterChange && (
             <>
-              <DropdownMenuSeparator className="my-1.5" />
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Tier</label>
@@ -278,36 +302,9 @@ export default function TableFilterSortMenu({
             </>
           )}
 
-          {showTypeFilter && onTypeFilterChange && (
-            <>
-              <DropdownMenuSeparator className="my-1.5" />
-              <div className="space-y-1.5">
-                <div className="px-2 py-0.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Type</label>
-                </div>
-                <div className="px-2 pb-1.5">
-                  <Select value={typeFilter} onValueChange={(v) => onTypeFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
-                      <SelectValue placeholder="Select type">
-                        {typeOptions.find(opt => opt.value === typeFilter)?.label || "Select type"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent side="bottom">
-                      {typeOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </>
-          )}
-
           {showCategoryFilter && onCategoryFilterChange && (
             <>
-              {(showStatusFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter) && <DropdownMenuSeparator className="my-1.5" />}
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Category</label>
@@ -334,7 +331,7 @@ export default function TableFilterSortMenu({
           
           {showDateRange && onDateFromChange && onDateToChange && (
             <>
-              {(showStatusFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter) && <DropdownMenuSeparator className="my-1.5" />}
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">From Date</label>
@@ -364,7 +361,7 @@ export default function TableFilterSortMenu({
           
           {onResetFilters && activeFilterCount > 0 && (
             <>
-              {(showStatusFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showDateRange) && <DropdownMenuSeparator className="my-1.5" />}
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showDateRange) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="px-2 pb-1.5">
                 <button
                   onClick={onResetFilters}

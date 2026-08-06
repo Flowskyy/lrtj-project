@@ -139,11 +139,11 @@ export default function ImageUpload({ value, onChange, label = "Image", recommen
       {value ? (
         // Uploaded state - 16:9 thumbnail preview with buttons beside
         <div className="flex flex-col sm:flex-row items-start gap-4">
-          <div className="w-full sm:w-[480px] h-[270px] rounded-lg overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-100">
+          <div className="w-full sm:w-[480px] aspect-video rounded-lg overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-100">
             <img
               src={getImageUrl(value)}
               alt="Uploaded image"
-              className="w-full h-full object-contain object-center"
+              className="w-full h-full object-cover"
             />
           </div>
           <div className="flex flex-row sm:flex-col gap-2 sm:gap-3 sm:self-center sm:w-[200px]">
@@ -209,9 +209,9 @@ export default function ImageUpload({ value, onChange, label = "Image", recommen
           />
         </div>
       ) : (
-        // Empty state - drag-drop zone
+        // Empty state - drag-drop zone (16:9 aspect ratio)
         <div
-          className={`relative w-full sm:w-[240px] h-auto sm:h-[135px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-colors cursor-pointer flex-shrink-0 ${
+          className={`relative w-full aspect-video sm:w-[480px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-colors cursor-pointer flex-shrink-0 ${
             isDragging
               ? 'border-[#E5262C] bg-red-50'
               : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'

@@ -123,7 +123,7 @@ export function DateTimePicker({
           </Button>
         }
       />
-      <PopoverContent className="w-auto p-0" align="start" side="right">
+      <PopoverContent className="w-auto p-0" align="end" side="bottom">
         <div className="p-3 space-y-3">
           <Calendar
             mode="single"

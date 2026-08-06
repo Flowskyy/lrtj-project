@@ -334,6 +334,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Edit News",
         breadcrumb: ["News", "Edit News"],
       }
+    : pathname.startsWith("/news/view/")
+    ? {
+        title: "View News",
+        breadcrumb: ["News", "View News"],
+      }
     : pathname === "/notifications"
     ? {
         title: "Notifications",

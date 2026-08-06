@@ -41,22 +41,25 @@ export async function GET(
 
     if (userData.province_id) {
       province = await prisma.provinces.findUnique({
-        where: { id: userData.province_id },
+        where: { id: Number(userData.province_id) },
       });
     }
     if (userData.regency_id) {
       regency = await prisma.regencies.findUnique({
-        where: { id: userData.regency_id },
+        where: { id: Number(userData.regency_id) },
       });
     }
     if (userData.member_level_id) {
       membership = await prisma.membership.findUnique({
-        where: { id: userData.member_level_id },
+        where: { id: Number(userData.member_level_id) },
       });
     }
 
     return NextResponse.json({
       ...userData,
+      province_id: userData.province_id ? Number(userData.province_id) : null,
+      regency_id: userData.regency_id ? Number(userData.regency_id) : null,
+      member_level_id: userData.member_level_id ? Number(userData.member_level_id) : null,
       province_name: province?.name || null,
       regency_name: regency?.name || null,
       membership_name: membership?.name || null,

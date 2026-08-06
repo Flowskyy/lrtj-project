@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import TypeDropdown from "@/components/TypeDropdown";
 import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
+import { DatePicker } from "@/components/ui/date-picker";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -188,6 +189,16 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
                 </div>
               </div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Publish Date
+              </label>
+              <DatePicker
+                value={formPublishDate}
+                onChange={setFormPublishDate}
+                placeholder="Select publish date"
+              />
+            </div>
           </div>
         </section>
 
@@ -242,25 +253,6 @@ Format: JPG / PNG / WebP"
               disableTable={true}
               onDirtyChange={setHasUnsavedRichTextChanges}
             />
-          </div>
-        </section>
-
-        {/* Publishing Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">Publishing</h2>
-          <p className="text-sm text-gray-500 mb-6">Configure when this news article should be published</p>
-          
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Publish Date
-              </label>
-              <Input
-                type="date"
-                value={formPublishDate}
-                onChange={(e) => setFormPublishDate(e.target.value)}
-              />
-            </div>
           </div>
         </section>
       </form>

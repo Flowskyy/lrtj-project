@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import TypeDropdown from "@/components/TypeDropdown";
 import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
+import { DatePicker } from "@/components/ui/date-picker";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
+import { formatDisplayDate } from "@/lib/formatWIBDate";
 import dynamic from "next/dynamic";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 
@@ -261,6 +263,16 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
                 </div>
               </div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Publish Date
+              </label>
+              <DatePicker
+                value={formPublishDate}
+                onChange={setFormPublishDate}
+                placeholder="Select publish date"
+              />
+            </div>
           </div>
         </section>
 
@@ -318,45 +330,33 @@ Format: JPG / PNG / WebP"
           </div>
         </section>
 
-        {/* Publishing Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">Publishing</h2>
-          <p className="text-sm text-gray-500 mb-6">Configure when this news article should be published</p>
-          
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Publish Date
-              </label>
-              <Input
-                type="date"
-                value={formPublishDate}
-                onChange={(e) => setFormPublishDate(e.target.value)}
-              />
-            </div>
-          </div>
-        </section>
-
         {/* Metadata Section */}
-        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">Metadata</h2>
-          <p className="text-sm text-gray-500 mb-6">Read-only information about this news article</p>
+        <section className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-1">Metadata</h2>
+          <p className="text-xs text-gray-500 mb-4">Read-only information about this news article</p>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Views
-              </label>
-              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                {item.views.toString()}
+              <label className="block text-xs font-medium text-gray-500 mb-1">Views</label>
+              <div className="text-sm text-gray-900 font-semibold flex items-center gap-2">
+                <Eye className="h-4 w-4 text-gray-400" />
+                {item.views?.toString() || "0"}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Created
-              </label>
-              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                {item.created_at ? item.created_at.split('T')[0] : "-"}
+              <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
+              <div className="text-sm text-gray-900">
+                {item.created_at ? formatDisplayDate(item.created_at) : "-"}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Created By</label>
+              <div className="text-sm text-gray-900">{item.creatorEmail || item.createdBy || "-"}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
+              <div className="text-sm text-gray-900">
+                {item.updated_at ? formatDisplayDate(item.updated_at) : "-"}
               </div>
             </div>
           </div>

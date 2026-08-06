@@ -54,7 +54,7 @@ export function DatePicker({
           </Button>
         }
       />
-      <PopoverContent className="w-auto p-0" align="start" side="right">
+      <PopoverContent className="w-auto p-0" align="start" side="right" sideOffset={8}>
         <Calendar
           mode="single"
           selected={selectedDate}
