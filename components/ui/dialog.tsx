@@ -93,7 +93,7 @@ function DialogContent({
         </div>
 
         {/* Body section - scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4">
+        <div className="flex-1 overflow-y-auto px-6 pb-4 scrollbar-hide">
           <div className="space-y-4">
             {React.Children.map(children, (child) => {
               if (React.isValidElement(child)) {

@@ -254,7 +254,7 @@ async function runExportJob(
     // Merge merchandise names into redeems and rename timestamp fields
     const redeemsWithMerchandise = redeems.map(redeem => ({
       ...redeem,
-      merchandise_name: merchandiseMap.get(redeem.merchandise_id) || 'Unknown',
+      merchandise_name: merchandiseMap.get(redeem.merchandise_id) || 'This item has been deleted',
       createdAt: redeem.created_at,
       updatedAt: redeem.updated_at,
     }));

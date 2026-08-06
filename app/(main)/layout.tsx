@@ -134,7 +134,7 @@ const NAV_ITEMS = [
 
   {
 
-    label: "LarataClub Earning",
+    label: "LarataClub History",
 
     icon: <Trophy {...SIDEBAR_ICON_PROPS} />,
 
@@ -153,22 +153,6 @@ const NAV_ITEMS = [
       { href: "/merchandise", label: "Merchandise", icon: <Package className="h-4 w-4" strokeWidth={2} /> },
 
       { href: "/redeem-merchandise", label: "Redeem Merchandise", icon: <Gift className="h-4 w-4" strokeWidth={2} /> },
-
-    ],
-
-  },
-
-  {
-
-    label: "Daily Benefit",
-
-    icon: <Calendar {...SIDEBAR_ICON_PROPS} />,
-
-    subItems: [
-
-      { href: "/daily-benefit", label: "Daily Benefit", icon: <Calendar className="h-4 w-4" strokeWidth={2} /> },
-
-      { href: "/redeem-benefit", label: "Redeem Benefit", icon: <GiftIcon className="h-4 w-4" strokeWidth={2} /> },
 
     ],
 
@@ -357,8 +341,8 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       }
     : pathname === "/larata-club-earning"
     ? {
-        title: "LarataClub Earning",
-        breadcrumb: ["LarataClub Earning"],
+        title: "LarataClub History",
+        breadcrumb: ["LarataClub History"],
       }
     : {
         title: "Dashboard",
@@ -437,7 +421,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                 />
 
-                {item.label === "Daily Benefit" && (
+                {item.label === "Merchandise" && (
                   <div className="px-3 pt-1 pb-2">
   <div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
 </div>
@@ -558,7 +542,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                             ? "/news/add"
 
-                            : item === "LarataClub Earning"
+                            : item === "LarataClub History"
 
                             ? "/larata-club-earning"
 

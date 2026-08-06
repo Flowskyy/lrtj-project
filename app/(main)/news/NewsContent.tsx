@@ -713,7 +713,7 @@ export default function NewsContent({ username }: NewsContentProps) {
             <DialogTitle>News Details</DialogTitle>
           </DialogHeader>
           {viewItem && (
-            <div className="overflow-y-auto space-y-4 rounded-b-xl">
+            <div className="overflow-y-auto space-y-4 rounded-b-xl scrollbar-hide">
               {/* Featured Image */}
               {viewItem.img_url && (
                 <div className="flex justify-center">

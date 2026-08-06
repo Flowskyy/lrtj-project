@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
     ...redeem,
     created_at: redeem.createdAt,
     updated_at: redeem.updatedAt,
-    merchandise_name: merchandiseMap.get(redeem.merchandise_id) || 'Unknown',
+    merchandise_name: merchandiseMap.get(redeem.merchandise_id) || 'This item has been deleted',
   }));
 
   return NextResponse.json({

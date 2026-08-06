@@ -428,10 +428,11 @@ export default function UsersContent({ username }: UsersContentProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <Button
-              onClick={() => {
-                setShowExportDialog(true);
-                startExport();
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => {
+                  setShowExportDialog(true);
+                  startExport();
               }}
               disabled={isExporting}
               className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
@@ -439,6 +440,7 @@ export default function UsersContent({ username }: UsersContentProps) {
               <Download className="h-4 w-4 mr-2" />
               {isExporting ? 'Exporting...' : 'Export'}
             </Button>
+            </div>
           </div>
 
           {/* Table - Desktop */}

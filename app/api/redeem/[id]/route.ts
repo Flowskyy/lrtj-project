@@ -29,7 +29,7 @@ export async function GET(
 
     const redeemWithMerchandise = {
       ...redeem,
-      merchandise_name: merchandise?.name || 'Unknown',
+      merchandise_name: merchandise?.name || 'This item has been deleted',
     };
 
     return NextResponse.json(redeemWithMerchandise);

@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { formatWIBDate } from "@/lib/formatWIBDate";
@@ -113,7 +112,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     }
   };
 
-  // Search scopes for LarataClub Earning
+  // Search scopes for LarataClub History
   const earningSearchScopes: SearchScope[] = [
     { field: "user_email", label: "Email" },
     { field: "user_name", label: "Username" },
@@ -333,22 +332,22 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Stats Card */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 pt-3">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total Records
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : totalCount}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-primary"
+                  className="h-6 w-6 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -367,13 +366,11 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
       </div>
 
       {/* Main Content Card */}
-      <Card>
-        <CardContent>
-          <CardHeader className="p-3">
-            <div className="flex flex-wrap items-center justify-between">
-              <CardTitle className="text-lg">LarataClub Earning History</CardTitle>
-            </div>
-          </CardHeader>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-wrap items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">LarataClub History</h2>
+          </div>
 
           {/* Table Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -483,91 +480,89 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <Button
-              onClick={() => {
-                setShowExportDialog(true);
-                startExport();
-              }}
-              disabled={isExporting}
-              className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export'}
-            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => setShowExportDialog(true)}
+                className="h-10 px-4 bg-[#E5262C] hover:bg-[#c91e24] text-white rounded-lg shadow-sm"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </div>
 
           {/* Table - Desktop */}
-          <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
+          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-100 z-10">
+              <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
                 <TableRow>
                   {visibleColumns.user && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[150px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[150px]">
                       User
                     </TableHead>
                   )}
                   {visibleColumns.earning_point && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-28">
                       LarataClub Points
                     </TableHead>
                   )}
                   {visibleColumns.category && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">
                       Category
                     </TableHead>
                   )}
                   {visibleColumns.info && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider min-w-[150px] max-w-[200px]">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider min-w-[150px] max-w-[200px]">
                       Info
                     </TableHead>
                   )}
                   {visibleColumns.created_at && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-36">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-36">
                       Created At
                     </TableHead>
                   )}
                   {visibleColumns.actions && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center w-24">
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider text-center w-24">
                       Actions
                     </TableHead>
                   )}
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-50">
+              <TableBody className="divide-y divide-gray-200">
                 {loading ? (
                   <>
                     <TableRow>
-                      {visibleColumns.user && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.earning_point && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.info && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-16" /></TableCell>}
+                      {visibleColumns.user && <TableCell><Skeleton className="h-3 w-32" /></TableCell>}
+                      {visibleColumns.earning_point && <TableCell><Skeleton className="h-3 w-20" /></TableCell>}
+                      {visibleColumns.category && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.info && <TableCell><Skeleton className="h-3 w-32" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell><Skeleton className="h-3 w-28" /></TableCell>}
+                      {visibleColumns.actions && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.user && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.earning_point && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.info && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-16" /></TableCell>}
+                      {visibleColumns.user && <TableCell><Skeleton className="h-3 w-32" /></TableCell>}
+                      {visibleColumns.earning_point && <TableCell><Skeleton className="h-3 w-20" /></TableCell>}
+                      {visibleColumns.category && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.info && <TableCell><Skeleton className="h-3 w-32" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell><Skeleton className="h-3 w-28" /></TableCell>}
+                      {visibleColumns.actions && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                     </TableRow>
                     <TableRow>
-                      {visibleColumns.user && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.earning_point && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.info && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
-                      {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
-                      {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-16" /></TableCell>}
+                      {visibleColumns.user && <TableCell><Skeleton className="h-3 w-32" /></TableCell>}
+                      {visibleColumns.earning_point && <TableCell><Skeleton className="h-3 w-20" /></TableCell>}
+                      {visibleColumns.category && <TableCell><Skeleton className="h-3 w-24" /></TableCell>}
+                      {visibleColumns.info && <TableCell><Skeleton className="h-3 w-32" /></TableCell>}
+                      {visibleColumns.created_at && <TableCell><Skeleton className="h-3 w-28" /></TableCell>}
+                      {visibleColumns.actions && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
                     </TableRow>
                   </>
                 ) : items.length > 0 ? (
                   items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
                       {visibleColumns.user && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-2 py-1.5">
                           <div className="min-w-0">
-                            <div className="text-xs font-medium text-gray-900 truncate" title={item.user_name}>
+                            <div className="text-[11px] font-medium text-gray-900 truncate" title={item.user_name}>
                               {item.user_name || "-"}
                             </div>
                             <div className="text-[10px] text-gray-500 truncate" title={item.user_email}>
@@ -577,36 +572,36 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                         </TableCell>
                       )}
                       {visibleColumns.earning_point && (
-                        <TableCell className="px-3 py-1.5 text-xs font-semibold text-gray-700">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-semibold text-gray-700">
                           {item.earning_point.toLocaleString()}
                         </TableCell>
                       )}
                       {visibleColumns.category && (
-                        <TableCell className="px-3 py-1.5">
+                        <TableCell className="px-2 py-1.5">
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {item.category || "-"}
                           </Badge>
                         </TableCell>
                       )}
                       {visibleColumns.info && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500 truncate max-w-[200px]" title={item.info}>
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-500 truncate max-w-[200px]" title={item.info}>
                           {item.info || "-"}
                         </TableCell>
                       )}
                       {visibleColumns.created_at && (
-                        <TableCell className="px-3 py-1.5 text-xs text-gray-500">
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-500">
                           {formatWIBDate(item.created_at)}
                         </TableCell>
                       )}
                       {visibleColumns.actions && (
-                        <TableCell className="px-3 py-1.5 text-center">
+                        <TableCell className="px-2 py-1.5 text-center">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleViewItem(item)}
-                            className="h-7 w-7"
+                            className="h-8 w-8"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       )}
@@ -624,33 +619,33 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
           </div>
 
           {/* Card List - Mobile */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-4">
             {loading ? (
               <>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <Skeleton className="h-5 w-32 mb-2" />
                   <Skeleton className="h-4 w-24 mb-2" />
                   <Skeleton className="h-4 w-20 mb-2" />
                   <Skeleton className="h-4 w-28 mb-3" />
-                  <Skeleton className="h-11 w-11" />
+                  <Skeleton className="h-9 w-20" />
                 </div>
-                <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <Skeleton className="h-5 w-32 mb-2" />
                   <Skeleton className="h-4 w-24 mb-2" />
                   <Skeleton className="h-4 w-20 mb-2" />
                   <Skeleton className="h-4 w-28 mb-3" />
-                  <Skeleton className="h-11 w-11" />
+                  <Skeleton className="h-9 w-20" />
                 </div>
               </>
             ) : items.length > 0 ? (
               items.map((item) => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                <div key={item.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-gray-900 truncate" title={item.user_name}>
                         {item.user_name || "-"}
                       </h3>
-                      <p className="text-[10px] text-gray-500 truncate" title={item.user_email}>
+                      <p className="text-xs text-gray-500 truncate" title={item.user_email}>
                         {item.user_email || "-"}
                       </p>
                     </div>
@@ -661,22 +656,22 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    <Badge variant="outline" className="text-[10px] capitalize">
+                    <Badge variant="outline" className="text-xs capitalize">
                       {item.category || "-"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-gray-500 truncate mb-3" title={item.info}>
+                  <p className="text-sm text-gray-500 truncate mb-3" title={item.info}>
                     {item.info || "-"}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-xs text-gray-400">
                       {formatWIBDate(item.created_at)}
                     </span>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleViewItem(item)}
-                      className="min-h-[44px] px-3"
+                      className="h-9 px-3"
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View
@@ -685,8 +680,8 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                 </div>
               ))
             ) : (
-              <div className="bg-white border border-gray-100 rounded-xl p-12 text-center shadow-sm">
-                <p className="text-xs text-gray-400">No earning history found.</p>
+              <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
+                <p className="text-sm text-gray-400">No earning history found.</p>
               </div>
             )}
           </div>
@@ -705,42 +700,73 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Earning History Details</DialogTitle>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden rounded-2xl">
+          <DialogHeader className="pb-3">
+            <DialogTitle className="text-lg font-semibold text-gray-900">History Details</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
             {viewItem && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">User Name</p>
-                    <p className="text-sm text-gray-900">{viewItem.user_name || "-"}</p>
+              <div className="pt-2 pb-4">
+                {/* Hero: Points earned - the key information */}
+                <div className="text-center py-6 border-b border-gray-100 mb-6">
+                  <div className="text-4xl font-bold text-[#E5262C] mb-1">
+                    {viewItem.earning_point.toLocaleString()}
                   </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">User Email</p>
-                    <p className="text-sm text-gray-900">{viewItem.user_email || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">LarataClub Points</p>
-                    <p className="text-sm font-semibold text-gray-900">{viewItem.earning_point.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</p>
-                    <p className="text-sm text-gray-900">{viewItem.category || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Created At</p>
-                    <p className="text-sm text-gray-900">{formatWIBDate(viewItem.created_at)}</p>
+                  <div className="text-sm text-gray-500 uppercase tracking-wide">
+                    {viewItem.earning_point > 0 ? "POINTS EARNED" : viewItem.earning_point < 0 ? "POINTS SPENT" : "POINTS"}
                   </div>
                 </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Info</p>
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewItem.info || "-"}</p>
+
+                {/* User section - clean typographic header */}
+                <div className="mb-6">
+                  <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    User
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm text-gray-500">Name</span>
+                      <span className="text-sm font-medium text-gray-900">{viewItem.user_name || "-"}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm text-gray-500">Email</span>
+                      <span className="text-sm font-medium text-gray-900 text-right break-words max-w-[60%]" title={viewItem.user_email}>
+                        {viewItem.user_email || "-"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Transaction section - clean typographic header */}
+                <div className="mb-6">
+                  <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Transaction
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm text-gray-500">Category</span>
+                      <span className="text-sm font-medium text-gray-900">{viewItem.category || "-"}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm text-gray-500">Date</span>
+                      <span className="text-sm font-medium text-gray-900">{formatWIBDate(viewItem.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional info - if present */}
+                {viewItem.info && (
+                  <div>
+                    <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                      Notes
+                    </div>
+                    <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3">
+                      {viewItem.info}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
