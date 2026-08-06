@@ -12,6 +12,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Pagination from "@/components/Pagination";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
@@ -33,7 +34,6 @@ interface EarningItem {
   info: string;
   earning_point: number;
   category: string;
-  type: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -49,10 +49,11 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
   
   // Filter and Sort states
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] = useState<string>("");
+  const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -65,7 +66,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
 
   // Available filter options
   const [categories, setCategories] = useState<string[]>([]);
-  const [types, setTypes] = useState<string[]>([]);
 
   // Modal states
   const [viewItem, setViewItem] = useState<EarningItem | null>(null);
@@ -75,14 +75,14 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
     if (categoryFilter !== "all") params.category = categoryFilter;
-    if (typeFilter !== "all") params.type = typeFilter;
     if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (searchScope) params.searchScope = searchScope;
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.order = sortOrder;
     return params;
-  }, [categoryFilter, typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
   const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/larata-club-earning',
@@ -95,7 +95,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     user: true,
     earning_point: true,
     category: true,
-    type: true,
     info: true,
     created_at: true,
     actions: true,
@@ -108,33 +107,40 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
       if (res.ok) {
         const data = await res.json();
         setCategories(data.categories || []);
-        setTypes(data.types || []);
       }
     } catch (err) {
       console.error("Failed to fetch filter options", err);
     }
   };
 
+  // Search scopes for LarataClub Earning
+  const earningSearchScopes: SearchScope[] = [
+    { field: "user_email", label: "Email" },
+    { field: "user_name", label: "Username" },
+  ];
+
   // Generate cache key for a page with current filters
   const getCacheKey = useCallback((pageNum: number) => {
     return JSON.stringify({
       page: pageNum,
       category: categoryFilter,
-      type: typeFilter,
       search: searchQuery.trim(),
+      searchScope,
       dateFrom,
       dateTo,
       sortBy,
       sortOrder,
     });
-  }, [categoryFilter, typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
   // Fetch items (main function used for both active and prefetch)
   const fetchItems = async (pageNum: number, signal?: AbortSignal) => {
     const params = new URLSearchParams();
     if (categoryFilter !== "all") params.set("category", categoryFilter);
-    if (typeFilter !== "all") params.set("type", typeFilter);
-    if (searchQuery.trim()) params.set("search", searchQuery.trim());
+    if (searchQuery.trim()) {
+      params.set("search", searchQuery.trim());
+      if (searchScope) params.set("searchScope", searchScope);
+    }
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     if (sortBy) params.set("sortBy", sortBy);
@@ -143,7 +149,11 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     params.set("limit", limit.toString());
 
     const res = await fetch(`/api/larata-club-earning?${params}`, { signal });
-    if (!res.ok) throw new Error("Failed to fetch");
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('API Error:', errorText);
+      throw new Error("Failed to fetch");
+    }
     const response = await res.json();
     return {
       data: response.data || [],
@@ -230,7 +240,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         console.error("Failed to fetch items", err);
-        toast.error("Failed to fetch earning history");
+        toast.error(`Failed to fetch earning history: ${err.message}`);
       }
     } finally {
       setLoading(false);
@@ -246,14 +256,30 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
   useEffect(() => {
     pageCacheRef.current.clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter, typeFilter, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     loadCurrentPage();
   }, [loadCurrentPage]);
 
   // Debounced search
-  const { handleSearchChange } = useDebouncedSearch({ delay: 300 });
+  const { handleSearchChange: debouncedSearchChange } = useDebouncedSearch({ delay: 300 });
+
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+    setPage(1);
+  };
+
+  // Handle search input change
+  const handleSearchInputChange = (value: string) => {
+    setSearchQuery(value);
+    setShowScopeSuggestions(value.length >= 2);
+    if (!value.trim()) {
+      setSearchScope("");
+      setPage(1);
+    }
+  };
 
   const onSearchChange = useCallback((value: string) => {
     // Cancel any in-flight prefetch immediately
@@ -262,15 +288,15 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
       prefetchAbortControllerRef.current = null;
     }
 
-    setSearchQuery(value);
+    handleSearchInputChange(value);
     setPage(1); // Reset to first page on search
-    handleSearchChange(() => {
+    debouncedSearchChange(() => {
       // Search is handled by the useEffect
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleSearchChange]);
+  }, [debouncedSearchChange]);
 
-  const activeFilterCount = (categoryFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (categoryFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   const handleResetFilters = () => {
     // Cancel any in-flight prefetch
@@ -287,6 +313,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     setSortBy("created_at");
     setSortOrder("desc");
     setSearchQuery("");
+    setSearchScope("");
     setDateFrom("");
     setDateTo("");
     setPage(1);
@@ -349,44 +376,39 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
           </CardHeader>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-              <div className="relative flex-1 sm:flex-none">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search user name/email..."
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-9 min-h-[44px] w-full sm:w-64"
+                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
+                  onFocus={() => {
+                    if (searchQuery.length >= 2) {
+                      setShowScopeSuggestions(true);
+                    }
+                  }}
                 />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <SearchScopeSuggestions
+                  searchQuery={searchQuery}
+                  scopes={earningSearchScopes}
+                  onScopeSelect={handleScopeSelect}
+                  isVisible={showScopeSuggestions}
+                  onClose={() => setShowScopeSuggestions(false)}
+                />
               </div>
               <TableFilterSortMenu
                 statusFilter=""
                 onStatusFilterChange={() => {}}
                 categoryFilter={categoryFilter}
                 onCategoryFilterChange={(value) => { setCategoryFilter(value); setPage(1); }}
-                typeFilter={typeFilter}
-                onTypeFilterChange={(value) => { setTypeFilter(value); setPage(1); }}
                 showCategoryFilter={true}
-                showTypeFilter={true}
                 showStatusFilter={false}
                 categoryOptions={[
                   { value: "all", label: "All Categories" },
                   ...categories.map(cat => ({ value: cat, label: cat }))
-                ]}
-                typeOptions={[
-                  { value: "all", label: "All Types" },
-                  ...types.map(type => ({ value: type, label: type }))
                 ]}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
@@ -399,59 +421,65 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                 showDateRange={true}
                 sortByOptions={[
                   { value: "created_at", label: "Created Date" },
-                  { value: "earning_point", label: "Earning Point" },
+                  { value: "earning_point", label: "LarataClub Points" },
                   { value: "id", label: "ID" },
                 ]}
                 onResetFilters={handleResetFilters}
                 activeFilterCount={activeFilterCount}
               />
               <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground min-h-[44px]">
+                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
                   <Columns className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user: !prev.user }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.user && <Check className="h-4 w-4" />}
-                      <span>User</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, earning_point: !prev.earning_point }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.earning_point && <Check className="h-4 w-4" />}
-                      <span>Earning Point</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: !prev.category }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.category && <Check className="h-4 w-4" />}
-                      <span>Category</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, type: !prev.type }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.type && <Check className="h-4 w-4" />}
-                      <span>Type</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, info: !prev.info }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.info && <Check className="h-4 w-4" />}
-                      <span>Info</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: !prev.created_at }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.created_at && <Check className="h-4 w-4" />}
-                      <span>Created At</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: !prev.actions }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.actions && <Check className="h-4 w-4" />}
-                      <span>Actions</span>
-                    </div>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
+                  {visibleColumns.user && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>User</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.earning_point && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, earning_point: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>LarataClub Points</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.category && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Category</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.info && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, info: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Info</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.created_at && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Created At</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {visibleColumns.actions && (
+                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-3 w-3" />
+                        <span>Actions</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -480,17 +508,12 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                   )}
                   {visibleColumns.earning_point && (
                     <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
-                      Earning Point
+                      LarataClub Points
                     </TableHead>
                   )}
                   {visibleColumns.category && (
                     <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-32">
                       Category
-                    </TableHead>
-                  )}
-                  {visibleColumns.type && (
-                    <TableHead className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-28">
-                      Type
                     </TableHead>
                   )}
                   {visibleColumns.info && (
@@ -517,7 +540,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                       {visibleColumns.user && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.earning_point && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.info && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-16" /></TableCell>}
@@ -526,7 +548,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                       {visibleColumns.user && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.earning_point && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.info && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-16" /></TableCell>}
@@ -535,7 +556,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                       {visibleColumns.user && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.earning_point && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.category && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
-                      {visibleColumns.type && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       {visibleColumns.info && <TableCell><Skeleton className="h-4 w-32" /></TableCell>}
                       {visibleColumns.created_at && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
                       {visibleColumns.actions && <TableCell><Skeleton className="h-6 w-16" /></TableCell>}
@@ -565,13 +585,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                         <TableCell className="px-3 py-1.5">
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {item.category || "-"}
-                          </Badge>
-                        </TableCell>
-                      )}
-                      {visibleColumns.type && (
-                        <TableCell className="px-3 py-1.5">
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {item.type || "-"}
                           </Badge>
                         </TableCell>
                       )}
@@ -651,9 +664,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                     <Badge variant="outline" className="text-[10px] capitalize">
                       {item.category || "-"}
                     </Badge>
-                    <Badge variant="secondary" className="text-[10px] capitalize">
-                      {item.type || "-"}
-                    </Badge>
                   </div>
                   <p className="text-xs text-gray-500 truncate mb-3" title={item.info}>
                     {item.info || "-"}
@@ -712,16 +722,12 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
                     <p className="text-sm text-gray-900">{viewItem.user_email || "-"}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Earning Point</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">LarataClub Points</p>
                     <p className="text-sm font-semibold text-gray-900">{viewItem.earning_point.toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</p>
                     <p className="text-sm text-gray-900">{viewItem.category || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Type</p>
-                    <p className="text-sm text-gray-900">{viewItem.type || "-"}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Created At</p>

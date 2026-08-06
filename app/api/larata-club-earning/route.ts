@@ -6,6 +6,24 @@ import { formatWIB } from '@/lib/utils';
 let cachedTotal: { count: number; timestamp: number } | null = null;
 const CACHE_TTL = 30000; // 30 seconds
 
+// Helper function to get current year range in WIB
+function getCurrentYearRangeWIB() {
+  const now = new Date();
+  // Convert to WIB (UTC+7)
+  const wibOffset = 7 * 60 * 60 * 1000; // 7 hours in milliseconds
+  const wibTime = new Date(now.getTime() + wibOffset);
+  
+  const currentYear = wibTime.getUTCFullYear();
+  
+  // Start of year: Jan 1 00:00:00 WIB
+  const yearStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
+  
+  // End of year: Dec 31 23:59:59 WIB
+  const yearEnd = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+  
+  return { yearStart, yearEnd, currentYear };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -21,17 +39,32 @@ export async function GET(request: NextRequest) {
     const debug = searchParams.get('debug');
     const exportMode = searchParams.get('export') === 'true';
 
+    // Get current year range in WIB
+    const { yearStart, yearEnd } = getCurrentYearRangeWIB();
+
     // Debug mode: return distinct category and type values
     if (debug === 'values') {
       const categories = await prisma.slc_earning_history.findMany({
         select: { category: true },
         distinct: ['category'],
         orderBy: { category: 'asc' },
+        where: {
+          created_at: {
+            gte: yearStart,
+            lte: yearEnd,
+          },
+        },
       });
       const types = await prisma.slc_earning_history.findMany({
         select: { type: true },
         distinct: ['type'],
         orderBy: { type: 'asc' },
+        where: {
+          created_at: {
+            gte: yearStart,
+            lte: yearEnd,
+          },
+        },
       });
       return NextResponse.json({
         categories: categories.map(c => c.category),
@@ -41,6 +74,29 @@ export async function GET(request: NextRequest) {
 
   const where: any = {};
 
+  // MANDATORY: Restrict to current year only (hard restriction, cannot be bypassed)
+  where.created_at = {
+    gte: yearStart,
+    lte: yearEnd,
+  };
+
+  // User date range filters are applied WITHIN the current year boundary
+  if (dateFrom) {
+    const userDateFrom = new Date(dateFrom);
+    // Only apply if within current year
+    if (userDateFrom >= yearStart && userDateFrom <= yearEnd) {
+      where.created_at = { ...where.created_at, gte: userDateFrom };
+    }
+  }
+
+  if (dateTo) {
+    const userDateTo = new Date(dateTo + 'T23:59:59');
+    // Only apply if within current year
+    if (userDateTo >= yearStart && userDateTo <= yearEnd) {
+      where.created_at = { ...where.created_at, lte: userDateTo };
+    }
+  }
+
   if (category && category !== 'all') {
     where.category = category;
   }
@@ -49,25 +105,27 @@ export async function GET(request: NextRequest) {
     where.type = type;
   }
 
-  if (dateFrom) {
-    where.created_at = { ...where.created_at, gte: new Date(dateFrom) };
-  }
-
-  if (dateTo) {
-    where.created_at = { ...where.created_at, lte: new Date(dateTo + 'T23:59:59') };
-  }
-
   if (search && search.trim()) {
     const searchConditions: any[] = [];
+    const searchScope = searchParams.get('searchScope');
 
     // Search by user name or email - need to find matching user IDs first
+    const userWhere: any = {};
+    
+    if (searchScope === 'user_email') {
+      userWhere.email = { contains: search.trim() };
+    } else if (searchScope === 'user_name') {
+      userWhere.name = { contains: search.trim() };
+    } else {
+      // Default: search both name and email
+      userWhere.OR = [
+        { name: { contains: search.trim() } },
+        { email: { contains: search.trim() } },
+      ];
+    }
+
     const matchingUsers = await prisma.users.findMany({
-      where: {
-        OR: [
-          { name: { contains: search.trim() } },
-          { email: { contains: search.trim() } },
-        ],
-      },
+      where: userWhere,
       select: { id: true },
       take: 100,
     });
@@ -105,29 +163,44 @@ export async function GET(request: NextRequest) {
     'WHERE ' + Object.entries(where).map(([key, value]) => {
       if (key === 'OR') {
         const orConditions = (value as any[]).map((cond: any) => {
-          const [field, op] = Object.entries(cond)[0];
-          const fieldValue = Object.values(cond)[0];
-          if (op === 'in') {
-            // Quote string values in IN clause
-            const quotedValues = (fieldValue as any[]).map((v: any) => typeof v === 'string' ? `'${v}'` : v);
-            return `${field} IN (${quotedValues.join(',')})`;
+          const [field, fieldCond] = Object.entries(cond)[0];
+          console.log('Processing OR condition:', { field, fieldCond, typeOfFieldCond: typeof fieldCond });
+          
+          if (typeof fieldCond === 'object' && fieldCond !== null) {
+            const [op, fieldValue] = Object.entries(fieldCond)[0];
+            console.log('Nested operator:', { op, fieldValue });
+            
+            if (op === 'in') {
+              // Handle IN clause with array of values
+              const quotedValues = (fieldValue as any[]).map((v: any) => typeof v === 'string' ? `'${v}'` : v);
+              return `${field} IN (${quotedValues.join(',')})`;
+            }
           }
-          // Quote string values in OR conditions
-          if (typeof fieldValue === 'string') {
-            return `${field} = '${fieldValue}'`;
+          // Handle simple equality
+          if (typeof fieldCond === 'string') {
+            return `${field} = '${fieldCond}'`;
           }
-          return `${field} = ${fieldValue}`;
+          return `${field} = ${fieldCond}`;
         }).join(' OR ');
         return `(${orConditions})`;
       }
       if (typeof value === 'object' && value !== null) {
         const [op, val] = Object.entries(value)[0];
+        // Map Prisma operators to SQL operators
+        const operatorMap: Record<string, string> = {
+          gte: '>=',
+          lte: '<=',
+          gt: '>',
+          lt: '<',
+          equals: '=',
+        };
+        const sqlOp = operatorMap[op] || '>=';
         if (val instanceof Date) {
           // Format date for MySQL
           const formattedDate = val.toISOString().slice(0, 19).replace('T', ' ');
-          return `${key} ${op.toUpperCase()} '${formattedDate}'`;
+          return `${key} ${sqlOp} '${formattedDate}'`;
         }
-        return `${key} ${op.toUpperCase()} ${val}`;
+        return `${key} ${sqlOp} ${val}`;
       }
       // Quote string values
       if (typeof value === 'string') {

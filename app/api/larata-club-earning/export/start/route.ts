@@ -7,18 +7,63 @@ import { writeFile, unlink } from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
 import fs from 'fs';
 
+// Helper function to get current year range in WIB
+function getCurrentYearRangeWIB() {
+  const now = new Date();
+  // Convert to WIB (UTC+7)
+  const wibOffset = 7 * 60 * 60 * 1000; // 7 hours in milliseconds
+  const wibTime = new Date(now.getTime() + wibOffset);
+  
+  const currentYear = wibTime.getUTCFullYear();
+  
+  // Start of year: Jan 1 00:00:00 WIB
+  const yearStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
+  
+  // End of year: Dec 31 23:59:59 WIB
+  const yearEnd = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+  
+  return { yearStart, yearEnd, currentYear };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const sortBy = searchParams.get('sortBy');
     const order = searchParams.get('order') || 'desc';
     const search = searchParams.get('search');
+    const searchScope = searchParams.get('searchScope');
     const category = searchParams.get('category');
     const type = searchParams.get('type');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
 
+    // Get current year range in WIB
+    const { yearStart, yearEnd } = getCurrentYearRangeWIB();
+
     const where: any = {};
+
+    // MANDATORY: Restrict to current year only (hard restriction, cannot be bypassed)
+    where.created_at = {
+      gte: yearStart,
+      lte: yearEnd,
+    };
+
+    // User date range filters are applied WITHIN the current year boundary
+    if (dateFrom) {
+      const userDateFrom = new Date(dateFrom);
+      // Only apply if within current year
+      if (userDateFrom >= yearStart && userDateFrom <= yearEnd) {
+        where.created_at = { ...where.created_at, gte: userDateFrom };
+      }
+    }
+
+    if (dateTo) {
+      const userDateTo = new Date(dateTo + 'T23:59:59');
+      // Only apply if within current year
+      if (userDateTo >= yearStart && userDateTo <= yearEnd) {
+        where.created_at = { ...where.created_at, lte: userDateTo };
+      }
+    }
 
     if (category && category !== 'all') {
       where.category = category;
@@ -28,24 +73,25 @@ export async function POST(request: NextRequest) {
       where.type = type;
     }
 
-    if (dateFrom) {
-      where.created_at = { ...where.created_at, gte: new Date(dateFrom) };
-    }
-
-    if (dateTo) {
-      where.created_at = { ...where.created_at, lte: new Date(dateTo + 'T23:59:59') };
-    }
-
     if (search && search.trim()) {
       const searchConditions: any[] = [];
 
+      const userWhere: any = {};
+      
+      if (searchScope === 'user_email') {
+        userWhere.email = { contains: search.trim() };
+      } else if (searchScope === 'user_name') {
+        userWhere.name = { contains: search.trim() };
+      } else {
+        // Default: search both name and email
+        userWhere.OR = [
+          { name: { contains: search.trim() } },
+          { email: { contains: search.trim() } },
+        ];
+      }
+
       const matchingUsers = await prisma.users.findMany({
-        where: {
-          OR: [
-            { name: { contains: search.trim() } },
-            { email: { contains: search.trim() } },
-          ],
-        },
+        where: userWhere,
         select: { id: true },
         take: 100,
       });
