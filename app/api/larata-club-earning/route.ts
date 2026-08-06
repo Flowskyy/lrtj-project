@@ -164,12 +164,10 @@ export async function GET(request: NextRequest) {
       if (key === 'OR') {
         const orConditions = (value as any[]).map((cond: any) => {
           const [field, fieldCond] = Object.entries(cond)[0];
-          console.log('Processing OR condition:', { field, fieldCond, typeOfFieldCond: typeof fieldCond });
-          
+
           if (typeof fieldCond === 'object' && fieldCond !== null) {
             const [op, fieldValue] = Object.entries(fieldCond)[0];
-            console.log('Nested operator:', { op, fieldValue });
-            
+
             if (op === 'in') {
               // Handle IN clause with array of values
               const quotedValues = (fieldValue as any[]).map((v: any) => typeof v === 'string' ? `'${v}'` : v);

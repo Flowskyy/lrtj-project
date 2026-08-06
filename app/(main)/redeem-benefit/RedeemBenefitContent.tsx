@@ -396,6 +396,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
                 <Download className="h-4 w-4 mr-2" />
                 {isExporting ? 'Exporting...' : 'Export'}
               </Button>
+            </div>
           </div>
 
           {/* Table - Desktop */}

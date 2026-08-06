@@ -24,7 +24,7 @@ interface MerchandiseItem {
   updatedAt: string | null;
   status: number;
   category_id: number | null;
-  merchandise_category?: {
+  category?: {
     id: number;
     category_name: string | null;
   } | null;
@@ -213,7 +213,7 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
                 <div className="text-sm text-gray-900">
-                  {item.merchandise_category?.category_name || "Uncategorized"}
+                  {item.category?.category_name || "Uncategorized"}
                 </div>
               </div>
               <div>
@@ -246,7 +246,9 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
           {/* Description Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Description</h3>
-            <div className="text-sm text-gray-700 prose prose-sm max-w-none">
+            <div
+              className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-3 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2"
+            >
               <div dangerouslySetInnerHTML={{ __html: item.description || '<p>-</p>' }} />
             </div>
           </div>

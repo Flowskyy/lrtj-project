@@ -308,10 +308,6 @@ async function runExportJob(
       mkdirSync(tempDir, { recursive: true });
     }
 
-    console.log(`Attempting to write file: ${filePath}`);
-    console.log(`Temp directory exists: ${existsSync(tempDir)}`);
-    console.log(`Filename: ${filename}`);
-
     // Generate buffer and write with Node.js fs to avoid XLSX bundler detection issues
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     fs.writeFileSync(filePath, buffer);
