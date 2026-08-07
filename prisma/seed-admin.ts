@@ -9,14 +9,13 @@ const prisma = new PrismaClient()
  * Usage:
  *   npx tsx prisma/seed-admin.ts <email> <password> <role-name>
  * 
- * Available roles:
- *   - SUPER_ADMIN
- *   - OPERATIONS
- *   - VIEWER
- *   - SECURITY_ADMIN
+ * Available roles (from auth_roles table):
+ *   - Super Admin
+ *   - Viewer
+ *   - [Other roles as created in the system]
  * 
  * Example:
- *   npx tsx prisma/seed-admin.ts admin@lrtjakarta.co.id mypassword SUPER_ADMIN
+ *   npx tsx prisma/seed-admin.ts admin@lrtjakarta.co.id mypassword "Super Admin"
  */
 
 async function seedAdmin() {
@@ -32,14 +31,14 @@ async function seedAdmin() {
   const [email, password, roleName] = args
 
   try {
-    // Check if role exists
-    const role = await prisma.admin_roles.findUnique({
+    // Check if role exists in auth_roles
+    const role = await prisma.auth_roles.findUnique({
       where: { name: roleName }
     })
 
     if (!role) {
-      console.error(`Error: Role "${roleName}" not found in admin_roles table`)
-      console.error("Available roles: SUPER_ADMIN, OPERATIONS, VIEWER, SECURITY_ADMIN")
+      console.error(`Error: Role "${roleName}" not found in auth_roles table`)
+      console.error("Available roles: Super Admin, Viewer, etc.")
       process.exit(1)
     }
 

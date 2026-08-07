@@ -76,10 +76,16 @@ export default function RolesContent({ username }: RolesContentProps) {
   const fetchRoles = async () => {
     setLoading(true);
     try {
+      console.log("Fetching roles...");
       const res = await fetch("/api/roles");
+      console.log("Roles response status:", res.status);
       if (res.ok) {
         const data = await res.json();
+        console.log("Roles data:", data);
         setRoles(data);
+      } else {
+        console.error("Failed to fetch roles, status:", res.status);
+        toast.error("Failed to fetch roles");
       }
     } catch (err) {
       console.error("Failed to fetch roles", err);
@@ -259,62 +265,7 @@ export default function RolesContent({ username }: RolesContentProps) {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
-          <CardContent className="p-4 pt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Total Roles
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : roles.length}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                <Shield className="h-5 w-5 text-[#E5262C]" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
-          <CardContent className="p-4 pt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Super Admins
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : roles.filter(r => r.isSuperAdmin).length}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                <Badge className="bg-[#E5262C] text-white">SA</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
-          <CardContent className="p-4 pt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Avg Permissions
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loading ? "..." : roles.length > 0
-                    ? Math.round(roles.reduce((acc, r) => acc + r._count.role_permissions, 0) / roles.length)
-                    : "0"}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-lg font-bold text-blue-600">P</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
 
       {/* Table Card */}
       <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
