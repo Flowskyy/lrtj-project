@@ -191,6 +191,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await signOut({ callbackURL: "/login" })
+    window.location.href = "/login"
   }
 
   const getUserInitials = () => {
