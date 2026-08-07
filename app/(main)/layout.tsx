@@ -10,7 +10,7 @@ import Image from "next/image"
 
 import React from "react"
 
-import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award, Trophy, Clock } from "lucide-react"
+import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award, Trophy, Clock, Shield } from "lucide-react"
 
 import { signOut, useSession } from "@/lib/auth-client"
 
@@ -176,6 +176,8 @@ const NAV_ITEMS = [
 
       { href: "/master/membership", label: "Membership", icon: <Award className="h-4 w-4" strokeWidth={2} /> },
 
+      { href: "/master/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
+
     ],
 
   },
@@ -188,6 +190,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   const { state } = useSidebar()
   const pathname = usePathname()
   const { data: session } = useSession()
+  
+  // Permissions state
+  const [userPermissions, setUserPermissions] = React.useState<string[]>([])
+  const [loadingPermissions, setLoadingPermissions] = React.useState(true)
 
   const handleLogout = async () => {
     await signOut({ callbackURL: "/login" })
@@ -199,6 +205,64 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     const name = session.user.name || session.user.email
     return name.charAt(0).toUpperCase()
   }
+
+  // Fetch user permissions
+  React.useEffect(() => {
+    const fetchPermissions = async () => {
+      if (session?.user) {
+        try {
+          const res = await fetch('/api/user-permissions')
+          if (res.ok) {
+            const data = await res.json()
+            setUserPermissions(data.permissions || [])
+          }
+        } catch (error) {
+          console.error('Failed to fetch permissions:', error)
+        } finally {
+          setLoadingPermissions(false)
+        }
+      } else {
+        setLoadingPermissions(false)
+      }
+    }
+
+    fetchPermissions()
+  }, [session])
+
+  // Filter nav items based on permissions
+  const filteredNavItems = React.useMemo(() => {
+    if (loadingPermissions) return NAV_ITEMS // Show all while loading
+    
+    const getPageKey = (href: string) => {
+      // Special handling for master routes
+      if (href.startsWith('/master/')) {
+        return 'master-' + href.replace('/master/', '').replace(/\//g, '-')
+      }
+      return href.replace(/^\//, '').replace(/\//g, '-')
+    }
+    
+    return NAV_ITEMS.map(item => {
+      if (!item.subItems || item.subItems.length === 0) {
+        // Single item - check if user has permission
+        const pageKey = getPageKey(item.href)
+        if (userPermissions.length === 0 || userPermissions.includes(pageKey)) {
+          return item
+        }
+        return null
+      } else {
+        // Group with sub-items - filter sub-items
+        const filteredSubItems = item.subItems.filter(subItem => {
+          const pageKey = getPageKey(subItem.href)
+          return userPermissions.length === 0 || userPermissions.includes(pageKey)
+        })
+        
+        if (filteredSubItems.length > 0) {
+          return { ...item, subItems: filteredSubItems }
+        }
+        return null
+      }
+    }).filter(Boolean) as typeof NAV_ITEMS
+  }, [userPermissions, loadingPermissions])
 
   // Live WIB clock state
   const [currentTime, setCurrentTime] = React.useState<string>("")
@@ -309,6 +373,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Membership",
         breadcrumb: ["Master", "Membership"],
       }
+    : pathname === "/master/roles"
+    ? {
+        title: "Roles",
+        breadcrumb: ["Master", "Roles"],
+      }
     : pathname === "/users"
     ? {
         title: "Users",
@@ -410,7 +479,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
           <SidebarMenu>
 
-            {NAV_ITEMS.map((item, index) => (
+            {filteredNavItems.map((item, index) => (
 
               <React.Fragment key={index}>
 
@@ -598,6 +667,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             : item === "Edit Banner"
 
                             ? "/master/banner"
+
+                            : item === "Roles"
+
+                            ? "/master/roles"
 
                             : "/redeem-merchandise"
 

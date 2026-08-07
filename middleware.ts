@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getSessionWithUser } from "@/lib/auth"
+import { hasPageAccess } from "@/lib/permissions"
 
 export const runtime = 'nodejs'
 
@@ -142,6 +143,12 @@ export async function middleware(request: NextRequest) {
 
     // Check if user has a role assigned
     if (!roleId) {
+      return NextResponse.redirect(new URL("/access-denied", request.url))
+    }
+
+    // Check if user has permission to access this page
+    const hasAccess = await hasPageAccess(roleId, pathname)
+    if (!hasAccess) {
       return NextResponse.redirect(new URL("/access-denied", request.url))
     }
   }

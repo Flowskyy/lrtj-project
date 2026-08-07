@@ -62,7 +62,6 @@ model admin_roles {
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime
   admin_role_permissions admin_role_permissions[]
-  auth_users             auth_users[]
 }
 
 model api_hits {
@@ -130,7 +129,7 @@ model auth_users {
   admin_activity_logs admin_activity_logs[]
   auth_accounts       auth_accounts[]
   auth_sessions       auth_sessions[]
-  admin_roles         admin_roles?          @relation(fields: [roleId], references: [id])
+  admin_roles         auth_roles?           @relation(fields: [roleId], references: [id])
 
   @@index([roleId], map: "auth_users_roleId_fkey")
 }
@@ -1129,6 +1128,29 @@ model popups {
   updated_at  DateTime? @db.DateTime(0)
   created_by  String?   @db.VarChar(255)
   updated_by  String?   @db.VarChar(255)
+}
+
+model auth_roles {
+  id                Int                @id @default(autoincrement())
+  name              String             @unique
+  isSuperAdmin      Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime
+  auth_users        auth_users[]
+  role_permissions  role_permissions[]
+}
+
+model role_permissions {
+  id        Int      @id @default(autoincrement())
+  roleId    Int
+  pageKey   String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  auth_roles auth_roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, pageKey])
+  @@index([roleId])
 }
 
 enum bayarind_binding_states_status {
