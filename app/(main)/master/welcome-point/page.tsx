@@ -1,8 +1,8 @@
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/auth"
 import WelcomePointContent from "./WelcomePointContent"
 
 export default async function WelcomePointPage() {
-  const session = await auth()
+  const session = await getSession()
 
   if (!session?.user) {
     return null

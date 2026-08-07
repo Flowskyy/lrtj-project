@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -34,7 +34,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession();
     const { id } = await params;
     const body = await request.json();
     const { description, image_url } = body;

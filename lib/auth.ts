@@ -1,59 +1,93 @@
-import NextAuth from "next-auth"
-import Credentials from "next-auth/providers/credentials"
+import { betterAuth } from "better-auth"
+import { prismaAdapter } from "better-auth/adapters/prisma"
+import { nextCookies } from "better-auth/next-js"
+import { PrismaClient } from "../lib/generated/prisma"
+import { headers } from "next/headers"
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true,
-  secret: process.env.NEXTAUTH_SECRET || "default-secret-change-in-production",
-  providers: [
-    Credentials({
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+const prisma = new PrismaClient()
+
+// Azure AD App Role to local role mapping
+// TODO: Confirm actual Azure App Role names with Azure AD admin
+const AZURE_ROLE_MAPPING: Record<string, number> = {
+  // Example mapping (update with actual Azure App Role names):
+  // "CMS.SuperAdmin": 1,      // SUPER_ADMIN
+  // "CMS.Operations": 2,      // OPERATIONS  
+  // "CMS.Viewer": 3,          // VIEWER
+  // "CMS.SecurityAdmin": 4,   // SECURITY_ADMIN
+}
+
+// For testing purposes - temporary placeholder mapping
+const TEST_ROLE_MAPPING: Record<string, number> = {
+  "test_role": 1,  // Maps to SUPER_ADMIN for testing
+}
+
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: "mysql",
+  }),
+  user: {
+    modelName: "auth_users",
+    additionalFields: {
+      roleId: {
+        type: "number",
+        required: false,
       },
-      authorize: async (credentials) => {
-        // Dummy authentication - no database connection
-        if (credentials.email === "adminlrtj@smk.belajar.id" && credentials.password === "123456") {
-          return {
-            id: "1",
-            email: "adminlrtj@smk.belajar.id",
-            name: "Admin LRTJ",
-          }
-        }
-        return null
-      },
-    }),
-  ],
-  pages: {
-    signIn: "/login",
+    },
   },
   session: {
-    strategy: "jwt",
+    modelName: "auth_sessions",
   },
-  useSecureCookies: process.env.NODE_ENV === "production",
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-      }
-      return session
-    },
-    async redirect({ url, baseUrl }) {
-      // If the URL is relative, return it as-is to preserve the current origin
-      if (url.startsWith('/')) {
-        return url
-      }
-      // If the URL is absolute, ensure it uses the actual baseUrl from the request
-      // This prevents redirects to 0.0.0.0 when the server is bound to that address
-      if (baseUrl) {
-        return url.startsWith(baseUrl) ? url : baseUrl
-      }
-      return url
+  account: {
+    modelName: "auth_accounts",
+  },
+  verification: {
+    modelName: "auth_verifications",
+  },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
+  socialProviders: {
+    microsoft: {
+      clientId: process.env.MICROSOFT_CLIENT_ID as string,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET as string,
+      tenantId: process.env.MICROSOFT_TENANT_ID || "common",
+      authority: "https://login.microsoftonline.com",
+      prompt: "select_account",
+      enabled: true,
     },
   },
+  plugins: [nextCookies()],
 })
+
+// Helper function for server-side session retrieval
+export async function getSession() {
+  return await auth.api.getSession({
+    headers: await headers(),
+  })
+}
+
+// Helper function for server-side session retrieval with user data
+export async function getSessionWithUser() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+  
+  if (!session?.user?.id) {
+    return null
+  }
+
+  // Fetch user with role from database
+  const user = await prisma.auth_users.findUnique({
+    where: { id: session.user.id },
+    select: { roleId: true }
+  })
+
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      roleId: user?.roleId,
+    },
+  }
+}

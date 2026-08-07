@@ -1,8 +1,8 @@
-import { auth } from "@/lib/auth"
+import { getSession } from "@/lib/auth"
 import RedeemBenefitContent from "./RedeemBenefitContent"
 
 export default async function RedeemBenefitPage() {
-  const session = await auth()
+  const session = await getSession()
 
   if (!session?.user) {
     return null

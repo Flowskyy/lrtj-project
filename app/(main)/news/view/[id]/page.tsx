@@ -1,9 +1,9 @@
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import NewsViewContentWrapper from "./NewsViewContentWrapper";
 
 export default async function NewsViewPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
+  const session = await getSession();
   
   if (!session?.user) {
     redirect("/login");

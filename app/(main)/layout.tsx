@@ -12,7 +12,7 @@ import React from "react"
 
 import { ShoppingBag, Bell, ChevronLeft, User, Lock, Mail, Package, Gift, Users, Home, Calendar, Gift as GiftIcon, Newspaper, Settings, Star, Image as ImageIcon, Award, Trophy, Clock } from "lucide-react"
 
-import { signOut, useSession } from "next-auth/react"
+import { signOut, useSession } from "@/lib/auth-client"
 
 import { Button } from "@/components/ui/button"
 
@@ -189,14 +189,13 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { data: session } = useSession()
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: "/login" })
+  const handleLogout = async () => {
+    await signOut({ callbackURL: "/login" })
   }
 
   const getUserInitials = () => {
     if (!session?.user?.email) return "U"
-    const email = session.user.email
-    const name = email.split("@")[0]
+    const name = session.user.name || session.user.email
     return name.charAt(0).toUpperCase()
   }
 
