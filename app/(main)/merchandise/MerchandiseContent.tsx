@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Toolbar, { ColumnConfig } from "@/components/Toolbar";
+import ModuleToolbar from "@/components/ModuleToolbar";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -135,7 +135,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     fetchCategories();
   }, []);
 
-  // Filter items based on search query and scope (memoized for performance)
+  // Filter items based on search query and scope (client-side for now, can be moved to server)
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
     
@@ -151,6 +151,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
              item.display_email?.toLowerCase().includes(query);
     }
   });
+
   const activeFilterCount = (searchQuery ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
 
   const handleResetFilters = () => {
@@ -172,6 +173,13 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
     setShowScopeSuggestions(value.length >= 2);
     if (!value.trim()) {
       setSearchScope("");
+    }
+  };
+
+  // Handle search focus
+  const handleSearchFocus = () => {
+    if (searchQuery.length >= 2) {
+      setShowScopeSuggestions(true);
     }
   };
 
@@ -306,15 +314,16 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
           </div>
 
           {/* Table Toolbar */}
-          <Toolbar
-            searchPlaceholder="Search merchandise..."
+          <ModuleToolbar
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
-            searchSuggestionsEnabled={true}
+            searchPlaceholder="Search merchandise..."
             searchScopes={merchandiseSearchScopes}
-            onSearchScopeSelect={handleScopeSelect}
+            searchScope={searchScope}
+            onScopeSelect={handleScopeSelect}
             showScopeSuggestions={showScopeSuggestions}
             onScopeSuggestionsClose={() => setShowScopeSuggestions(false)}
+            onSearchFocus={handleSearchFocus}
             sortBy={sortBy}
             onSortByChange={setSortBy}
             sortOrder={sortOrder}
@@ -335,7 +344,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             onResetFilters={handleResetFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
-            onColumnVisibilityChange={(column) => setVisibleColumns(prev => ({ ...prev, [column]: !prev[column] }))}
+            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))}
             columnConfigs={[
               { key: "image", label: "Image" },
               { key: "name", label: "Name" },
@@ -345,9 +354,10 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
               { key: "editedBy", label: "Last Edited By" },
               { key: "actions", label: "Actions" },
             ]}
-            showAddButton={true}
-            addButtonHref="/merchandise/add"
-            addButtonLabel="Add Merchandise"
+            primaryAction={{
+              label: "Add Merchandise",
+              href: "/merchandise/add",
+            }}
           />
 
           {/* Table - Desktop */}

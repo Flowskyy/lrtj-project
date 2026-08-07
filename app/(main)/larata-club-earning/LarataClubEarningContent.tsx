@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import Toolbar, { ColumnConfig, FilterConfig, SortConfig } from "@/components/Toolbar";
+import ModuleToolbar from "@/components/ModuleToolbar";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import { formatWIBDate } from "@/lib/formatWIBDate";
@@ -118,46 +118,29 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     { field: "user_name", label: "Username" },
   ];
 
-  // Column config for Toolbar
-  const columnConfig: ColumnConfig = {
-    user: { label: "User" },
-    earning_point: { label: "LarataClub Points" },
-    category: { label: "Category" },
-    info: { label: "Info" },
-    created_at: { label: "Created At" },
-    actions: { label: "Actions" },
+  // Reset filters handler
+  const handleResetFilters = () => {
+    // Cancel any in-flight prefetch
+    if (prefetchAbortControllerRef.current) {
+      prefetchAbortControllerRef.current.abort();
+      prefetchAbortControllerRef.current = null;
+    }
+
+    // Clear cache on filter reset
+    pageCacheRef.current.clear();
+
+    setCategoryFilter("all");
+    setSortBy("created_at");
+    setSortOrder("desc");
+    setSearchQuery("");
+    setSearchScope("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
   };
 
-  // Filter config for Toolbar
-  const filterConfig: FilterConfig = {
-    categoryFilter,
-    onCategoryFilterChange: (value) => { setCategoryFilter(value); setPage(1); },
-    showCategoryFilter: true,
-    categoryOptions: [
-      { value: "all", label: "All Categories" },
-      ...categories.map(cat => ({ value: cat, label: cat }))
-    ],
-    dateFrom,
-    onDateFromChange: (value) => { setDateFrom(value); setPage(1); },
-    dateTo,
-    onDateToChange: (value) => { setDateTo(value); setPage(1); },
-    showDateRange: true,
-    onResetFilters: handleResetFilters,
-    activeFilterCount,
-  };
-
-  // Sort config for Toolbar
-  const sortConfig: SortConfig = {
-    sortBy,
-    onSortByChange: setSortBy,
-    sortOrder,
-    onSortOrderChange: setSortOrder,
-    sortByOptions: [
-      { value: "created_at", label: "Created Date" },
-      { value: "earning_point", label: "LarataClub Points" },
-      { value: "id", label: "ID" },
-    ],
-  };
+  // Active filter count
+  const activeFilterCount = (categoryFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   // Handle column visibility toggle
   const handleColumnVisibilityToggle = (key: string) => {
@@ -326,6 +309,13 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     }
   };
 
+  // Handle search focus
+  const handleSearchFocus = () => {
+    if (searchQuery.length >= 2) {
+      setShowScopeSuggestions(true);
+    }
+  };
+
   const onSearchChange = useCallback((value: string) => {
     // Cancel any in-flight prefetch immediately
     if (prefetchAbortControllerRef.current) {
@@ -340,29 +330,6 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchChange]);
-
-  const activeFilterCount = (categoryFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
-
-  const handleResetFilters = () => {
-    // Cancel any in-flight prefetch
-    if (prefetchAbortControllerRef.current) {
-      prefetchAbortControllerRef.current.abort();
-      prefetchAbortControllerRef.current = null;
-    }
-
-    // Clear cache on filter reset
-    pageCacheRef.current.clear();
-
-    setCategoryFilter("all");
-    setTypeFilter("all");
-    setSortBy("created_at");
-    setSortOrder("desc");
-    setSearchQuery("");
-    setSearchScope("");
-    setDateFrom("");
-    setDateTo("");
-    setPage(1);
-  };
 
   // View Item
   const handleViewItem = (item: EarningItem) => {
@@ -419,24 +386,60 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
           </div>
 
           {/* Table Toolbar */}
-          <Toolbar
-            searchPlaceholder="Search user name/email..."
+          <ModuleToolbar
             searchQuery={searchQuery}
             onSearchChange={onSearchChange}
-            searchSuggestionsEnabled={true}
+            searchPlaceholder="Search user name/email..."
             searchScopes={earningSearchScopes}
             searchScope={searchScope}
             onScopeSelect={handleScopeSelect}
             showScopeSuggestions={showScopeSuggestions}
-            onShowScopeSuggestionsChange={setShowScopeSuggestions}
-            filterConfig={filterConfig}
-            sortConfig={sortConfig}
-            columns={columnConfig}
+            onScopeSuggestionsClose={() => setShowScopeSuggestions(false)}
+            onSearchFocus={() => {
+              if (searchQuery.length >= 2) {
+                setShowScopeSuggestions(true);
+              }
+            }}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            sortByOptions={[
+              { value: "created_at", label: "Created Date" },
+              { value: "earning_point", label: "LarataClub Points" },
+              { value: "id", label: "ID" },
+            ]}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={(value) => { setCategoryFilter(value); setPage(1); }}
+            categoryOptions={[
+              { value: "all", label: "All Categories" },
+              ...categories.map(cat => ({ value: cat, label: cat }))
+            ]}
+            showCategoryFilter={true}
+            dateFrom={dateFrom}
+            onDateFromChange={(value) => { setDateFrom(value); setPage(1); }}
+            dateTo={dateTo}
+            onDateToChange={(value) => { setDateTo(value); setPage(1); }}
+            showDateRange={true}
+            onResetFilters={handleResetFilters}
+            activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
             onColumnVisibilityToggle={handleColumnVisibilityToggle}
-            showExportButton={true}
-            onExportClick={() => setShowExportDialog(true)}
-            isExporting={isExporting}
+            columnConfigs={[
+              { key: "user", label: "User" },
+              { key: "earning_point", label: "LarataClub Points" },
+              { key: "category", label: "Category" },
+              { key: "info", label: "Info" },
+              { key: "created_at", label: "Created At" },
+              { key: "actions", label: "Actions" },
+            ]}
+            primaryAction={{
+              label: 'Export',
+              onClick: () => setShowExportDialog(true),
+              disabled: isExporting,
+              loading: isExporting,
+              loadingLabel: 'Exporting...',
+            }}
           />
 
           {/* Table - Desktop */}

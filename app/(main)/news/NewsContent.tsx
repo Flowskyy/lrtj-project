@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Toolbar, { ColumnConfig, FilterConfig, SortConfig } from "@/components/Toolbar";
+import ModuleToolbar from "@/components/ModuleToolbar";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
@@ -132,59 +132,12 @@ export default function NewsContent({ username }: NewsContentProps) {
   // Active filter count
   const activeFilterCount = (searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0);
 
-  // Column config for Toolbar
-  const columnConfig: ColumnConfig = {
-    image: { label: "Image" },
-    title: { label: "Title" },
-    type: { label: "Type" },
-    status: { label: "Status" },
-    publish_date: { label: "Publish Date" },
-    views: { label: "Views" },
-    createdBy: { label: "Created By" },
-    actions: { label: "Actions" },
-  };
-
-  // Filter config for Toolbar
-  const filterConfig: FilterConfig = {
-    statusFilter,
-    onStatusFilterChange: setStatusFilter,
-    typeFilter,
-    onTypeFilterChange: setTypeFilter,
-    statusOptions: [
-      { value: "all", label: "All" },
-      { value: "active", label: "Active" },
-      { value: "inactive", label: "Inactive" },
-    ],
-    typeOptions: [
-      { value: "all", label: "All" },
-      { value: "news", label: "News" },
-      { value: "pers", label: "Press Release" },
-    ],
-    showStatusFilter: true,
-    showTypeFilter: true,
-    onResetFilters: handleResetFilters,
-    activeFilterCount,
-  };
-
-  // Sort config for Toolbar
-  const sortConfig: SortConfig = {
-    sortBy,
-    onSortByChange: setSortBy,
-    sortOrder,
-    onSortOrderChange: setSortOrder,
-    sortByOptions: [
-      { value: "created_at", label: "Created Date" },
-      { value: "publish_date", label: "Publish Date" },
-      { value: "title", label: "Title" },
-    ],
-  };
-
   // Handle column visibility toggle
   const handleColumnVisibilityToggle = (key: string) => {
     setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
 
-  // Filter items based on search query and scope (memoized for performance)
+  // Filter items based on search query and scope (client-side for now, can be moved to server)
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
     
@@ -208,6 +161,13 @@ export default function NewsContent({ username }: NewsContentProps) {
     setShowScopeSuggestions(value.length >= 2);
     if (!value.trim()) {
       setSearchScope("");
+    }
+  };
+
+  // Handle search focus
+  const handleSearchFocus = () => {
+    if (searchQuery.length >= 2) {
+      setShowScopeSuggestions(true);
     }
   };
 
@@ -349,24 +309,59 @@ export default function NewsContent({ username }: NewsContentProps) {
           </CardHeader>
 
           {/* Table Toolbar */}
-          <Toolbar
-            searchPlaceholder="Search news..."
+          <ModuleToolbar
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
-            searchSuggestionsEnabled={true}
+            searchPlaceholder="Search news..."
             searchScopes={newsSearchScopes}
             searchScope={searchScope}
             onScopeSelect={handleScopeSelect}
             showScopeSuggestions={showScopeSuggestions}
-            onShowScopeSuggestionsChange={setShowScopeSuggestions}
-            filterConfig={filterConfig}
-            sortConfig={sortConfig}
-            columns={columnConfig}
+            onScopeSuggestionsClose={() => setShowScopeSuggestions(false)}
+            onSearchFocus={handleSearchFocus}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            sortByOptions={[
+              { value: "created_at", label: "Created Date" },
+              { value: "publish_date", label: "Publish Date" },
+              { value: "title", label: "Title" },
+            ]}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            statusOptions={[
+              { value: "all", label: "All" },
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+            ]}
+            showStatusFilter={true}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
+            typeOptions={[
+              { value: "all", label: "All" },
+              { value: "news", label: "News" },
+              { value: "pers", label: "Press Release" },
+            ]}
+            showTypeFilter={true}
+            onResetFilters={handleResetFilters}
+            activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
             onColumnVisibilityToggle={handleColumnVisibilityToggle}
-            showAddButton={true}
-            onAddClick={() => window.location.href = "/news/add"}
-            addButtonLabel="Add News"
+            columnConfigs={[
+              { key: "image", label: "Image" },
+              { key: "title", label: "Title" },
+              { key: "type", label: "Type" },
+              { key: "status", label: "Status" },
+              { key: "publish_date", label: "Publish Date" },
+              { key: "views", label: "Views" },
+              { key: "createdBy", label: "Created By" },
+              { key: "actions", label: "Actions" },
+            ]}
+            primaryAction={{
+              label: "Add News",
+              href: "/news/add",
+            }}
           />
 
           {/* Table - Desktop */}

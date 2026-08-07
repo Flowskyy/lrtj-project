@@ -9,14 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
 import { Skeleton } from "@/components/ui/skeleton";
-import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import StatusBadge from "@/components/StatusBadge";
 import Pagination from "@/components/Pagination";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
+import ModuleToolbar from "@/components/ModuleToolbar";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
-import { Filter, MoreVertical, Eye, Trash2, Search, Columns, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
+import { MoreVertical, Eye, Trash2, ChevronDown, Check, X, Download, CheckSquare, Square } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -182,6 +182,13 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     }
   };
 
+  // Handle search focus
+  const handleSearchFocus = () => {
+    if (searchQuery.length >= 2) {
+      setShowScopeSuggestions(true);
+    }
+  };
+
   const handleResetFilters = () => {
     setSearchQuery("");
     setSearchScope("");
@@ -274,149 +281,65 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
           </div>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Search redeems..."
-                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
-                  onFocus={() => {
-                    if (searchQuery.length >= 2) {
-                      setShowScopeSuggestions(true);
-                    }
-                  }}
-                />
-                <SearchScopeSuggestions
-                  searchQuery={searchQuery}
-                  scopes={redeemSearchScopes}
-                  onScopeSelect={handleScopeSelect}
-                  isVisible={showScopeSuggestions}
-                  onClose={() => setShowScopeSuggestions(false)}
-                />
-              </div>
-              <TableFilterSortMenu
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                sortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
-                sortByOptions={[
-                  { value: "id", label: "ID" },
-                  { value: "created_at", label: "Created Date" },
-                  { value: "updated_at", label: "Updated Date" },
-                ]}
-                categoryFilter={categoryFilter}
-                onCategoryFilterChange={setCategoryFilter}
-                categoryOptions={[
-                  { value: "all", label: "All Categories" },
-                  { value: "uncategorized", label: "No Category" },
-                  ...categories.map(cat => ({ value: cat.id.toString(), label: cat.category_name || `Category ${cat.id}` }))
-                ]}
-                showCategoryFilter={true}
-                dateFrom={dateFrom}
-                onDateFromChange={setDateFrom}
-                dateTo={dateTo}
-                onDateToChange={setDateTo}
-                showDateRange={true}
-                onResetFilters={handleResetFilters}
-                activeFilterCount={activeFilterCount}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
-                  <Columns className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
-                  {visibleColumns.select && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, select: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Select</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.id && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, id: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>ID</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.user_id && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user_id: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>User ID</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.receiver_name && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, receiver_name: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Receiver Name</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.merchandise_name && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, merchandise_name: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Merchandise</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.status && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Status</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.created_at && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Created</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.updated_at && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, updated_at: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Updated</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.actions && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Actions</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                onClick={() => {
-                  setShowExportDialog(true);
-                  startExport();
-                }}
-                disabled={isExporting}
-                className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isExporting ? 'Exporting...' : 'Export'}
-              </Button>
-            </div>
-          </div>
+          <ModuleToolbar
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder="Search redeems..."
+            searchScopes={redeemSearchScopes}
+            searchScope={searchScope}
+            onScopeSelect={handleScopeSelect}
+            showScopeSuggestions={showScopeSuggestions}
+            onScopeSuggestionsClose={() => setShowScopeSuggestions(false)}
+            onSearchFocus={handleSearchFocus}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            sortByOptions={[
+              { value: "id", label: "ID" },
+              { value: "created_at", label: "Created Date" },
+              { value: "updated_at", label: "Updated Date" },
+            ]}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            categoryOptions={[
+              { value: "all", label: "All Categories" },
+              { value: "uncategorized", label: "No Category" },
+              ...categories.map(cat => ({ value: cat.id.toString(), label: cat.category_name || `Category ${cat.id}` }))
+            ]}
+            showCategoryFilter={true}
+            dateFrom={dateFrom}
+            onDateFromChange={setDateFrom}
+            dateTo={dateTo}
+            onDateToChange={setDateTo}
+            showDateRange={true}
+            onResetFilters={handleResetFilters}
+            activeFilterCount={activeFilterCount}
+            visibleColumns={visibleColumns}
+            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))}
+            columnConfigs={[
+              { key: "select", label: "Select" },
+              { key: "id", label: "ID" },
+              { key: "user_id", label: "User ID" },
+              { key: "receiver_name", label: "Receiver Name" },
+              { key: "merchandise_name", label: "Merchandise" },
+              { key: "status", label: "Status" },
+              { key: "created_at", label: "Created" },
+              { key: "updated_at", label: "Updated" },
+              { key: "actions", label: "Actions" },
+            ]}
+            primaryAction={{
+              label: 'Export',
+              icon: <Download className="h-4 w-4" />,
+              onClick: () => {
+                setShowExportDialog(true);
+                startExport();
+              },
+              disabled: isExporting,
+              loading: isExporting,
+              loadingLabel: 'Exporting...',
+            }}
+          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">

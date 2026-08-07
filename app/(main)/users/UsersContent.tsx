@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import ModuleToolbar from "@/components/ModuleToolbar";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Pagination from "@/components/Pagination";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
 import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
+import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -78,6 +79,8 @@ export default function UsersContent({ username }: UsersContentProps) {
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] = useState<string>("");
+  const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
 
@@ -119,6 +122,12 @@ export default function UsersContent({ username }: UsersContentProps) {
     { value: "all", label: "All" },
   ]);
 
+  // Search scopes for Users
+  const userSearchScopes: SearchScope[] = [
+    { field: "name", label: "Name" },
+    { field: "email", label: "Email" },
+  ];
+
   // Fetch items
   const fetchItems = async () => {
     setLoading(true);
@@ -128,7 +137,10 @@ export default function UsersContent({ username }: UsersContentProps) {
       if (tierFilter !== "all") params.set("tier", tierFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+        if (searchScope) params.set("searchScope", searchScope);
+      }
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       params.set("page", currentPage.toString());
@@ -175,12 +187,29 @@ export default function UsersContent({ username }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, dateFrom, dateTo]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
+    setShowScopeSuggestions(value.length >= 2);
+    if (!value.trim()) {
+      setSearchScope("");
+    }
     setCurrentPage(1); // Reset to page 1 when search changes
   }, []);
+
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+    setCurrentPage(1);
+  };
+
+  // Handle search focus
+  const handleSearchFocus = useCallback(() => {
+    if (searchQuery.length >= 2) {
+      setShowScopeSuggestions(true);
+    }
+  }, [searchQuery]);
 
   const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
@@ -357,109 +386,68 @@ export default function UsersContent({ username }: UsersContentProps) {
           </CardHeader>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-              <div className="relative flex-1 sm:flex-none">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name, email, or phone..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 min-h-[44px] w-full sm:w-64 shadow-sm"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleSearchChange("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <TableFilterSortMenu
-                activationSlcFilter={activationSlcFilter}
-                onActivationSlcFilterChange={setActivationSlcFilter}
-                tierFilter={tierFilter}
-                onTierFilterChange={setTierFilter}
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                sortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
-                showActivationSlcFilter={true}
-                showTierFilter={true}
-                tierOptions={membershipOptions}
-                sortByOptions={[
-                  { value: "name", label: "Name" },
-                  { value: "created_at", label: "Created At" },
-                ]}
-                dateFrom={dateFrom}
-                onDateFromChange={setDateFrom}
-                dateTo={dateTo}
-                onDateToChange={setDateTo}
-                showDateRange={true}
-                onResetFilters={handleResetFilters}
-                activeFilterCount={activeFilterCount}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
-                  <Columns className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, nama: !prev.nama }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.nama && <Check className="h-4 w-4" />}
-                      <span>Name</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, email: !prev.email }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.email && <Check className="h-4 w-4" />}
-                      <span>Email</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, activation_slc: !prev.activation_slc }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.activation_slc && <Check className="h-4 w-4" />}
-                      <span>Activation SLC</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, tier: !prev.tier }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.tier && <Check className="h-4 w-4" />}
-                      <span>Tier</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: !prev.created_at }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.created_at && <Check className="h-4 w-4" />}
-                      <span>Created At</span>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: !prev.actions }))}>
-                    <div className="flex items-center gap-2">
-                      {visibleColumns.actions && <Check className="h-4 w-4" />}
-                      <span>Actions</span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                onClick={() => {
-                  setShowExportDialog(true);
-                  startExport();
-              }}
-              disabled={isExporting}
-              className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export'}
-            </Button>
-            </div>
-          </div>
+          <ModuleToolbar
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder="Search by name, email, or phone..."
+            searchScopes={userSearchScopes}
+            searchScope={searchScope}
+            onScopeSelect={handleScopeSelect}
+            showScopeSuggestions={showScopeSuggestions}
+            onScopeSuggestionsClose={() => setShowScopeSuggestions(false)}
+            onSearchFocus={() => {
+              if (searchQuery.length >= 2) {
+                setShowScopeSuggestions(true);
+              }
+            }}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            sortByOptions={[
+              { value: "name", label: "Name" },
+              { value: "created_at", label: "Created At" },
+            ]}
+            activationSlcFilter={activationSlcFilter}
+            onActivationSlcFilterChange={setActivationSlcFilter}
+            activationSlcOptions={[
+              { value: "all", label: "All" },
+              { value: "1", label: "Active SLC" },
+              { value: "0", label: "Inactive SLC" },
+            ]}
+            showActivationSlcFilter={true}
+            tierFilter={tierFilter}
+            onTierFilterChange={setTierFilter}
+            tierOptions={membershipOptions}
+            showTierFilter={true}
+            dateFrom={dateFrom}
+            onDateFromChange={setDateFrom}
+            dateTo={dateTo}
+            onDateToChange={setDateTo}
+            showDateRange={true}
+            onResetFilters={handleResetFilters}
+            activeFilterCount={activeFilterCount}
+            visibleColumns={visibleColumns}
+            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))}
+            columnConfigs={[
+              { key: "nama", label: "Name" },
+              { key: "email", label: "Email" },
+              { key: "activation_slc", label: "Activation SLC" },
+              { key: "tier", label: "Tier" },
+              { key: "created_at", label: "Created At" },
+              { key: "actions", label: "Actions" },
+            ]}
+            primaryAction={{
+              label: 'Export',
+              onClick: () => {
+                setShowExportDialog(true);
+                startExport();
+              },
+              disabled: isExporting,
+              loading: isExporting,
+              loadingLabel: 'Exporting...',
+            }}
+          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-100 rounded-xl overflow-hidden">
