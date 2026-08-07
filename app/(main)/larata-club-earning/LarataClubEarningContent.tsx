@@ -3,25 +3,25 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import Toolbar, { ColumnConfig, FilterConfig, SortConfig } from "@/components/Toolbar";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
+import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Pagination from "@/components/Pagination";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
-import { Search, Eye, X, Download, Columns, Check } from "lucide-react";
+import { Eye, X, Search, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -117,6 +117,52 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     { field: "user_email", label: "Email" },
     { field: "user_name", label: "Username" },
   ];
+
+  // Column config for Toolbar
+  const columnConfig: ColumnConfig = {
+    user: { label: "User" },
+    earning_point: { label: "LarataClub Points" },
+    category: { label: "Category" },
+    info: { label: "Info" },
+    created_at: { label: "Created At" },
+    actions: { label: "Actions" },
+  };
+
+  // Filter config for Toolbar
+  const filterConfig: FilterConfig = {
+    categoryFilter,
+    onCategoryFilterChange: (value) => { setCategoryFilter(value); setPage(1); },
+    showCategoryFilter: true,
+    categoryOptions: [
+      { value: "all", label: "All Categories" },
+      ...categories.map(cat => ({ value: cat, label: cat }))
+    ],
+    dateFrom,
+    onDateFromChange: (value) => { setDateFrom(value); setPage(1); },
+    dateTo,
+    onDateToChange: (value) => { setDateTo(value); setPage(1); },
+    showDateRange: true,
+    onResetFilters: handleResetFilters,
+    activeFilterCount,
+  };
+
+  // Sort config for Toolbar
+  const sortConfig: SortConfig = {
+    sortBy,
+    onSortByChange: setSortBy,
+    sortOrder,
+    onSortOrderChange: setSortOrder,
+    sortByOptions: [
+      { value: "created_at", label: "Created Date" },
+      { value: "earning_point", label: "LarataClub Points" },
+      { value: "id", label: "ID" },
+    ],
+  };
+
+  // Handle column visibility toggle
+  const handleColumnVisibilityToggle = (key: string) => {
+    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Generate cache key for a page with current filters
   const getCacheKey = useCallback((pageNum: number) => {
@@ -373,123 +419,25 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
           </div>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search user name/email..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
-                  onFocus={() => {
-                    if (searchQuery.length >= 2) {
-                      setShowScopeSuggestions(true);
-                    }
-                  }}
-                />
-                <SearchScopeSuggestions
-                  searchQuery={searchQuery}
-                  scopes={earningSearchScopes}
-                  onScopeSelect={handleScopeSelect}
-                  isVisible={showScopeSuggestions}
-                  onClose={() => setShowScopeSuggestions(false)}
-                />
-              </div>
-              <TableFilterSortMenu
-                statusFilter=""
-                onStatusFilterChange={() => {}}
-                categoryFilter={categoryFilter}
-                onCategoryFilterChange={(value) => { setCategoryFilter(value); setPage(1); }}
-                showCategoryFilter={true}
-                showStatusFilter={false}
-                categoryOptions={[
-                  { value: "all", label: "All Categories" },
-                  ...categories.map(cat => ({ value: cat, label: cat }))
-                ]}
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                sortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
-                dateFrom={dateFrom}
-                onDateFromChange={(value) => { setDateFrom(value); setPage(1); }}
-                dateTo={dateTo}
-                onDateToChange={(value) => { setDateTo(value); setPage(1); }}
-                showDateRange={true}
-                sortByOptions={[
-                  { value: "created_at", label: "Created Date" },
-                  { value: "earning_point", label: "LarataClub Points" },
-                  { value: "id", label: "ID" },
-                ]}
-                onResetFilters={handleResetFilters}
-                activeFilterCount={activeFilterCount}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
-                  <Columns className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
-                  {visibleColumns.user && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, user: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>User</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.earning_point && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, earning_point: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>LarataClub Points</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.category && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Category</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.info && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, info: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Info</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.created_at && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, created_at: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Created At</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.actions && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Actions</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                onClick={() => setShowExportDialog(true)}
-                className="h-10 px-4 bg-[#E5262C] hover:bg-[#c91e24] text-white rounded-lg shadow-sm"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </div>
+          <Toolbar
+            searchPlaceholder="Search user name/email..."
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            searchSuggestionsEnabled={true}
+            searchScopes={earningSearchScopes}
+            searchScope={searchScope}
+            onScopeSelect={handleScopeSelect}
+            showScopeSuggestions={showScopeSuggestions}
+            onShowScopeSuggestionsChange={setShowScopeSuggestions}
+            filterConfig={filterConfig}
+            sortConfig={sortConfig}
+            columns={columnConfig}
+            visibleColumns={visibleColumns}
+            onColumnVisibilityToggle={handleColumnVisibilityToggle}
+            showExportButton={true}
+            onExportClick={() => setShowExportDialog(true)}
+            isExporting={isExporting}
+          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">

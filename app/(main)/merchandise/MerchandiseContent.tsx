@@ -3,22 +3,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import Toolbar, { ColumnConfig } from "@/components/Toolbar";
 import ImageUpload from "@/components/ImageUpload";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { getImageUrl } from "@/lib/utils";
 import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
-import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
-import Link from "next/link";
+import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface MerchandiseItem {
@@ -305,124 +303,52 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
         <CardContent className="p-6">
           <div className="flex flex-wrap items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Merchandise Management</h2>
-            <Link href="/merchandise/add">
-              <Button className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Merchandise
-              </Button>
-            </Link>
           </div>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Search merchandise..."
-                  className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
-                  onFocus={() => {
-                    if (searchQuery.length >= 2) {
-                      setShowScopeSuggestions(true);
-                    }
-                  }}
-                />
-                <SearchScopeSuggestions
-                  searchQuery={searchQuery}
-                  scopes={merchandiseSearchScopes}
-                  onScopeSelect={handleScopeSelect}
-                  isVisible={showScopeSuggestions}
-                  onClose={() => setShowScopeSuggestions(false)}
-                />
-              </div>
-              <TableFilterSortMenu
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                sortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
-                sortByOptions={[
-                  { value: "createdAt", label: "Created Date" },
-                  { value: "name", label: "Name" },
-                  { value: "points", label: "Points" },
-                ]}
-                categoryFilter={categoryFilter}
-                onCategoryFilterChange={setCategoryFilter}
-                categoryOptions={[
-                  { value: "all", label: "All Categories" },
-                  { value: "uncategorized", label: "No Category" },
-                  ...categories.map(cat => ({ value: cat.id.toString(), label: cat.category_name || `Category ${cat.id}` }))
-                ]}
-                showCategoryFilter={true}
-                onResetFilters={handleResetFilters}
-                activeFilterCount={activeFilterCount}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
-                  <Columns className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
-                  {visibleColumns.image && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, image: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Image</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.name && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, name: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Name</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.category && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, category: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Category</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.points && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, points: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Points</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.status && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Status</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.editedBy && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, editedBy: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Last Edited By</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.actions && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Actions</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
+          <Toolbar
+            searchPlaceholder="Search merchandise..."
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            searchSuggestionsEnabled={true}
+            searchScopes={merchandiseSearchScopes}
+            onSearchScopeSelect={handleScopeSelect}
+            showScopeSuggestions={showScopeSuggestions}
+            onScopeSuggestionsClose={() => setShowScopeSuggestions(false)}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            sortByOptions={[
+              { value: "createdAt", label: "Created Date" },
+              { value: "name", label: "Name" },
+              { value: "points", label: "Points" },
+            ]}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            categoryOptions={[
+              { value: "all", label: "All Categories" },
+              { value: "uncategorized", label: "No Category" },
+              ...categories.map(cat => ({ value: cat.id.toString(), label: cat.category_name || `Category ${cat.id}` }))
+            ]}
+            showCategoryFilter={true}
+            onResetFilters={handleResetFilters}
+            activeFilterCount={activeFilterCount}
+            visibleColumns={visibleColumns}
+            onColumnVisibilityChange={(column) => setVisibleColumns(prev => ({ ...prev, [column]: !prev[column] }))}
+            columnConfigs={[
+              { key: "image", label: "Image" },
+              { key: "name", label: "Name" },
+              { key: "category", label: "Category" },
+              { key: "points", label: "Points" },
+              { key: "status", label: "Status" },
+              { key: "editedBy", label: "Last Edited By" },
+              { key: "actions", label: "Actions" },
+            ]}
+            showAddButton={true}
+            addButtonHref="/merchandise/add"
+            addButtonLabel="Add Merchandise"
+          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">

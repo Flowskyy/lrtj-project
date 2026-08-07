@@ -1,23 +1,21 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import Toolbar, { ColumnConfig, FilterConfig, SortConfig } from "@/components/Toolbar";
 import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { formatDisplayDate } from "@/lib/formatWIBDate";
-import { Filter, Plus, MoreVertical, Eye, Pencil, Trash2, Search, Columns, ChevronDown, Check, X } from "lucide-react";
-import Link from "next/link";
+import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,6 +113,77 @@ export default function NewsContent({ username }: NewsContentProps) {
     { field: "title", label: "News Title" },
   ];
 
+  // Handle scope selection
+  const handleScopeSelect = (scope: SearchScope) => {
+    setSearchScope(scope.field);
+  };
+
+  // Handle reset filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSearchScope("");
+    setShowScopeSuggestions(false);
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setSortBy("created_at");
+    setSortOrder("desc");
+  };
+
+  // Active filter count
+  const activeFilterCount = (searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0);
+
+  // Column config for Toolbar
+  const columnConfig: ColumnConfig = {
+    image: { label: "Image" },
+    title: { label: "Title" },
+    type: { label: "Type" },
+    status: { label: "Status" },
+    publish_date: { label: "Publish Date" },
+    views: { label: "Views" },
+    createdBy: { label: "Created By" },
+    actions: { label: "Actions" },
+  };
+
+  // Filter config for Toolbar
+  const filterConfig: FilterConfig = {
+    statusFilter,
+    onStatusFilterChange: setStatusFilter,
+    typeFilter,
+    onTypeFilterChange: setTypeFilter,
+    statusOptions: [
+      { value: "all", label: "All" },
+      { value: "active", label: "Active" },
+      { value: "inactive", label: "Inactive" },
+    ],
+    typeOptions: [
+      { value: "all", label: "All" },
+      { value: "news", label: "News" },
+      { value: "pers", label: "Press Release" },
+    ],
+    showStatusFilter: true,
+    showTypeFilter: true,
+    onResetFilters: handleResetFilters,
+    activeFilterCount,
+  };
+
+  // Sort config for Toolbar
+  const sortConfig: SortConfig = {
+    sortBy,
+    onSortByChange: setSortBy,
+    sortOrder,
+    onSortOrderChange: setSortOrder,
+    sortByOptions: [
+      { value: "created_at", label: "Created Date" },
+      { value: "publish_date", label: "Publish Date" },
+      { value: "title", label: "Title" },
+    ],
+  };
+
+  // Handle column visibility toggle
+  const handleColumnVisibilityToggle = (key: string) => {
+    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
+  };
+
   // Filter items based on search query and scope (memoized for performance)
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
@@ -132,22 +201,6 @@ export default function NewsContent({ username }: NewsContentProps) {
              item.creatorEmail?.toLowerCase().includes(query);
     }
   });
-  const activeFilterCount = (searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0);
-
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    setSearchScope("");
-    setShowScopeSuggestions(false);
-    setStatusFilter("all");
-    setTypeFilter("all");
-    setSortBy("created_at");
-    setSortOrder("desc");
-  };
-
-  // Handle scope selection
-  const handleScopeSelect = (scope: SearchScope) => {
-    setSearchScope(scope.field);
-  };
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
@@ -292,143 +345,29 @@ export default function NewsContent({ username }: NewsContentProps) {
       <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
         <CardContent>
           <CardHeader className="p-3">
-            <div className="flex flex-wrap items-center justify-between">
-              <CardTitle className="text-lg">News Management</CardTitle>
-              <Link href="/news/add">
-                <Button className="min-h-[44px] bg-primary hover:bg-primary/90 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add News
-                </Button>
-              </Link>
-            </div>
+            <CardTitle className="text-lg">News Management</CardTitle>
           </CardHeader>
 
           {/* Table Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search news..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 h-10 border border-gray-200 rounded-lg focus:border-gray-300 w-full sm:w-64"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-                <SearchScopeSuggestions
-                  searchQuery={searchQuery}
-                  scopes={newsSearchScopes}
-                  onScopeSelect={handleScopeSelect}
-                  isVisible={showScopeSuggestions}
-                  onClose={() => setShowScopeSuggestions(false)}
-                />
-              </div>
-              <TableFilterSortMenu
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
-                typeFilter={typeFilter}
-                onTypeFilterChange={setTypeFilter}
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                sortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
-                statusOptions={[
-                  { value: "all", label: "All" },
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
-                ]}
-                showStatusFilter={true}
-                showTypeFilter={true}
-                sortByOptions={[
-                  { value: "created_at", label: "Created Date" },
-                  { value: "publish_date", label: "Publish Date" },
-                  { value: "title", label: "Title" },
-                ]}
-                onResetFilters={handleResetFilters}
-                activeFilterCount={activeFilterCount}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px]">
-                  <Columns className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
-                  {visibleColumns.image && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, image: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Image</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.title && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, title: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Title</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.type && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, type: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Type</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.status && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, status: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Status</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.publish_date && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, publish_date: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Publish Date</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.views && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, views: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Views</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.createdBy && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, createdBy: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Created By</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {visibleColumns.actions && (
-                    <DropdownMenuItem onClick={() => setVisibleColumns(prev => ({ ...prev, actions: false }))}>
-                      <div className="flex items-center gap-2">
-                        <Check className="h-3 w-3" />
-                        <span>Actions</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
+          <Toolbar
+            searchPlaceholder="Search news..."
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            searchSuggestionsEnabled={true}
+            searchScopes={newsSearchScopes}
+            searchScope={searchScope}
+            onScopeSelect={handleScopeSelect}
+            showScopeSuggestions={showScopeSuggestions}
+            onShowScopeSuggestionsChange={setShowScopeSuggestions}
+            filterConfig={filterConfig}
+            sortConfig={sortConfig}
+            columns={columnConfig}
+            visibleColumns={visibleColumns}
+            onColumnVisibilityToggle={handleColumnVisibilityToggle}
+            showAddButton={true}
+            onAddClick={() => window.location.href = "/news/add"}
+            addButtonLabel="Add News"
+          />
 
           {/* Table - Desktop */}
           <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
