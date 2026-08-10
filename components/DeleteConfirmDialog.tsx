@@ -28,19 +28,23 @@ export default function DeleteConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-destructive">{title || defaultTitle}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {description || defaultDescription}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+      <AlertDialogContent className="max-w-md bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-2xl p-0 overflow-hidden">
+        <div className="px-6 pt-6 pb-4 border-b border-white/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#E5262C]">{title || defaultTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-gray-600 mt-1">
+              {description || defaultDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+        </div>
+        <AlertDialogFooter className="px-6 py-4 flex gap-3">
+          <AlertDialogCancel disabled={isDeleting} className="flex-1 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700">
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="flex-1 bg-[#E5262C] hover:bg-[#c41f24] text-white font-medium shadow-sm"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </AlertDialogAction>

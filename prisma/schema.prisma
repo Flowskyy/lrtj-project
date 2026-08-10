@@ -65,26 +65,26 @@ model admin_roles {
 }
 
 model admin_invitations {
-  id               Int        @id @default(autoincrement())
-  email            String     @db.VarChar(255)
-  roleId           Int
-  inviteTokenHash  String     @unique @db.VarChar(255)
-  otpCodeHash      String?    @db.VarChar(255)
-  otpSentAt        DateTime?
-  otpExpiresAt     DateTime?
-  otpAttempts      Int        @default(0)
-  inviteExpiresAt  DateTime   @db.DateTime(0)
-  status           String     @default("pending") @db.VarChar(50)
-  createdAt        DateTime   @default(now()) @db.DateTime(0)
-  createdBy        String?    @db.VarChar(255)
-  completedAt      DateTime?  @db.DateTime(0)
-
-  auth_roles       auth_roles @relation(fields: [roleId], references: [id])
+  id              Int        @id @default(autoincrement())
+  email           String     @db.VarChar(255)
+  roleId          Int
+  inviteTokenHash String     @unique @db.VarChar(255)
+  otpCodeHash     String?    @db.VarChar(255)
+  otpSentAt       DateTime?
+  otpExpiresAt    DateTime?
+  otpAttempts     Int        @default(0)
+  inviteExpiresAt DateTime   @db.DateTime(0)
+  status          String     @default("pending") @db.VarChar(50)
+  createdAt       DateTime   @default(now()) @db.DateTime(0)
+  createdBy       String?    @db.VarChar(255)
+  completedAt     DateTime?  @db.DateTime(0)
+  auth_roles      auth_roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@index([email])
   @@index([inviteTokenHash])
   @@index([status])
   @@index([inviteExpiresAt])
+  @@index([roleId], map: "admin_invitations_roleId_fkey")
   @@map("admin_invitations")
 }
 
@@ -1158,14 +1158,14 @@ model popups {
 }
 
 model auth_roles {
-  id                Int                @id @default(autoincrement())
-  name              String             @unique
-  isSuperAdmin      Boolean            @default(false)
-  createdAt         DateTime           @default(now())
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique
+  isSuperAdmin      Boolean             @default(false)
+  createdAt         DateTime            @default(now())
   updatedAt         DateTime
+  admin_invitations admin_invitations[]
   auth_users        auth_users[]
   role_permissions  role_permissions[]
-  admin_invitations admin_invitations[]
 }
 
 model role_permissions {

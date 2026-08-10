@@ -8,9 +8,9 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// Generate a random 6-digit OTP
+// Generate a random 4-digit OTP
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 // Hash OTP using SHA-256
@@ -21,10 +21,10 @@ function hashOtp(otp: string): string {
 // GET: Validate invitation token and generate OTP
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const rawToken = params.token;
+    const { token: rawToken } = await params;
     const tokenHash = hashToken(rawToken);
 
     // Find invitation by token hash
@@ -86,6 +86,7 @@ export async function GET(
     // Send OTP email
     await sendOtpEmail({
       recipientName: invitation.email,
+      to: invitation.email,
       otpCode: rawOtp,
       expiryMinutes: 10,
     });
@@ -108,10 +109,10 @@ export async function GET(
 // POST: Verify OTP
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const rawToken = params.token;
+    const { token: rawToken } = await params;
     const tokenHash = hashToken(rawToken);
     const { otp } = await request.json();
 

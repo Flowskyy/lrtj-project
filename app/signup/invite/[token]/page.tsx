@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle, XCircle, Mail, Lock, User } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, XCircle, Mail, Lock, User } from "lucide-react";
+import Image from "next/image";
 
 export default function InviteSignupPage() {
   const params = useParams();
@@ -63,9 +63,9 @@ export default function InviteSignupPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!otp || otp.length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
+
+    if (!otp || otp.length !== 4) {
+      toast.error("Please enter a valid 4-digit OTP");
       return;
     }
 
@@ -170,187 +170,229 @@ export default function InviteSignupPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-        <Card className="w-full max-w-md p-8">
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[#E5262C]" />
-            <p className="mt-4 text-gray-600">Validating invitation...</p>
-          </div>
-        </Card>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-4 relative"
+        style={{
+          backgroundImage: 'url("/lrt-station.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="w-full max-w-sm relative z-10">
+          <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-[#E5262C]" />
+                <p className="mt-4 text-gray-600">Validating invitation...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-        <Card className="w-full max-w-md p-8">
-          <div className="flex flex-col items-center justify-center py-12">
-            <XCircle className="h-16 w-16 text-red-500 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Invalid Invitation</h2>
-            <p className="text-gray-600 text-center">{error}</p>
-            <Button
-              variant="outline"
-              className="mt-6"
-              onClick={() => router.push("/")}
-            >
-              Go to Homepage
-            </Button>
-          </div>
-        </Card>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-4 relative"
+        style={{
+          backgroundImage: 'url("/lrt-station.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="w-full max-w-sm relative z-10">
+          <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <div className="flex flex-col items-center justify-center py-12">
+                <XCircle className="h-16 w-16 text-red-500 mb-4" />
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Invalid Invitation</h2>
+                <p className="text-gray-600 text-center">{error}</p>
+                <Button
+                  variant="outline"
+                  className="mt-6 h-10"
+                  onClick={() => router.push("/")}
+                >
+                  Go to Homepage
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-[#E5262C] rounded-full flex items-center justify-center mb-4">
-            <User className="h-8 w-8 text-white" />
-          </div>
-          <CardTitle className="text-2xl">Complete Your Registration</CardTitle>
-          <CardDescription>
-            {invitation && (
-              <span>
-                Signing up as <span className="font-semibold">{invitation.email}</span>
-                {invitation.role && <span> • {invitation.role}</span>}
-              </span>
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-4 relative"
+      style={{
+        backgroundImage: 'url("/lrt-station.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      {/* Dark overlay for better text contrast */}
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="w-full max-w-sm relative z-10">
+        <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm">
+          <CardContent className="p-8">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/logo-lrtj.png"
+                alt="LRT Jakarta"
+                width={200}
+                height={65}
+                className="h-16 w-auto object-contain"
+              />
+            </div>
+
+            {/* Registration Info */}
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Complete Your Registration</h2>
+              {invitation && (
+                <p className="text-sm text-gray-600">
+                  Signing up as <span className="font-semibold">{invitation.email}</span>
+                  {invitation.role && <span> • {invitation.role}</span>}
+                </p>
+              )}
+            </div>
+
+            {!otpVerified ? (
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="otp" className="text-sm font-medium flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Enter OTP Code
+                  </Label>
+                  <Input
+                    id="otp"
+                    type="text"
+                    placeholder="Enter 4-digit code"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    maxLength={4}
+                    disabled={verifyingOtp}
+                    className="h-9 text-center text-2xl tracking-widest"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter the 4-digit code sent to your email
+                  </p>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-9 bg-[#E5262C] hover:bg-[#c91e24] text-white font-medium transition-colors disabled:opacity-50"
+                  disabled={verifyingOtp || otp.length !== 4}
+                >
+                  {verifyingOtp ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify OTP"
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full h-8 text-xs"
+                  onClick={handleResendOtp}
+                  disabled={resendingOtp || otpResendTimer > 0}
+                >
+                  {resendingOtp ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : otpResendTimer > 0 ? (
+                    `Resend OTP in ${otpResendTimer}s`
+                  ) : (
+                    "Resend OTP"
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleSignup} className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="username" className="text-sm font-medium flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Username
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={signingUp}
+                    className="h-9"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Create a password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={signingUp}
+                    className="h-9"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Must be at least 8 characters
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="confirmPassword" className="text-sm font-medium flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Confirm Password
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={signingUp}
+                    className="h-9"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-9 bg-[#E5262C] hover:bg-[#c91e24] text-white font-medium transition-colors disabled:opacity-50"
+                  disabled={signingUp || !username || !password || !confirmPassword}
+                >
+                  {signingUp ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    "Complete Registration"
+                  )}
+                </Button>
+              </form>
             )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!otpVerified ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="otp" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Enter OTP Code
-                </Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  placeholder="Enter 6-digit code"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  maxLength={6}
-                  disabled={verifyingOtp}
-                  className="text-center text-2xl tracking-widest"
-                />
-                <p className="text-xs text-gray-500">
-                  Enter the 6-digit code sent to your email
-                </p>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-[#E5262C] hover:bg-[#c41f24] text-white"
-                disabled={verifyingOtp || otp.length !== 6}
-              >
-                {verifyingOtp ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Verify OTP"
-                )}
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={handleResendOtp}
-                disabled={resendingOtp || otpResendTimer > 0}
-              >
-                {resendingOtp ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : otpResendTimer > 0 ? (
-                  `Resend OTP in ${otpResendTimer}s`
-                ) : (
-                  "Resend OTP"
-                )}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleSignup} className="space-y-4">
-              <Alert className="bg-green-50 border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  Email verified! Please set your password to complete registration.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-2">
-                <Label htmlFor="username" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Choose a username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={signingUp}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Create a password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={signingUp}
-                />
-                <p className="text-xs text-gray-500">
-                  Must be at least 8 characters
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  Confirm Password
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={signingUp}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-[#E5262C] hover:bg-[#c41f24] text-white"
-                disabled={signingUp || !username || !password || !confirmPassword}
-              >
-                {signingUp ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  "Complete Registration"
-                )}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

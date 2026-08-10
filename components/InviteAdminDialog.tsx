@@ -114,66 +114,85 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
         Invite Admin
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Invite New Admin</DialogTitle>
-          <DialogDescription>
-            Send an invitation email to a new admin. They will receive a secure link to complete their registration.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={roleId}
-                onValueChange={setRoleId}
-                disabled={loading || fetchingRoles}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue placeholder={fetchingRoles ? "Loading roles..." : "Select a role"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id.toString()}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-md bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-2xl p-0 overflow-hidden"
+        >
+          {/* Modal Header */}
+          <div className="px-6 pt-6 pb-4 border-b border-white/30">
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Invite New Admin
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 mt-1">
+              Send an invitation email to a new admin. They will receive a secure link to complete their registration.
+            </DialogDescription>
           </div>
-          <DialogFooter className="mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="bg-[#E5262C] hover:bg-[#c41f24] text-white"
-              disabled={loading || !email || !roleId}
-            >
-              {loading ? "Sending..." : "Send Invitation"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+
+          {/* Modal Body */}
+          <div className="px-6 py-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  className="h-11 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-sm font-medium text-gray-700">
+                  Role
+                </Label>
+                <Select
+                  value={roleId}
+                  onValueChange={(value) => setRoleId(value || "")}
+                  disabled={loading || fetchingRoles}
+                >
+                  <SelectTrigger 
+                    id="role"
+                    className="h-11 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
+                  >
+                    <SelectValue placeholder={fetchingRoles ? "Loading roles..." : "Select a role"} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/95 backdrop-blur-xl border border-white/50">
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DialogFooter className="pt-4 flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={loading}
+                  className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41f24] text-white font-medium shadow-sm"
+                  disabled={loading || !email || !roleId}
+                >
+                  {loading ? "Sending..." : "Send Invitation"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -8,7 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, Trash2, Clock, Circle } from "lucide-react";
+import { Trash2, Circle } from "lucide-react";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import InviteAdminDialog from "@/components/InviteAdminDialog";
 import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
@@ -180,13 +180,13 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
       </div>
 
       {/* Tabs and Table Card */}
-      <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl">
-        <CardHeader>
-          <CardTitle>Admin Accounts</CardTitle>
+      <Card className="bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-2xl">
+        <CardHeader className="border-b border-white/30">
+          <CardTitle className="text-gray-900">Admin Accounts</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4" variant="default">
               <TabsTrigger value="all">All Admin</TabsTrigger>
               {roles.map((role) => (
                 <TabsTrigger key={role.id} value={role.id.toString()}>
@@ -206,11 +206,11 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead className="w-32">Actions</TableHead>
+                      <TableRow className="border-white/30 hover:bg-white/30">
+                        <TableHead className="text-gray-700 font-semibold">Name</TableHead>
+                        <TableHead className="text-gray-700 font-semibold">Status</TableHead>
+                        <TableHead className="text-gray-700 font-semibold">Role</TableHead>
+                        <TableHead className="text-gray-700 font-semibold w-24">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -222,10 +222,13 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                         </TableRow>
                       ) : (
                         filteredUsers.map((user) => (
-                          <TableRow key={user.id}>
+                          <TableRow 
+                            key={user.id}
+                            className="border-white/20 hover:bg-white/40 transition-colors"
+                          >
                             <TableCell className="font-medium">
                               <div>
-                                <div>{user.name}</div>
+                                <div className="text-gray-900">{user.name}</div>
                                 <div className="text-xs text-gray-500">{user.email}</div>
                               </div>
                             </TableCell>
@@ -234,31 +237,26 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                             </TableCell>
                             <TableCell>
                               {user.roleName ? (
-                                <Badge variant="secondary">{user.roleName}</Badge>
+                                <Badge 
+                                  variant="secondary" 
+                                  className="bg-white/60 border border-white/40 text-gray-700 hover:bg-white/80"
+                                >
+                                  {user.roleName}
+                                </Badge>
                               ) : (
                                 <span className="text-sm text-gray-400">No role</span>
                               )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openDeleteDialog(user)}
-                                  disabled={user.id === currentUserId}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openDeleteDialog(user)}
+                                disabled={user.id === currentUserId}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50/50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))

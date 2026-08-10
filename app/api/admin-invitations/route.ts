@@ -14,9 +14,9 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// Generate a random 6-digit OTP
+// Generate a random 4-digit OTP
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 export async function POST(request: NextRequest) {
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
     // Send email
     await sendInviteEmail({
       recipientName: email,
+      to: email,
       signupLink,
       expiryHours: 48,
     });
