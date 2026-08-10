@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { exportJobManager } from '@/lib/export-job-manager';
+import { calculateDynamicBatchSize } from '@/lib/export-batching';
 import * as XLSX from 'xlsx';
 import path from 'path';
 import { writeFile, unlink } from 'fs/promises';
@@ -104,7 +105,9 @@ async function runExportJob(
   orderBy: any,
   total: number
 ) {
-  const batchSize = 50000;
+  const { batchSize } = calculateDynamicBatchSize(total);
+  console.log(`Export job ${jobId}: total=${total}, dynamic batch size=${batchSize}`);
+  
   let redeemBenefits: any[] = [];
   let offset = 0;
   let hasMore = true;
@@ -150,6 +153,7 @@ async function runExportJob(
       
       // Update progress
       exportJobManager.updateProgress(jobId, processed);
+      console.log(`Export job ${jobId}: batch ${Math.ceil(processed / batchSize)} complete, processed ${processed}/${total} (${Math.round((processed / total) * 100)}%)`);
       
       offset += batchSize;
       hasMore = batch.length === batchSize;

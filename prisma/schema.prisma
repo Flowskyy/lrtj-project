@@ -1131,24 +1131,23 @@ model popups {
 }
 
 model auth_roles {
-  id                Int                @id @default(autoincrement())
-  name              String             @unique
-  isSuperAdmin      Boolean            @default(false)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime
-  auth_users        auth_users[]
-  role_permissions  role_permissions[]
+  id               Int                @id @default(autoincrement())
+  name             String             @unique
+  isSuperAdmin     Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  auth_users       auth_users[]
+  role_permissions role_permissions[]
 }
 
 model role_permissions {
-  id        Int      @id @default(autoincrement())
-  roleId    Int
-  pageKey   String   @db.VarChar(100)
-  createdAt DateTime @default(now()) @db.Timestamp(0)
-  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
-  
+  id         Int        @id @default(autoincrement())
+  roleId     Int
+  pageKey    String     @db.VarChar(100)
+  createdAt  DateTime   @default(now()) @db.Timestamp(0)
+  updatedAt  DateTime   @default(now()) @updatedAt @db.Timestamp(0)
   auth_roles auth_roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
+
   @@unique([roleId, pageKey])
   @@index([roleId])
 }

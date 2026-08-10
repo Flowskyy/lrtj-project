@@ -6,11 +6,12 @@ const prisma = new PrismaClient()
 // GET single role with permissions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const role = await prisma.auth_roles.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       include: {
         role_permissions: true,
         _count: {
@@ -33,14 +34,15 @@ export async function GET(
 // PUT update role
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const { name, isSuperAdmin, permissions } = body
 
     const role = await prisma.auth_roles.findUnique({
-      where: { id: parseInt(params.id) }
+      where: { id: parseInt(id) }
     })
 
     if (!role) {
@@ -59,7 +61,7 @@ export async function PUT(
 
     // Update role
     const updatedRole = await prisma.auth_roles.update({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       data: {
         ...(name && { name }),
         ...(isSuperAdmin !== undefined && { isSuperAdmin })
@@ -69,13 +71,13 @@ export async function PUT(
     // Update permissions (delete all and recreate) unless super admin
     if (!isSuperAdmin && permissions !== undefined) {
       await prisma.role_permissions.deleteMany({
-        where: { roleId: parseInt(params.id) }
+        where: { roleId: parseInt(id) }
       })
 
       if (permissions.length > 0) {
         await prisma.role_permissions.createMany({
           data: permissions.map((pageKey: string) => ({
-            roleId: parseInt(params.id),
+            roleId: parseInt(id),
             pageKey
           }))
         })
@@ -92,10 +94,11 @@ export async function PUT(
 // DELETE role
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const roleId = parseInt(params.id)
+    const { id } = await params
+    const roleId = parseInt(id)
 
     // Check if role has users
     const userCount = await prisma.auth_users.count({

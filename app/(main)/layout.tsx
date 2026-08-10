@@ -378,6 +378,16 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Roles",
         breadcrumb: ["Master", "Roles"],
       }
+    : pathname === "/master/roles/add"
+    ? {
+        title: "Add Role",
+        breadcrumb: ["Master", "Roles", "Add Role"],
+      }
+    : pathname.startsWith("/master/roles/edit/")
+    ? {
+        title: "Edit Role",
+        breadcrumb: ["Master", "Roles", "Edit Role"],
+      }
     : pathname === "/users"
     ? {
         title: "Users",
@@ -669,6 +679,14 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             ? "/master/banner"
 
                             : item === "Roles"
+
+                            ? "/master/roles"
+
+                            : item === "Add Role"
+
+                            ? "/master/roles/add"
+
+                            : item === "Edit Role"
 
                             ? "/master/roles"
 

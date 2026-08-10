@@ -93,11 +93,6 @@ export default function RolesContentSimple({ username }: RolesContentProps) {
                   <div key={role.id} className="p-3 border rounded-lg">
                     <div className="flex justify-between items-center">
                       <span className="font-medium">{role.name}</span>
-                      {role.isSuperAdmin && (
-                        <span className="px-2 py-1 bg-red-600 text-white text-xs rounded">
-                          Super Admin
-                        </span>
-                      )}
                     </div>
                     <p className="text-sm text-gray-500">
                       {role._count.role_permissions} permissions
