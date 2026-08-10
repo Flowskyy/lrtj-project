@@ -100,7 +100,14 @@ export async function GET(request: NextRequest) {
       }
       if (typeof value === 'object' && value !== null) {
         const [op, val] = Object.entries(value)[0];
-        return `${key} ${op.toUpperCase()} ${val}`;
+        // Map Prisma operators to SQL operators
+        const sqlOp = {
+          gte: '>=',
+          lte: '<=',
+          gt: '>',
+          lt: '<',
+        }[op] || '=';
+        return `${key} ${sqlOp} ${val}`;
       }
       return `${key} = ${value}`;
     }).join(' AND ') : '';

@@ -13,6 +13,7 @@ interface UseExportJobOptions {
 
 export function useExportJob({ moduleEndpoint, params, onComplete, onError }: UseExportJobOptions) {
   const [isExporting, setIsExporting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [processed, setProcessed] = useState(0);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<'idle' | 'running' | 'completed' | 'cancelled' | 'error'>('idle');
@@ -81,11 +82,13 @@ export function useExportJob({ moduleEndpoint, params, onComplete, onError }: Us
 
   const cancelExport = useCallback(async () => {
     if (!jobIdRef.current) return;
+    setIsCancelling(true);
     stopPolling();
     try {
       await fetch(`${moduleEndpoint}/export/cancel/${jobIdRef.current}`, { method: 'POST' });
     } finally {
       setIsExporting(false);
+      setIsCancelling(false);
       setStatus('cancelled');
     }
   }, [moduleEndpoint, stopPolling]);
@@ -103,6 +106,7 @@ export function useExportJob({ moduleEndpoint, params, onComplete, onError }: Us
 
   return {
     isExporting,
+    isCancelling,
     processed,
     total,
     percentage: total > 0 ? Math.round((processed / total) * 100) : 0,

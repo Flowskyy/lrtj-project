@@ -24,7 +24,7 @@ async function checkUserPermission() {
 
     console.log(`User: ${user.email}`)
     console.log(`Role ID: ${user.roleId}`)
-    
+
     if (user.admin_roles) {
       console.log(`Role Name: ${user.admin_roles.name}`)
       console.log(`Is Super Admin: ${user.admin_roles.isSuperAdmin}`)
@@ -33,7 +33,7 @@ async function checkUserPermission() {
       user.admin_roles.role_permissions
         .sort((a, b) => a.pageKey.localeCompare(b.pageKey))
         .forEach(p => console.log(`  - ${p.pageKey}`))
-      
+
       const hasMasterRoles = user.admin_roles.role_permissions.some(p => p.pageKey === 'master-roles')
       console.log(`\nHas 'master-roles' permission: ${hasMasterRoles ? '✅ Yes' : '❌ No'}`)
     } else {

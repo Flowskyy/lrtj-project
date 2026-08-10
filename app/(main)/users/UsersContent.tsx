@@ -111,7 +111,7 @@ export default function UsersContent({ username }: UsersContentProps) {
     return params;
   }, [activationSlcFilter, tierFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo]);
 
-  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+  const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/users',
     params: exportParams,
     onError: (msg) => toast.error(msg),
@@ -428,7 +428,7 @@ export default function UsersContent({ username }: UsersContentProps) {
             onResetFilters={handleResetFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
-            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))}
+            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}
             columnConfigs={[
               { key: "nama", label: "Name" },
               { key: "email", label: "Email" },
@@ -682,6 +682,7 @@ export default function UsersContent({ username }: UsersContentProps) {
         onOpenChange={setShowExportDialog}
         status={status === 'idle' ? null : { status, processed, total, percentage }}
         onCancel={cancelExport}
+        isCancelling={isCancelling}
       />
     </div>
   );

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
 
 // GET single role with permissions
 export async function GET(

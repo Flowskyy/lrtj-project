@@ -1,6 +1,4 @@
-import { PrismaClient } from "@/lib/generated/prisma"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
 
 // Route to pageKey mapping (for checking permissions)
 const ROUTE_TO_PAGE_KEY: Record<string, string> = {
@@ -19,6 +17,7 @@ const ROUTE_TO_PAGE_KEY: Record<string, string> = {
   '/master/popups': 'master-popups',
   '/master/membership': 'master-membership',
   '/master/roles': 'master-roles',
+  '/master/admin-management': 'master-admin-management',
   '/master/banner/add': 'master-banner',
   '/master/banner/edit': 'master-banner',
   '/master/popups/add': 'master-popups',
@@ -54,6 +53,7 @@ const PAGE_ROUTE_MAP: Record<string, string> = {
   'master-popups': '/master/popups',
   'master-membership': '/master/membership',
   'master-roles': '/master/roles',
+  'master-admin-management': '/master/admin-management',
 }
 
 export async function getUserPermissions(roleId: number | null): Promise<string[]> {

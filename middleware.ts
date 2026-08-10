@@ -46,8 +46,7 @@ function decodeJWT(token: string): any {
  */
 async function syncAzureRoles(userId: string): Promise<number | null> {
   try {
-    const { PrismaClient } = await import("./lib/generated/prisma")
-    const prisma = new PrismaClient()
+    const { prisma } = await import("./lib/prisma")
 
     // Get the Microsoft account for this user
     const account = await prisma.auth_accounts.findFirst({
@@ -102,7 +101,6 @@ async function syncAzureRoles(userId: string): Promise<number | null> {
       console.log(`⚠️ No matching local role found for Azure AD roles:`, azureRoles)
     }
 
-    await prisma.$disconnect()
     return matchedRoleId
   } catch (error) {
     console.error("Error syncing Azure roles:", error)

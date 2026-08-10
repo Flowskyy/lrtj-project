@@ -1,10 +1,8 @@
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { nextCookies } from "better-auth/next-js"
-import { PrismaClient } from "../lib/generated/prisma"
+import { prisma } from "../lib/prisma"
 import { headers } from "next/headers"
-
-const prisma = new PrismaClient()
 
 // Azure AD App Role to local role mapping
 // TODO: Confirm actual Azure App Role names with Azure AD admin

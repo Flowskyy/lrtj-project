@@ -18,6 +18,7 @@ interface ExportProgressDialogProps {
     percentage: number;
   } | null;
   onCancel: () => void;
+  isCancelling?: boolean;
 }
 
 export default function ExportProgressDialog({
@@ -25,6 +26,7 @@ export default function ExportProgressDialog({
   onOpenChange,
   status,
   onCancel,
+  isCancelling = false,
 }: ExportProgressDialogProps) {
 
 
@@ -71,7 +73,7 @@ export default function ExportProgressDialog({
 
   return (
     <Dialog open={open} onOpenChange={canClose ? onOpenChange : undefined}>
-      <DialogContent className="max-w-md w-[calc(100%-2rem)] p-0 rounded-xl shadow-lg border-0">
+      <DialogContent className="max-w-md w-[calc(100%-2rem)] p-0 rounded-xl shadow-lg border-0" showCloseButton={false}>
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="text-center space-y-3">
@@ -99,7 +101,7 @@ export default function ExportProgressDialog({
               </div>
               <Progress value={status.percentage} className="h-3 bg-gray-100">
                 <ProgressTrack className="h-3 bg-gray-100">
-                  <ProgressIndicator className="bg-[#E5262C]" />
+                  <ProgressIndicator className="bg-[#E5262C] transition-all duration-300 ease-out" />
                 </ProgressTrack>
               </Progress>
               <div className="bg-gray-50 rounded-lg p-4">
@@ -170,10 +172,18 @@ export default function ExportProgressDialog({
             {status.status === 'running' && (
               <Button
                 onClick={onCancel}
+                disabled={isCancelling}
                 variant="outline"
                 className="flex-1 h-10 border-gray-200 hover:bg-gray-50 font-medium"
               >
-                Cancel Export
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  'Cancel Export'
+                )}
               </Button>
             )}
             {(status.status === 'completed' || status.status === 'cancelled' || status.status === 'error') && (

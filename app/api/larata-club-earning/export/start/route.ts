@@ -143,11 +143,18 @@ export async function POST(request: NextRequest) {
         }
         if (typeof value === 'object' && value !== null) {
           const [op, val] = Object.entries(value)[0];
+          // Map Prisma operators to SQL operators
+          const sqlOp = {
+            gte: '>=',
+            lte: '<=',
+            gt: '>',
+            lt: '<',
+          }[op] || '=';
           if (val instanceof Date) {
             const formattedDate = val.toISOString().slice(0, 19).replace('T', ' ');
-            return `${key} ${op.toUpperCase()} '${formattedDate}'`;
+            return `${key} ${sqlOp} '${formattedDate}'`;
           }
-          return `${key} ${op.toUpperCase()} ${val}`;
+          return `${key} ${sqlOp} ${val}`;
         }
         if (typeof value === 'string') {
           return `${key} = '${value}'`;
@@ -251,9 +258,6 @@ async function runExportJob(
       console.log(`Export job ${jobId}: batch ${Math.ceil(processed / batchSize)} complete, processed ${processed}/${total} (${Math.round((processed / total) * 100)}%)`);
       
       hasMore = batch.length === batchSize;
-      if (hasMore) {
-        lastId = Number(batch[batch.length - 1].id);
-      }
       if (hasMore) {
         lastId = Number(batch[batch.length - 1].id);
       }

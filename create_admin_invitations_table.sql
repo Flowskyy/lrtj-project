@@ -1,0 +1,22 @@
+CREATE TABLE `admin_invitations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `roleId` int NOT NULL,
+  `inviteTokenHash` varchar(255) NOT NULL,
+  `otpCodeHash` varchar(255) DEFAULT NULL,
+  `otpSentAt` datetime(3) DEFAULT NULL,
+  `otpExpiresAt` datetime(3) DEFAULT NULL,
+  `otpAttempts` int NOT NULL DEFAULT 0,
+  `inviteExpiresAt` datetime(0) NOT NULL,
+  `status` varchar(50) NOT NULL DEFAULT 'pending',
+  `createdAt` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `createdBy` varchar(255) DEFAULT NULL,
+  `completedAt` datetime(0) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `admin_invitations_inviteTokenHash_key` (`inviteTokenHash`),
+  KEY `admin_invitations_email_idx` (`email`),
+  KEY `admin_invitations_inviteTokenHash_idx` (`inviteTokenHash`),
+  KEY `admin_invitations_status_idx` (`status`),
+  KEY `admin_invitations_inviteExpiresAt_idx` (`inviteExpiresAt`),
+  CONSTRAINT `admin_invitations_roleId_fkey` FOREIGN KEY (`roleId`) REFERENCES `admin_roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

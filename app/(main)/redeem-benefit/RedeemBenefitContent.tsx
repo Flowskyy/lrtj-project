@@ -89,7 +89,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
     return params;
   }, [sortBy, sortOrder, searchQuery, dateFrom, dateTo, statusFilter]);
 
-  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+  const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/redeem-benefit',
     params: exportParams,
     onError: (msg) => toast.error(msg),
@@ -658,6 +658,7 @@ export default function RedeemBenefitContent({ username }: RedeemBenefitContentP
         onOpenChange={setShowExportDialog}
         status={status === 'idle' ? null : { status, processed, total, percentage }}
         onCancel={cancelExport}
+        isCancelling={isCancelling}
       />
     </div>
   );

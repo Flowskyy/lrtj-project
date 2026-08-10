@@ -83,7 +83,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
     return params;
   }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
-  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+  const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/larata-club-earning',
     params: exportParams,
     onError: (msg) => toast.error(msg),
@@ -435,7 +435,10 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
             ]}
             primaryAction={{
               label: 'Export',
-              onClick: () => setShowExportDialog(true),
+              onClick: () => {
+                setShowExportDialog(true);
+                startExport();
+              },
               disabled: isExporting,
               loading: isExporting,
               loadingLabel: 'Exporting...',
@@ -727,6 +730,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
         onOpenChange={setShowExportDialog}
         status={status === 'idle' ? null : { status, processed, total, percentage }}
         onCancel={cancelExport}
+        isCancelling={isCancelling}
       />
     </div>
   );

@@ -99,7 +99,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
     return params;
   }, [sortBy, sortOrder, searchQuery, dateFrom, dateTo, categoryFilter]);
 
-  const { isExporting, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
+  const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/redeem',
     params: exportParams,
     onError: (msg) => toast.error(msg),
@@ -316,7 +316,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
             onResetFilters={handleResetFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
-            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))}
+            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}
             columnConfigs={[
               { key: "select", label: "Select" },
               { key: "id", label: "ID" },
@@ -587,6 +587,7 @@ export default function RedeemMerchandiseContent({ username }: RedeemMerchandise
         onOpenChange={setShowExportDialog}
         status={status === 'idle' ? null : { status, processed, total, percentage }}
         onCancel={cancelExport}
+        isCancelling={isCancelling}
       />
     </div>
   );

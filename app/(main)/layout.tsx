@@ -178,6 +178,8 @@ const NAV_ITEMS = [
 
       { href: "/master/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
 
+      { href: "/master/admin-management", label: "Auth Management", icon: <User className="h-4 w-4" strokeWidth={2} /> },
+
     ],
 
   },
@@ -387,6 +389,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     ? {
         title: "Edit Role",
         breadcrumb: ["Master", "Roles", "Edit Role"],
+      }
+    : pathname === "/master/admin-management"
+    ? {
+        title: "Auth Management",
+        breadcrumb: ["Master", "Auth Management"],
       }
     : pathname === "/users"
     ? {
