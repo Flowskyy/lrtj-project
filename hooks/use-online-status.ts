@@ -16,8 +16,8 @@ interface UseOnlineStatusOptions {
 
 export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   const {
-    heartbeatInterval = 30, // Send heartbeat every 30 seconds
-    cleanupInterval = 60, // Trigger cleanup every 60 seconds
+    heartbeatInterval = 15, // Send heartbeat every 15 seconds
+    cleanupInterval = 30, // Trigger cleanup every 30 seconds
   } = options;
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -47,6 +47,24 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       await fetch('/api/auth/cleanup-offline', { method: 'POST' });
     } catch (error) {
       console.error('Cleanup failed:', error);
+    }
+  }, []);
+
+  // Mark current user as offline immediately (for tab close events)
+  const markOffline = useCallback(() => {
+    // Use navigator.sendBeacon for reliable delivery during page unload
+    if (navigator.sendBeacon) {
+      // sendBeacon uses GET by default with empty body, which we handle in the GET endpoint
+      navigator.sendBeacon('/api/auth/mark-offline');
+      console.log('SendBeacon: Marked user offline');
+    } else {
+      // Fallback to fetch with keepalive
+      fetch('/api/auth/mark-offline', { 
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      }).catch(err => console.error('Mark offline fallback failed:', err));
     }
   }, []);
 
@@ -86,6 +104,20 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       }
     };
 
+    // Handle tab close for instant offline detection
+    const handleBeforeUnload = () => {
+      markOffline();
+    };
+
+    const handlePageHide = () => {
+      markOffline();
+    };
+
+    // Add event listeners for instant offline detection
+    // Note: NOT using visibilitychange because it fires on tab switch/minimize, not just close
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+
     // Cleanup function
     return () => {
       eventSource.close();
@@ -95,8 +127,10 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       if (cleanupIntervalRef.current) {
         clearInterval(cleanupIntervalRef.current);
       }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [heartbeatInterval, cleanupInterval, sendHeartbeat, triggerCleanup]);
+  }, [heartbeatInterval, cleanupInterval, sendHeartbeat, triggerCleanup, markOffline]);
 
   return {
     onlineUsers,

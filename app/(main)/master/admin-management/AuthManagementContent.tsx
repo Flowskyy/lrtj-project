@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Circle } from "lucide-react";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import InviteAdminDialog from "@/components/InviteAdminDialog";
-import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate, formatDisplayDate, formatLastSeen } from "@/lib/formatWIBDate";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 
 interface Role {
@@ -47,7 +47,7 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Online status tracking for admin users
-  const { onlineUsers, isConnected } = useOnlineStatus({ heartbeatInterval: 30, cleanupInterval: 60 });
+  const { onlineUsers, isConnected } = useOnlineStatus({ heartbeatInterval: 15, cleanupInterval: 30 });
 
   // Debug logging
   useEffect(() => {
@@ -99,19 +99,18 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
 
   // Update admin users with online status from realtime updates
   useEffect(() => {
-    if (onlineUsers.length > 0) {
-      const onlineUserMap = new Map(onlineUsers.map(u => [u.id, { isOnline: true, lastSeen: u.lastSeen }]));
-      setUsers(prevUsers => 
-        prevUsers.map(user => {
-          const onlineInfo = onlineUserMap.get(user.id);
-          return {
-            ...user,
-            isOnline: onlineInfo?.isOnline || false,
-            lastSeen: onlineInfo?.lastSeen || null,
-          };
-        })
-      );
-    }
+    const onlineUserMap = new Map(onlineUsers.map(u => [u.id, { isOnline: true, lastSeen: u.lastSeen }]));
+    setUsers(prevUsers => 
+      prevUsers.map(user => {
+        const onlineInfo = onlineUserMap.get(user.id);
+        // User is online if they're in the onlineUsers map, otherwise offline
+        return {
+          ...user,
+          isOnline: !!onlineInfo?.isOnline,
+          lastSeen: onlineInfo?.lastSeen || user.lastSeen,
+        };
+      })
+    );
   }, [onlineUsers]);
 
   const handleDelete = async () => {
@@ -156,7 +155,7 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
       );
     }
     
-    const lastSeenText = lastSeen ? formatDisplayDate(lastSeen) : 'Never';
+    const lastSeenText = formatLastSeen(lastSeen);
     return (
       <div className="flex items-center gap-1.5">
         <Circle className="h-2 w-2 fill-gray-400 text-gray-400" />
@@ -180,16 +179,16 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
       </div>
 
       {/* Tabs and Table Card */}
-      <Card className="bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-2xl">
-        <CardHeader className="border-b border-white/30">
-          <CardTitle className="text-gray-900">Admin Accounts</CardTitle>
+      <Card className="bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg">
+        <CardHeader className="border-b border-gray-200/60 px-6 py-4">
+          <CardTitle className="text-gray-900 font-semibold tracking-tight">Admin Accounts</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4" variant="default">
-              <TabsTrigger value="all">All Admin</TabsTrigger>
+            <TabsList className="mb-6 bg-gray-100/80 border border-gray-200/60" variant="default">
+              <TabsTrigger value="all" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">All Admin</TabsTrigger>
               {roles.map((role) => (
-                <TabsTrigger key={role.id} value={role.id.toString()}>
+                <TabsTrigger key={role.id} value={role.id.toString()} className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
                   {role.name}
                 </TabsTrigger>
               ))}
@@ -197,26 +196,26 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
 
             <TabsContent value={activeTab} className="mt-0">
               {loading ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                    <Skeleton key={i} className="h-11 w-full" />
                   ))}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/30 hover:bg-white/30">
-                        <TableHead className="text-gray-700 font-semibold">Name</TableHead>
-                        <TableHead className="text-gray-700 font-semibold">Status</TableHead>
-                        <TableHead className="text-gray-700 font-semibold">Role</TableHead>
-                        <TableHead className="text-gray-700 font-semibold w-24">Actions</TableHead>
+                      <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
+                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Name</TableHead>
+                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Status</TableHead>
+                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Role</TableHead>
+                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 w-24 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredUsers.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                          <TableCell colSpan={4} className="text-center text-gray-500 py-12 text-sm">
                             No admin users found
                           </TableCell>
                         </TableRow>
@@ -224,22 +223,22 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                         filteredUsers.map((user) => (
                           <TableRow 
                             key={user.id}
-                            className="border-white/20 hover:bg-white/40 transition-colors"
+                            className="border-b border-gray-200/60 hover:bg-gray-50/50 transition-colors"
                           >
-                            <TableCell className="font-medium">
+                            <TableCell className="py-3 px-4">
                               <div>
-                                <div className="text-gray-900">{user.name}</div>
-                                <div className="text-xs text-gray-500">{user.email}</div>
+                                <div className="text-gray-900 font-medium text-sm">{user.name}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">{user.email}</div>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 px-4">
                               {getOnlineStatusBadge(user.isOnline || false, user.lastSeen || null)}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 px-4">
                               {user.roleName ? (
                                 <Badge 
                                   variant="secondary" 
-                                  className="bg-white/60 border border-white/40 text-gray-700 hover:bg-white/80"
+                                  className="bg-gray-100/80 border border-gray-200/80 text-gray-700 font-medium text-xs hover:bg-gray-200/80"
                                 >
                                   {user.roleName}
                                 </Badge>
@@ -247,13 +246,13 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                                 <span className="text-sm text-gray-400">No role</span>
                               )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 px-4 text-right">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openDeleteDialog(user)}
                                 disabled={user.id === currentUserId}
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50/50"
+                                className="h-8 w-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50/80 transition-colors"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

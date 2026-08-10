@@ -116,7 +116,7 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-md bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)] rounded-2xl p-0 overflow-hidden"
+          className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden"
         >
           {/* Modal Header */}
           <div className="px-6 pt-6 pb-4 border-b border-white/30">
@@ -159,7 +159,9 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
                     id="role"
                     className="h-11 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
                   >
-                    <SelectValue placeholder={fetchingRoles ? "Loading roles..." : "Select a role"} />
+                    <SelectValue placeholder={fetchingRoles ? "Loading roles..." : "Select a role"}>
+                      {roleId ? roles.find(r => r.id.toString() === roleId)?.name : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border border-white/50">
                     {roles.map((role) => (

@@ -191,19 +191,24 @@ const NAV_ITEMS = [
 function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   const { state } = useSidebar()
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { data: session, isPending } = useSession()
   
   // Permissions state
   const [userPermissions, setUserPermissions] = React.useState<string[]>([])
   const [loadingPermissions, setLoadingPermissions] = React.useState(true)
 
   const handleLogout = async () => {
-    await signOut({ callbackURL: "/login" })
-    window.location.href = "/login"
+    await signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          window.location.href = "/login"
+        },
+      },
+    })
   }
 
   const getUserInitials = () => {
-    if (!session?.user?.email) return "U"
+    if (isPending || !session?.user?.email) return "U"
     const name = session.user.name || session.user.email
     return name.charAt(0).toUpperCase()
   }
@@ -211,6 +216,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   // Fetch user permissions
   React.useEffect(() => {
     const fetchPermissions = async () => {
+      // Wait for session to be ready before fetching permissions
+      if (isPending) {
+        return
+      }
+
       if (session?.user) {
         try {
           const res = await fetch('/api/user-permissions')
@@ -229,12 +239,12 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     }
 
     fetchPermissions()
-  }, [session])
+  }, [session, isPending])
 
   // Filter nav items based on permissions
   const filteredNavItems = React.useMemo(() => {
-    if (loadingPermissions) return NAV_ITEMS // Show all while loading
-    
+    if (loadingPermissions || isPending) return NAV_ITEMS // Show all while loading
+
     const getPageKey = (href: string) => {
       // Special handling for master routes
       if (href.startsWith('/master/')) {
@@ -242,10 +252,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       }
       return href.replace(/^\//, '').replace(/\//g, '-')
     }
-    
+
     return NAV_ITEMS.map(item => {
       if (!item.subItems || item.subItems.length === 0) {
         // Single item - check if user has permission
+        if (!item.href) return null
         const pageKey = getPageKey(item.href)
         if (userPermissions.length === 0 || userPermissions.includes(pageKey)) {
           return item
@@ -254,17 +265,18 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       } else {
         // Group with sub-items - filter sub-items
         const filteredSubItems = item.subItems.filter(subItem => {
+          if (!subItem.href) return false
           const pageKey = getPageKey(subItem.href)
           return userPermissions.length === 0 || userPermissions.includes(pageKey)
         })
-        
+
         if (filteredSubItems.length > 0) {
           return { ...item, subItems: filteredSubItems }
         }
         return null
       }
     }).filter(Boolean) as typeof NAV_ITEMS
-  }, [userPermissions, loadingPermissions])
+  }, [userPermissions, loadingPermissions, isPending])
 
   // Live WIB clock state
   const [currentTime, setCurrentTime] = React.useState<string>("")
@@ -534,8 +546,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
               <AvatarFallback className="bg-[#E5262C]/10 text-[#E5262C] font-semibold text-sm">
 
-                {getUserInitials()}
-
+                {isPending ? (
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-[#E5262C]/50" />
+                ) : (
+                  getUserInitials()
+                )}
               </AvatarFallback>
 
             </Avatar>
@@ -544,13 +559,21 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
               <span className="text-sm font-medium text-gray-900">
 
-                {session?.user?.email?.split('@')[0] || 'User'}
+                {isPending ? (
+                  <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
+                ) : (
+                  session?.user?.email?.split('@')[0] || session?.user?.name || 'User'
+                )}
 
               </span>
 
               <span className="text-xs text-gray-500">
 
-                {session?.user?.email || ''}
+                {isPending ? (
+                  <div className="h-2 w-24 animate-pulse rounded bg-gray-200 mt-1" />
+                ) : (
+                  session?.user?.email || ''
+                )}
 
               </span>
 
@@ -750,8 +773,11 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                   <AvatarFallback className="bg-[#E5262C]/10 text-[#E5262C] font-semibold text-sm">
 
-                    {getUserInitials()}
-
+                    {isPending ? (
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-[#E5262C]/50" />
+                    ) : (
+                      getUserInitials()
+                    )}
                   </AvatarFallback>
 
                 </Avatar>
