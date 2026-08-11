@@ -16,9 +16,17 @@ export async function GET(request: NextRequest) {
   // Create a readable stream for SSE
   const stream = new ReadableStream({
     async start(controller) {
+      let isClosed = false;
+
       const sendEvent = (data: any) => {
-        const message = `data: ${JSON.stringify(data)}\n\n`;
-        controller.enqueue(encoder.encode(message));
+        if (isClosed) return;
+        try {
+          const message = `data: ${JSON.stringify(data)}\n\n`;
+          controller.enqueue(encoder.encode(message));
+        } catch (error) {
+          // Controller is already closed, fail silently
+          isClosed = true;
+        }
       };
 
       // Send initial connection event
@@ -47,6 +55,7 @@ export async function GET(request: NextRequest) {
 
       // Poll for changes every 5 seconds
       const interval = setInterval(async () => {
+        if (isClosed) return;
         try {
           const onlineUsers = await prisma.$queryRaw`
             SELECT
@@ -67,13 +76,21 @@ export async function GET(request: NextRequest) {
           sendEvent({ type: 'update', users: onlineUsers, timestamp: currentTime[0]?.currentTime });
         } catch (error) {
           console.error('Error polling online users:', error);
+          // If there's an error sending, mark as closed to prevent further attempts
+          isClosed = true;
+          clearInterval(interval);
         }
       }, 5000);
 
       // Clean up on client disconnect
       request.signal.addEventListener('abort', () => {
+        isClosed = true;
         clearInterval(interval);
-        controller.close();
+        try {
+          controller.close();
+        } catch (error) {
+          // Controller already closed, ignore
+        }
       });
     },
   });
