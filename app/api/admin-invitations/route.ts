@@ -76,9 +76,13 @@ export async function POST(request: NextRequest) {
     const rawToken = generateToken();
     const tokenHash = hashToken(rawToken);
 
-    // Calculate expiry (48 hours from now)
-    const inviteExpiresAt = new Date();
-    inviteExpiresAt.setHours(inviteExpiresAt.getHours() + 48);
+    // Calculate expiry (48 hours from now in WIB)
+    // Use raw SQL to get current WIB time and add 48 hours
+    const expiryResult = await prisma.$queryRaw`
+      SELECT DATE_ADD(NOW(), INTERVAL 48 HOUR) as inviteExpiresAt
+    ` as any[];
+    
+    const inviteExpiresAt = expiryResult[0]?.inviteExpiresAt;
 
     // Get current admin user info for createdBy field
     const adminUser = await prisma.auth_users.findUnique({
@@ -112,6 +116,11 @@ export async function POST(request: NextRequest) {
       expiryHours: 48,
     });
 
+    // Format the expiry date for response
+    const formattedExpiry = await prisma.$queryRaw`
+      SELECT DATE_FORMAT(${inviteExpiresAt}, '%Y-%m-%dT%H:%i:%s') as formattedExpiry
+    ` as any[];
+
     return NextResponse.json({
       success: true,
       message: 'Invitation sent successfully',
@@ -119,7 +128,7 @@ export async function POST(request: NextRequest) {
         id: invitation.id,
         email: invitation.email,
         role: invitation.auth_roles.name,
-        expiresAt: invitation.inviteExpiresAt,
+        expiresAt: formattedExpiry[0]?.formattedExpiry,
       },
     });
   } catch (error) {

@@ -14,6 +14,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
+import { useAction } from "@/contexts/ActionContext";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
@@ -43,7 +44,8 @@ interface Category {
 
 export default function MerchandiseEditContent({ username, userEmail, merchandiseId }: MerchandiseEditContentProps) {
   const router = useRouter();
-  
+  const { setAction, clearAction } = useAction();
+
   // Form states
   const [formName, setFormName] = useState("");
   const [formPoints, setFormPoints] = useState(100);
@@ -59,6 +61,14 @@ export default function MerchandiseEditContent({ username, userEmail, merchandis
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<"save" | "cancel" | null>(null);
   const richTextFieldRef = useRef<RichTextContentFieldRef>(null);
+
+  // Set action state when component mounts
+  useEffect(() => {
+    setAction('editing', 'Merchandise');
+    return () => {
+      clearAction();
+    };
+  }, [setAction, clearAction]);
 
   // Fetch item data
   useEffect(() => {

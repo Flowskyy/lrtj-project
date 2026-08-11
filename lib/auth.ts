@@ -34,6 +34,8 @@ export const auth = betterAuth({
   },
   session: {
     modelName: "auth_sessions",
+    expiresIn: 60 * 10, // 10 minutes in seconds - absolute expiry from login
+    updateAge: 0, // Disable rolling/idle expiry - session expires 10 minutes from login regardless of activity
   },
   account: {
     modelName: "auth_accounts",

@@ -8,21 +8,48 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const role = await prisma.auth_roles.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        role_permissions: true,
-        _count: {
-          select: { auth_users: true }
-        }
-      }
-    })
+    
+    // Get role using raw SQL to bypass Prisma's timezone conversion
+    const roles = await prisma.$queryRaw`
+      SELECT
+        id,
+        name,
+        isSuperAdmin,
+        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+      FROM auth_roles
+      WHERE id = ${parseInt(id)}
+    ` as any[];
 
-    if (!role) {
+    if (!roles || roles.length === 0) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 })
     }
 
-    return NextResponse.json(role)
+    const role = roles[0];
+
+    // Get permissions
+    const permissions = await prisma.$queryRaw`
+      SELECT id, pageKey
+      FROM role_permissions
+      WHERE roleId = ${parseInt(id)}
+    ` as any[];
+
+    // Get user count
+    const userCountResult = await prisma.$queryRaw`
+      SELECT COUNT(*) as count
+      FROM auth_users
+      WHERE roleId = ${parseInt(id)}
+    ` as any[];
+
+    const roleWithDetails = {
+      ...role,
+      role_permissions: permissions,
+      _count: {
+        auth_users: Number(userCountResult[0]?.count || 0)
+      }
+    };
+
+    return NextResponse.json(roleWithDetails)
   } catch (error) {
     console.error("Error fetching role:", error)
     return NextResponse.json({ error: "Failed to fetch role" }, { status: 500 })
@@ -39,50 +66,87 @@ export async function PUT(
     const body = await request.json()
     const { name, isSuperAdmin, permissions } = body
 
-    const role = await prisma.auth_roles.findUnique({
-      where: { id: parseInt(id) }
-    })
+    // Check if role exists
+    const existing = await prisma.$queryRaw`
+      SELECT id, name, isSuperAdmin
+      FROM auth_roles
+      WHERE id = ${parseInt(id)}
+    ` as any[];
 
-    if (!role) {
+    if (!existing || existing.length === 0) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 })
     }
 
+    const role = existing[0];
+
     // Check if new name conflicts with existing role
     if (name && name !== role.name) {
-      const existing = await prisma.auth_roles.findUnique({
-        where: { name }
-      })
-      if (existing) {
+      const nameConflict = await prisma.$queryRaw`
+        SELECT id FROM auth_roles WHERE name = ${name} AND id != ${parseInt(id)}
+      ` as any[];
+      
+      if (nameConflict && nameConflict.length > 0) {
         return NextResponse.json({ error: "Role name already exists" }, { status: 400 })
       }
     }
 
-    // Update role
-    const updatedRole = await prisma.auth_roles.update({
-      where: { id: parseInt(id) },
-      data: {
-        ...(name && { name }),
-        ...(isSuperAdmin !== undefined && { isSuperAdmin })
-      }
-    })
+    // Build dynamic update query
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    
+    if (name) {
+      updateFields.push('name = ?');
+      updateValues.push(name);
+    }
+    
+    if (isSuperAdmin !== undefined) {
+      updateFields.push('isSuperAdmin = ?');
+      updateValues.push(isSuperAdmin);
+    }
+    
+    // Always update updatedAt
+    updateFields.push('updatedAt = NOW()');
+    
+    if (updateFields.length > 0) {
+      const updateQuery = `
+        UPDATE auth_roles
+        SET ${updateFields.join(', ')}
+        WHERE id = ?
+      `;
+      updateValues.push(parseInt(id));
+      
+      await prisma.$queryRawUnsafe(updateQuery, ...updateValues);
+    }
 
     // Update permissions (delete all and recreate) unless super admin
     if (!isSuperAdmin && permissions !== undefined) {
-      await prisma.role_permissions.deleteMany({
-        where: { roleId: parseInt(id) }
-      })
+      await prisma.$queryRaw`
+        DELETE FROM role_permissions WHERE roleId = ${parseInt(id)}
+      `;
 
       if (permissions.length > 0) {
-        await prisma.role_permissions.createMany({
-          data: permissions.map((pageKey: string) => ({
-            roleId: parseInt(id),
-            pageKey
-          }))
-        })
+        for (const pageKey of permissions) {
+          await prisma.$queryRaw`
+            INSERT INTO role_permissions (roleId, pageKey, createdAt, updatedAt)
+            VALUES (${parseInt(id)}, ${pageKey}, NOW(), NOW())
+          `;
+        }
       }
     }
 
-    return NextResponse.json(updatedRole)
+    // Fetch updated role
+    const updatedRoles = await prisma.$queryRaw`
+      SELECT
+        id,
+        name,
+        isSuperAdmin,
+        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+      FROM auth_roles
+      WHERE id = ${parseInt(id)}
+    ` as any[];
+
+    return NextResponse.json(updatedRoles[0])
   } catch (error) {
     console.error("Error updating role:", error)
     return NextResponse.json({ error: "Failed to update role" }, { status: 500 })
@@ -98,10 +162,14 @@ export async function DELETE(
     const { id } = await params
     const roleId = parseInt(id)
 
-    // Check if role has users
-    const userCount = await prisma.auth_users.count({
-      where: { roleId }
-    })
+    // Check if role has users using raw SQL
+    const userCountResult = await prisma.$queryRaw`
+      SELECT COUNT(*) as count
+      FROM auth_users
+      WHERE roleId = ${roleId}
+    ` as any[];
+
+    const userCount = Number(userCountResult[0]?.count || 0);
 
     if (userCount > 0) {
       return NextResponse.json(
@@ -110,10 +178,10 @@ export async function DELETE(
       )
     }
 
-    // Delete role (cascade will delete permissions)
-    await prisma.auth_roles.delete({
-      where: { id: roleId }
-    })
+    // Delete role using raw SQL (cascade will delete permissions)
+    await prisma.$queryRaw`
+      DELETE FROM auth_roles WHERE id = ${roleId}
+    `;
 
     return NextResponse.json({ success: true })
   } catch (error) {

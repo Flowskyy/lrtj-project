@@ -29,20 +29,34 @@ export async function POST(request: NextRequest) {
 
     const tokenHash = hashToken(token);
 
-    // Find invitation by token hash
-    const invitation = await prisma.admin_invitations.findUnique({
-      where: { inviteTokenHash: tokenHash },
-      include: {
-        auth_roles: true,
-      },
-    });
+    // Find invitation by token hash using raw SQL to bypass Prisma's timezone conversion
+    const invitations = await prisma.$queryRaw`
+      SELECT
+        id,
+        email,
+        roleId,
+        inviteTokenHash,
+        DATE_FORMAT(inviteExpiresAt, '%Y-%m-%dT%H:%i:%s') as inviteExpiresAt,
+        status
+      FROM admin_invitations
+      WHERE inviteTokenHash = ${tokenHash}
+    ` as any[];
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { error: 'Invalid invitation' },
         { status: 404 }
       );
     }
+
+    const invitation = invitations[0];
+
+    // Get role info
+    const roles = await prisma.$queryRaw`
+      SELECT id, name FROM auth_roles WHERE id = ${invitation.roleId}
+    ` as any[];
+    
+    const roleInfo = roles[0] || { name: 'Unknown' };
 
     // Check if invitation is in otp_verified state
     if (invitation.status !== 'otp_verified') {
@@ -52,36 +66,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if invitation is expired
-    if (new Date() > new Date(invitation.inviteExpiresAt)) {
-      await prisma.admin_invitations.update({
-        where: { id: invitation.id },
-        data: { status: 'expired' },
-      });
+    // Check if invitation is expired using WIB time
+    const currentTime = await prisma.$queryRaw`
+      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+    ` as any[];
+    
+    if (currentTime[0]?.currentTime > invitation.inviteExpiresAt) {
+      await prisma.$queryRaw`
+        UPDATE admin_invitations
+        SET status = 'expired'
+        WHERE id = ${invitation.id}
+      `;
       return NextResponse.json(
         { error: 'Invitation has expired' },
         { status: 400 }
       );
     }
 
-    // Check if user already exists with this email
-    const existingUser = await prisma.auth_users.findUnique({
-      where: { email: invitation.email },
-    });
+    // Check if user already exists with this email using raw SQL
+    const existingUsers = await prisma.$queryRaw`
+      SELECT id FROM auth_users WHERE email = ${invitation.email}
+    ` as any[];
 
-    if (existingUser) {
+    if (existingUsers && existingUsers.length > 0) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 409 }
       );
     }
 
-    // Check if username is already taken
-    const existingUsername = await prisma.auth_users.findFirst({
-      where: { name: username },
-    });
+    // Check if username is already taken using raw SQL
+    const existingUsernames = await prisma.$queryRaw`
+      SELECT id FROM auth_users WHERE name = ${username}
+    ` as any[];
 
-    if (existingUsername) {
+    if (existingUsernames && existingUsernames.length > 0) {
       return NextResponse.json(
         { error: 'Username already taken' },
         { status: 409 }
@@ -114,14 +133,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Mark invitation as completed
-    await prisma.admin_invitations.update({
-      where: { id: invitation.id },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-      },
-    });
+    // Mark invitation as completed using raw SQL
+    await prisma.$queryRaw`
+      UPDATE admin_invitations
+      SET status = 'completed', completedAt = NOW()
+      WHERE id = ${invitation.id}
+    `;
 
     // Create session for the user
     const sessionResult = await auth.api.signInEmail({
@@ -148,7 +165,7 @@ export async function POST(request: NextRequest) {
         id: signUpResult.user?.id,
         email: signUpResult.user?.email,
         name: signUpResult.user?.name,
-        role: invitation.auth_roles.name,
+        role: roleInfo.name,
       },
     });
 

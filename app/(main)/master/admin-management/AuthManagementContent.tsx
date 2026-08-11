@@ -8,10 +8,11 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Circle } from "lucide-react";
+import { Trash2, Circle, Shield } from "lucide-react";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import InviteAdminDialog from "@/components/InviteAdminDialog";
-import { formatWIBDate, formatDisplayDate, formatLastSeen } from "@/lib/formatWIBDate";
+import ChangeRoleDialog from "@/components/ChangeRoleDialog";
+import { formatWIBDate, formatDisplayDate, formatLastSeen, formatFullDateWithTime } from "@/lib/formatWIBDate";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 
 interface Role {
@@ -30,6 +31,8 @@ interface AdminUser {
   updatedAt: string;
   isOnline?: boolean;
   lastSeen?: string | null;
+  currentPage?: string | null;
+  currentAction?: string | null;
 }
 
 interface AuthManagementContentProps {
@@ -45,15 +48,11 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [changeRoleDialogOpen, setChangeRoleDialogOpen] = useState(false);
+  const [userToChangeRole, setUserToChangeRole] = useState<AdminUser | null>(null);
 
   // Online status tracking for admin users
-  const { onlineUsers, isConnected } = useOnlineStatus({ heartbeatInterval: 15, cleanupInterval: 30 });
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Online users updated:', onlineUsers);
-    console.log('SSE connected:', isConnected);
-  }, [onlineUsers, isConnected]);
+  const { onlineUsers, isConnected } = useOnlineStatus();
 
   const fetchRoles = async () => {
     try {
@@ -99,8 +98,8 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
 
   // Update admin users with online status from realtime updates
   useEffect(() => {
-    const onlineUserMap = new Map(onlineUsers.map(u => [u.id, { isOnline: true, lastSeen: u.lastSeen }]));
-    setUsers(prevUsers => 
+    const onlineUserMap = new Map(onlineUsers.map(u => [u.id, { isOnline: true, lastSeen: u.lastSeen, currentPage: u.currentPage, currentAction: u.currentAction }]));
+    setUsers(prevUsers =>
       prevUsers.map(user => {
         const onlineInfo = onlineUserMap.get(user.id);
         // User is online if they're in the onlineUsers map, otherwise offline
@@ -108,6 +107,8 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
           ...user,
           isOnline: !!onlineInfo?.isOnline,
           lastSeen: onlineInfo?.lastSeen || user.lastSeen,
+          currentPage: onlineInfo?.currentPage || null,
+          currentAction: onlineInfo?.currentAction || null,
         };
       })
     );
@@ -144,28 +145,59 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
     setDeleteDialogOpen(true);
   };
 
+  const openChangeRoleDialog = (user: AdminUser) => {
+    setUserToChangeRole(user);
+    setChangeRoleDialogOpen(true);
+  };
+
+  // Helper function to format route for display
+  const formatRouteForDisplay = (route: string | null | undefined): string => {
+    if (!route) return ''
+
+    // The route is already formatted from the client side, but we can clean it up if needed
+    return route
+  }
+
   // Helper function to get online status badge
-  const getOnlineStatusBadge = (isOnline: boolean, lastSeen: string | null) => {
+  const getOnlineStatusBadge = (isOnline: boolean, lastSeen: string | null, currentPage?: string | null, currentAction?: string | null) => {
     if (isOnline) {
+      // Display currentAction if available, otherwise fall back to currentPage
+      const displayText = currentAction || formatRouteForDisplay(currentPage) || 'Reading';
       return (
-        <div className="flex items-center gap-1.5">
-          <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-          <span className="text-xs font-medium text-green-600">Online</span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+            <span className="text-xs font-medium text-green-600">Online</span>
+          </div>
+          <div className="text-[10px] text-gray-500 pl-3.5">
+            {displayText}
+          </div>
         </div>
       );
     }
-    
-    const lastSeenText = formatLastSeen(lastSeen);
+
+    const lastSeenText = formatFullDateWithTime(lastSeen);
     return (
-      <div className="flex items-center gap-1.5">
-        <Circle className="h-2 w-2 fill-gray-400 text-gray-400" />
-        <span className="text-xs font-medium text-gray-500">Offline</span>
-        <span className="text-[10px] text-gray-400">{lastSeenText}</span>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <Circle className="h-2 w-2 fill-gray-400 text-gray-400" />
+          <span className="text-xs font-medium text-gray-500">Offline</span>
+        </div>
+        <div className="text-[10px] text-gray-400 pl-3.5">
+          {lastSeenText}
+        </div>
       </div>
     );
   };
 
-  const filteredUsers = users;
+  const filteredUsers = users.sort((a, b) => {
+    // Online users always come first
+    if (a.isOnline && !b.isOnline) return -1;
+    if (!a.isOnline && b.isOnline) return 1;
+    
+    // Within the same online status, sort by name alphabetically
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -232,7 +264,7 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                               </div>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              {getOnlineStatusBadge(user.isOnline || false, user.lastSeen || null)}
+                              {getOnlineStatusBadge(user.isOnline || false, user.lastSeen || null, user.currentPage || null, user.currentAction || null)}
                             </TableCell>
                             <TableCell className="py-3 px-4">
                               {user.roleName ? (
@@ -247,15 +279,28 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                               )}
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openDeleteDialog(user)}
-                                disabled={user.id === currentUserId}
-                                className="h-8 w-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50/80 transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openChangeRoleDialog(user)}
+                                  disabled={user.id === currentUserId}
+                                  className="h-8 w-8 p-0 text-gray-600 hover:text-[#E5262C] hover:bg-red-50/80 transition-colors"
+                                  title="Change Role"
+                                >
+                                  <Shield className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openDeleteDialog(user)}
+                                  disabled={user.id === currentUserId}
+                                  className="h-8 w-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -272,15 +317,21 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        itemName={userToDelete?.name}
         title="Delete Admin User"
         description={
           userToDelete?.id === currentUserId
             ? "You cannot delete your own account."
-            : `Are you sure you want to delete "${userToDelete?.name}"? This action cannot be undone and will also delete their associated accounts and sessions.`
+            : `Are you sure you want to delete "${userToDelete?.name}"? This will permanently remove their admin account and all associated data including sessions and permissions.`
         }
         onConfirm={handleDelete}
         isDeleting={isDeleting}
+      />
+      
+      <ChangeRoleDialog
+        user={userToChangeRole}
+        open={changeRoleDialogOpen}
+        onOpenChange={setChangeRoleDialogOpen}
+        onRoleChanged={() => fetchUsers(activeTab === "all" ? undefined : activeTab)}
       />
     </div>
   );

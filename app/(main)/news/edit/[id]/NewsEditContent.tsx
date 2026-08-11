@@ -14,6 +14,7 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { formatDisplayDate } from "@/lib/formatWIBDate";
 import dynamic from "next/dynamic";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
+import { useAction } from "@/contexts/ActionContext";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
@@ -21,6 +22,7 @@ import type { RichTextContentFieldRef } from "@/components/RichTextContentField"
 interface NewsItem {
   id: number;
   createdBy?: string;
+  creatorEmail?: string | null;
   img_url?: string;
   caption_image?: string;
   views: bigint;
@@ -42,10 +44,11 @@ interface NewsEditContentProps {
 
 export default function NewsEditContent({ username, newsId }: NewsEditContentProps) {
   const router = useRouter();
+  const { setAction, clearAction } = useAction();
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<NewsItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Form states
   const [formTitle, setFormTitle] = useState("");
   const [formTitleEn, setFormTitleEn] = useState("");
@@ -61,6 +64,14 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
   const [pendingAction, setPendingAction] = useState<"save" | "cancel" | null>(null);
   const richTextFieldIdRef = useRef<RichTextContentFieldRef>(null);
   const richTextFieldEnRef = useRef<RichTextContentFieldRef>(null);
+
+  // Set action state when component mounts
+  useEffect(() => {
+    setAction('editing', 'News');
+    return () => {
+      clearAction();
+    };
+  }, [setAction, clearAction]);
 
 
   // Fetch news item
@@ -116,6 +127,11 @@ export default function NewsEditContent({ username, newsId }: NewsEditContentPro
   };
 
   const proceedWithSave = async (contentOverride?: string, contentEnOverride?: string) => {
+    if (!item) {
+      toast.error("News item not loaded");
+      return;
+    }
+
     setIsSubmitting(true);
     const payload = {
       title: formTitle,

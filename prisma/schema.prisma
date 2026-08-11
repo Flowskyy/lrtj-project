@@ -124,6 +124,7 @@ model auth_accounts {
   auth_users            auth_users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@map("auth_accounts")
 }
 
 model auth_sessions {
@@ -139,6 +140,7 @@ model auth_sessions {
 
   @@index([token])
   @@index([userId])
+  @@map("auth_sessions")
 }
 
 model auth_users {
@@ -152,6 +154,8 @@ model auth_users {
   roleId              Int?
   isOnline            Boolean               @default(false)
   lastSeen            DateTime?
+  currentPage         String?               @db.VarChar(255)
+  currentAction       String?               @db.VarChar(255)
   admin_activity_logs admin_activity_logs[]
   auth_accounts       auth_accounts[]
   auth_sessions       auth_sessions[]
@@ -159,6 +163,7 @@ model auth_users {
 
   @@index([roleId], map: "auth_users_roleId_fkey")
   @@index([isOnline])
+  @@map("auth_users")
 }
 
 model auth_verifications {
@@ -170,6 +175,7 @@ model auth_verifications {
   updatedAt  DateTime
 
   @@index([identifier])
+  @@map("auth_verifications")
 }
 
 model banners {
@@ -1166,6 +1172,8 @@ model auth_roles {
   admin_invitations admin_invitations[]
   auth_users        auth_users[]
   role_permissions  role_permissions[]
+
+  @@map("auth_roles")
 }
 
 model role_permissions {
@@ -1178,6 +1186,7 @@ model role_permissions {
 
   @@unique([roleId, pageKey])
   @@index([roleId])
+  @@map("role_permissions")
 }
 
 enum bayarind_binding_states_status {

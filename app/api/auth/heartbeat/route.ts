@@ -6,29 +6,28 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSessionWithUser();
     
-    console.log('Heartbeat request - Session:', session?.user?.id);
-    
     if (!session?.user?.id) {
-      console.log('Heartbeat - Unauthorized: No session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const userId = session.user.id;
-    const now = new Date();
+    const body = await request.json();
+    const currentPage = body.currentPage || null;
+    const currentAction = body.currentAction || null;
 
-    console.log('Heartbeat - Updating user:', userId, 'at', now);
+    // Update user's online status, last seen timestamp, current page, and current action using raw SQL
+    await prisma.$queryRaw`
+      UPDATE auth_users
+      SET isOnline = true, lastSeen = NOW(), currentPage = ${currentPage}, currentAction = ${currentAction}
+      WHERE id = ${userId}
+    `;
 
-    // Update user's online status and last seen timestamp
-    await prisma.auth_users.update({
-      where: { id: userId },
-      data: {
-        isOnline: true,
-        lastSeen: now,
-      },
-    });
+    // Get the current WIB time for response
+    const wibTime = await prisma.$queryRaw`
+      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+    ` as any[];
 
-    console.log('Heartbeat - Successfully updated user:', userId);
-    return NextResponse.json({ success: true, lastSeen: now });
+    return NextResponse.json({ success: true, lastSeen: wibTime[0]?.currentTime });
   } catch (error) {
     console.error('Heartbeat error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

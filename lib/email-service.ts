@@ -30,6 +30,7 @@ interface OtpEmailData {
 function generateInviteEmailHtml(data: InviteEmailData): string {
   const { recipientName = 'Admin', signupLink, expiryHours } = data;
   const currentYear = new Date().getFullYear();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   return `
 <!DOCTYPE html>
@@ -59,17 +60,24 @@ function generateInviteEmailHtml(data: InviteEmailData): string {
     <tr>
       <td style="padding: 20px 0;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <!-- Branded Header -->
+          
+          <!-- Hero Header with Station Photo Background -->
           <tr>
-            <td style="background: linear-gradient(135deg, ${BRAND_COLOR} 0%, #c91e24 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Admin Invitation</h1>
-              <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 8px 0 0 0;">LRT Jakarta Team</p>
-            </td>
-          </tr>
-          <!-- Logo -->
-          <tr>
-            <td style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 1px solid #f0f0f0;">
-              <img src="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/logo-lrtj.png" alt="LRT Jakarta" width="160" height="52" style="display: block; margin: 0 auto; max-width: 160px; height: auto;" onerror="this.style.display='none';">
+            <td style="background-color: ${BRAND_COLOR}; background-image: url('${appUrl}/lrt-station.jpg'); background-size: cover; background-position: center; padding: 50px 30px; text-align: center; position: relative;">
+              <!--[if gte mso 9]>
+              <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:180px;">
+                <v:fill type="frame" src="${appUrl}/lrt-station.jpg" color="${BRAND_COLOR}" />
+                <div>
+              <![endif]-->
+              <div style="background: rgba(229, 38, 44, 0.85); padding: 40px 30px; border-radius: 8px;">
+                <img src="${appUrl}/logo-lrtj.png" alt="LRT Jakarta" width="160" height="52" style="display: block; margin: 0 auto 20px auto; max-width: 160px; height: auto;">
+                <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Admin Invitation</h1>
+                <p style="color: rgba(255,255,255,0.95); font-size: 15px; margin: 10px 0 0 0; font-weight: 500;">Join the LRT Jakarta Team</p>
+              </div>
+              <!--[if gte mso 9]>
+                </div>
+              </v:rect>
+              <![endif]-->
             </td>
           </tr>
           
@@ -77,7 +85,7 @@ function generateInviteEmailHtml(data: InviteEmailData): string {
           <tr>
             <td style="padding: 40px 30px;">
               <p style="font-size: 18px; margin: 0 0 20px 0; color: ${TEXT_COLOR};">Hello ${recipientName},</p>
-              <p style="font-size: 14px; margin: 0 0 30px 0; color: ${LIGHT_TEXT}; line-height: 1.7;">
+              <p style="font-size: 15px; margin: 0 0 30px 0; color: ${LIGHT_TEXT}; line-height: 1.7;">
                 You have been invited to join the LRT Jakarta Admin Team. Click the button below to complete your registration and set up your admin account.
               </p>
               
@@ -85,7 +93,7 @@ function generateInviteEmailHtml(data: InviteEmailData): string {
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td style="text-align: center;">
-                    <a href="${signupLink}" style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">Complete Registration</a>
+                    <a href="${signupLink}" style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; padding: 16px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 2px 4px rgba(229, 38, 44, 0.2);">Complete Registration</a>
                   </td>
                 </tr>
               </table>
@@ -100,7 +108,7 @@ function generateInviteEmailHtml(data: InviteEmailData): string {
               <!-- Expiry Notice -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 25px 0 0 0;">
                 <tr>
-                  <td style="background-color: ${BRAND_COLOR_LIGHT}; padding: 15px; border-radius: 6px; font-size: 14px; color: ${BRAND_COLOR};">
+                  <td style="background-color: ${BRAND_COLOR_LIGHT}; padding: 16px; border-radius: 6px; font-size: 14px; color: ${BRAND_COLOR}; border-left: 4px solid ${BRAND_COLOR};">
                     <strong>Important:</strong> This invitation link will expire in ${expiryHours} hours.
                   </td>
                 </tr>
@@ -115,7 +123,7 @@ function generateInviteEmailHtml(data: InviteEmailData): string {
                 <tr>
                   <td style="text-align: center; padding-bottom: 16px;">
                     <p style="font-size: 14px; font-weight: 600; color: ${TEXT_COLOR}; margin: 0;">LRT Jakarta</p>
-                    <p style="font-size: 12px; color: ${LIGHT_TEXT}; margin: 4px 0 0 0;">MRT Jakarta Administration System</p>
+                    <p style="font-size: 12px; color: ${LIGHT_TEXT}; margin: 4px 0 0 0;">Light Rail Transit Administration System</p>
                   </td>
                 </tr>
                 <tr>
@@ -140,6 +148,7 @@ function generateInviteEmailHtml(data: InviteEmailData): string {
 function generateOtpEmailHtml(data: OtpEmailData): string {
   const { recipientName = 'Admin', otpCode, expiryMinutes } = data;
   const currentYear = new Date().getFullYear();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   return `
 <!DOCTYPE html>
@@ -169,41 +178,53 @@ function generateOtpEmailHtml(data: OtpEmailData): string {
     <tr>
       <td style="padding: 20px 0;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <!-- Branded Header -->
+          
+          <!-- Hero Header with Station Photo Background -->
           <tr>
-            <td style="background: linear-gradient(135deg, ${BRAND_COLOR} 0%, #c91e24 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Verification Code</h1>
-              <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 8px 0 0 0;">LRT Jakarta Admin Registration</p>
-            </td>
-          </tr>
-          <!-- Logo -->
-          <tr>
-            <td style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 1px solid #f0f0f0;">
-              <img src="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/logo-lrtj.png" alt="LRT Jakarta" width="160" height="52" style="display: block; margin: 0 auto; max-width: 160px; height: auto;" onerror="this.style.display='none';">
+            <td style="background-color: ${BRAND_COLOR}; background-image: url('${appUrl}/lrt-station.jpg'); background-size: cover; background-position: center; padding: 60px 30px; text-align: center; position: relative;">
+              <!--[if gte mso 9]>
+              <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:200px;">
+                <v:fill type="frame" src="${appUrl}/lrt-station.jpg" color="${BRAND_COLOR}" />
+                <div>
+              <![endif]-->
+              <div style="background: rgba(229, 38, 44, 0.88); padding: 45px 30px; border-radius: 8px;">
+                <img src="${appUrl}/logo-lrtj.png" alt="LRT Jakarta" width="160" height="52" style="display: block; margin: 0 auto 20px auto; max-width: 160px; height: auto;">
+                <h1 style="color: #ffffff; font-size: 32px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Verification Code</h1>
+                <p style="color: rgba(255,255,255,0.95); font-size: 16px; margin: 12px 0 0 0; font-weight: 500;">Complete Your Registration</p>
+              </div>
+              <!--[if gte mso 9]>
+                </div>
+              </v:rect>
+              <![endif]-->
             </td>
           </tr>
           
           <!-- Content -->
           <tr>
-            <td style="padding: 30px;">
-              <p style="font-size: 16px; margin: 0 0 16px 0; color: ${TEXT_COLOR};">Hello ${recipientName},</p>
-              <p style="font-size: 14px; margin: 0 0 24px 0; color: ${LIGHT_TEXT}; line-height: 1.6;">
+            <td style="padding: 35px 30px;">
+              <p style="font-size: 17px; margin: 0 0 18px 0; color: ${TEXT_COLOR};">Hello ${recipientName},</p>
+              <p style="font-size: 15px; margin: 0 0 28px 0; color: ${LIGHT_TEXT}; line-height: 1.7;">
                 Your verification code is ready. Use this one-time code to complete your admin registration.
               </p>
 
               <!-- OTP Code Container -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 24px 0;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 28px 0;">
                 <tr>
-                  <td style="background-color: ${BRAND_COLOR_LIGHT}; padding: 30px; border-radius: 12px; text-align: center; border: 2px solid ${BRAND_COLOR};">
-                    <p style="font-size: 42px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: 12px; margin: 0;">${otpCode}</p>
-                    <p style="font-size: 13px; color: ${LIGHT_TEXT}; margin: 12px 0 0 0;">This code will expire in ${expiryMinutes} minutes.</p>
+                  <td style="background: linear-gradient(135deg, ${BRAND_COLOR_LIGHT} 0%, #fff5f6 100%); padding: 35px; border-radius: 12px; text-align: center; border: 2px solid ${BRAND_COLOR}; box-shadow: 0 4px 12px rgba(229, 38, 44, 0.15);">
+                    <p style="font-size: 48px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: 14px; margin: 0; font-family: 'Courier New', monospace;">${otpCode}</p>
+                    <p style="font-size: 14px; color: ${LIGHT_TEXT}; margin: 16px 0 0 0; font-weight: 500;">This code will expire in ${expiryMinutes} minutes.</p>
                   </td>
                 </tr>
               </table>
 
-              <p style="font-size: 14px; margin: 24px 0 0 0; color: ${LIGHT_TEXT}; line-height: 1.6;">
-                <strong>Security Notice:</strong> Never share this code with anyone. Our team will never ask for your verification code.
-              </p>
+              <!-- Security Notice -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 28px 0 0 0;">
+                <tr>
+                  <td style="background-color: #fff3cd; padding: 16px; border-radius: 6px; font-size: 14px; color: #856404; border-left: 4px solid #ffc107;">
+                    <strong>Security Notice:</strong> Never share this code with anyone. Our team will never ask for your verification code.
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -214,7 +235,7 @@ function generateOtpEmailHtml(data: OtpEmailData): string {
                 <tr>
                   <td style="text-align: center; padding-bottom: 16px;">
                     <p style="font-size: 14px; font-weight: 600; color: ${TEXT_COLOR}; margin: 0;">LRT Jakarta</p>
-                    <p style="font-size: 12px; color: ${LIGHT_TEXT}; margin: 4px 0 0 0;">MRT Jakarta Administration System</p>
+                    <p style="font-size: 12px; color: ${LIGHT_TEXT}; margin: 4px 0 0 0;">Light Rail Transit Administration System</p>
                   </td>
                 </tr>
                 <tr>

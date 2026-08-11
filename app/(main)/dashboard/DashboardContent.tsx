@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSessionContext } from "@/contexts/SessionContext";
 
 interface MerchandiseItem {
   id: number;
@@ -18,17 +19,18 @@ interface MerchandiseItem {
   status: number;
 }
 
-interface DashboardContentProps {
-  username: string;
-}
-
-export default function DashboardContent({ username }: DashboardContentProps) {
+export default function DashboardContent() {
+  const { session, isPending } = useSessionContext()
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
   const [redeemStats, setRedeemStats] = useState({ total: 0, pending: 0, completed: 0 });
   const [userStats, setUserStats] = useState({ total: 0, verified: 0, unverified: 0 });
   const [loading, setLoading] = useState(true);
   const [redeemLoading, setRedeemLoading] = useState(true);
   const [userLoading, setUserLoading] = useState(true);
+
+  const displayName = session?.user?.email 
+    ? session.user.email.split('@')[0] 
+    : session?.user?.name || 'User';
 
   useEffect(() => {
     async function fetchStats() {
@@ -84,14 +86,18 @@ export default function DashboardContent({ username }: DashboardContentProps) {
     fetchUserStats();
   }, []);
 
-  const displayName = username.includes("@") ? username.split("@")[0] : username;
-
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome Alert */}
       <Alert className="bg-gradient-to-r from-[#E5262C]/10 to-[#E5262C]/5 border-[#E5262C]/10 rounded-2xl px-6 py-6">
         <AlertTitle className="text-lg font-semibold text-gray-900">
-          Welcome back, <span className="text-[#E5262C]">{displayName}</span>!
+          {isPending ? (
+            <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
+          ) : (
+            <>
+              Welcome back, <span className="text-[#E5262C]">{displayName}</span>!
+            </>
+          )}
         </AlertTitle>
         <AlertDescription className="text-sm text-gray-500 mt-2">
           Here's your quick overview.

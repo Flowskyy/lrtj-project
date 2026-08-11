@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
+import { useAction } from "@/contexts/ActionContext";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
@@ -29,7 +30,8 @@ interface Category {
 
 export default function MerchandiseAddContent({ username, userEmail }: MerchandiseAddContentProps) {
   const router = useRouter();
-  
+  const { setAction, clearAction } = useAction();
+
   // Form states
   const [formName, setFormName] = useState("");
   const [formPoints, setFormPoints] = useState(100);
@@ -43,6 +45,14 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<"save" | "cancel" | null>(null);
   const richTextFieldRef = useRef<RichTextContentFieldRef>(null);
+
+  // Set action state when component mounts
+  useEffect(() => {
+    setAction('creating', 'Merchandise');
+    return () => {
+      clearAction();
+    };
+  }, [setAction, clearAction]);
 
   // Fetch categories on mount
   useEffect(() => {

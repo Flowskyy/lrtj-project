@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useAction } from '@/contexts/ActionContext';
 
 interface OnlineUser {
   id: string;
   name: string;
   email: string;
   lastSeen: string | null;
+  currentPage?: string | null;
+  currentAction?: string | null;
 }
 
 interface UseOnlineStatusOptions {
@@ -16,30 +19,53 @@ interface UseOnlineStatusOptions {
 
 export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   const {
-    heartbeatInterval = 15, // Send heartbeat every 15 seconds
+    heartbeatInterval = 1, // Send heartbeat every 1 second
     cleanupInterval = 30, // Trigger cleanup every 30 seconds
   } = options;
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const lastKnownPageRef = useRef<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const cleanupIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { currentAction, actionEntity } = useAction();
 
   // Send heartbeat to server
-  const sendHeartbeat = useCallback(async () => {
+  const sendHeartbeat = useCallback(async (currentPage?: string) => {
+    // Update the last known page when provided
+    if (currentPage !== undefined) {
+      lastKnownPageRef.current = currentPage;
+    }
+
+    // Format action state for display
+    let formattedAction: string | null = null;
+    if (currentAction && actionEntity) {
+      const actionVerb = currentAction.charAt(0).toUpperCase() + currentAction.slice(1);
+      formattedAction = `${actionVerb} ${actionEntity}`;
+    } else if (currentAction === 'reading' && lastKnownPageRef.current) {
+      // Default to "Reading {page}" when just viewing
+      formattedAction = `Reading ${lastKnownPageRef.current}`;
+    }
+
     try {
-      const response = await fetch('/api/auth/heartbeat', { method: 'POST' });
+      const response = await fetch('/api/auth/heartbeat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPage: lastKnownPageRef.current || null,
+          currentAction: formattedAction
+        }),
+      });
       if (!response.ok) {
         console.error('Heartbeat failed:', response.status, response.statusText);
-      } else {
-        const data = await response.json();
-        console.log('Heartbeat successful:', data);
       }
     } catch (error) {
       console.error('Heartbeat failed:', error);
     }
-  }, []);
+  }, [currentAction, actionEntity]); // Include action state in dependencies
 
   // Trigger cleanup of offline users
   const triggerCleanup = useCallback(async () => {
@@ -56,7 +82,6 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
     if (navigator.sendBeacon) {
       // sendBeacon uses GET by default with empty body, which we handle in the GET endpoint
       navigator.sendBeacon('/api/auth/mark-offline');
-      console.log('SendBeacon: Marked user offline');
     } else {
       // Fallback to fetch with keepalive
       fetch('/api/auth/mark-offline', { 
@@ -69,11 +94,8 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   }, []);
 
   useEffect(() => {
-    // Send initial heartbeat
-    sendHeartbeat();
-
-    // Set up heartbeat interval
-    heartbeatIntervalRef.current = setInterval(sendHeartbeat, heartbeatInterval * 1000);
+    // Set up heartbeat interval - will use last known page
+    heartbeatIntervalRef.current = setInterval(() => sendHeartbeat(), heartbeatInterval * 1000);
 
     // Set up cleanup interval
     cleanupIntervalRef.current = setInterval(triggerCleanup, cleanupInterval * 1000);
@@ -94,7 +116,6 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('SSE received:', data);
         
         if (data.type === 'initial' || data.type === 'update') {
           setOnlineUsers(data.users);
@@ -131,6 +152,11 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       window.removeEventListener('pagehide', handlePageHide);
     };
   }, [heartbeatInterval, cleanupInterval, sendHeartbeat, triggerCleanup, markOffline]);
+
+  // Send heartbeat immediately when action state changes
+  useEffect(() => {
+    sendHeartbeat();
+  }, [currentAction, actionEntity, sendHeartbeat]);
 
   return {
     onlineUsers,

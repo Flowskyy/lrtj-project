@@ -242,3 +242,39 @@ export function formatLastSeen(wibString: string | null | undefined): string {
     return `${monthName} ${day}, ${year}, ${timeStr}`
   }
 }
+
+/**
+ * Format full date with time - ALWAYS shows full date (day, month, year) + time
+ * Input: "2026-08-10T14:30:00" or "2026-08-10 14:30:00"
+ * Output: "10 August 2026, 17:30" (D MMMM YYYY, HH:mm format in WIB)
+ * 
+ * This function does NOT use same-day time-only logic - always shows full date
+ */
+export function formatFullDateWithTime(wibString: string | null | undefined): string {
+  if (!wibString) {
+    return 'Never'
+  }
+
+  const parsedDate = parseWIBString(wibString)
+  if (!parsedDate) {
+    return '-'
+  }
+
+  // Extract date components
+  const day = parsedDate.getDate()
+  const monthName = MONTH_NAMES_FULL[parsedDate.getMonth()]
+  const year = parsedDate.getFullYear()
+  
+  // Extract time components
+  const hours = parsedDate.getHours()
+  const minutes = parsedDate.getMinutes()
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+
+  return `${day} ${monthName} ${year}, ${timeStr}`
+}
+
+// Full month names for formatFullDateWithTime
+const MONTH_NAMES_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+]

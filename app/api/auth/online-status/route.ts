@@ -7,10 +7,7 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   const session = await getSessionWithUser();
   
-  console.log('SSE connection request - Session:', session?.user?.id);
-  
   if (!session?.user?.id) {
-    console.log('SSE - Unauthorized: No session');
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -22,24 +19,27 @@ export async function GET(request: NextRequest) {
       const sendEvent = (data: any) => {
         const message = `data: ${JSON.stringify(data)}\n\n`;
         controller.enqueue(encoder.encode(message));
-        console.log('SSE sent:', data.type, 'users:', data.users?.length || 0);
       };
 
       // Send initial connection event
-      sendEvent({ type: 'connected', timestamp: new Date().toISOString() });
+      const initialTime = await prisma.$queryRaw`
+        SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+      ` as any[];
+      sendEvent({ type: 'connected', timestamp: initialTime[0]?.currentTime });
 
-      // Fetch initial online users
+      // Fetch initial online users using raw SQL to bypass Prisma's timezone conversion
       try {
-        const onlineUsers = await prisma.auth_users.findMany({
-          where: { isOnline: true },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            lastSeen: true,
-          },
-        });
-        console.log('SSE - Initial online users:', onlineUsers.length);
+        const onlineUsers = await prisma.$queryRaw`
+          SELECT
+            id,
+            name,
+            email,
+            DATE_FORMAT(lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+            currentPage,
+            currentAction
+          FROM auth_users
+          WHERE isOnline = true
+        ` as any[];
         sendEvent({ type: 'initial', users: onlineUsers });
       } catch (error) {
         console.error('Error fetching initial users:', error);
@@ -48,16 +48,23 @@ export async function GET(request: NextRequest) {
       // Poll for changes every 5 seconds
       const interval = setInterval(async () => {
         try {
-          const onlineUsers = await prisma.auth_users.findMany({
-            where: { isOnline: true },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              lastSeen: true,
-            },
-          });
-          sendEvent({ type: 'update', users: onlineUsers, timestamp: new Date().toISOString() });
+          const onlineUsers = await prisma.$queryRaw`
+            SELECT
+              id,
+              name,
+              email,
+              DATE_FORMAT(lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+              currentPage,
+              currentAction
+            FROM auth_users
+            WHERE isOnline = true
+          ` as any[];
+
+          const currentTime = await prisma.$queryRaw`
+            SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+          ` as any[];
+
+          sendEvent({ type: 'update', users: onlineUsers, timestamp: currentTime[0]?.currentTime });
         } catch (error) {
           console.error('Error polling online users:', error);
         }
@@ -65,7 +72,6 @@ export async function GET(request: NextRequest) {
 
       // Clean up on client disconnect
       request.signal.addEventListener('abort', () => {
-        console.log('SSE - Client disconnected');
         clearInterval(interval);
         controller.close();
       });

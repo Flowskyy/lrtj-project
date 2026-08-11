@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Mark users as offline if they haven't sent a heartbeat in 45 seconds
-const OFFLINE_THRESHOLD = 45 * 1000; // 45 seconds in milliseconds
+// Mark users as offline if they haven't sent a heartbeat in 10 seconds
+const OFFLINE_THRESHOLD = 10 * 1000; // 10 seconds in milliseconds
 
 export async function POST(request: NextRequest) {
   try {

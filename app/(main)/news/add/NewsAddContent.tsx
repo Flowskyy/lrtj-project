@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
+import { useAction } from "@/contexts/ActionContext";
 
 const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
@@ -24,7 +25,8 @@ interface NewsAddContentProps {
 
 export default function NewsAddContent({ username, userEmail }: NewsAddContentProps) {
   const router = useRouter();
-  
+  const { setAction, clearAction } = useAction();
+
   // Form states
   const [formTitle, setFormTitle] = useState("");
   const [formTitleEn, setFormTitleEn] = useState("");
@@ -41,6 +43,14 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
   const [pendingAction, setPendingAction] = useState<"save" | "cancel" | null>(null);
   const richTextFieldIdRef = useRef<RichTextContentFieldRef>(null);
   const richTextFieldEnRef = useRef<RichTextContentFieldRef>(null);
+
+  // Set action state when component mounts
+  useEffect(() => {
+    setAction('creating', 'News');
+    return () => {
+      clearAction();
+    };
+  }, [setAction, clearAction]);
 
 
   const handleAdd = async (e: React.FormEvent) => {

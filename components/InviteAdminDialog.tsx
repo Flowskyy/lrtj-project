@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAction } from "@/contexts/ActionContext";
 
 interface Role {
   id: number;
@@ -37,6 +38,7 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingRoles, setFetchingRoles] = useState(true);
+  const { setAction, clearAction } = useAction();
 
   const fetchRoles = async () => {
     setFetchingRoles(true);
@@ -57,8 +59,11 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
   useEffect(() => {
     if (open) {
       fetchRoles();
+      setAction('creating', 'Admin Invite');
+    } else {
+      clearAction();
     }
-  }, [open]);
+  }, [open, setAction, clearAction]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +124,7 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
           className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden"
         >
           {/* Modal Header */}
-          <div className="px-6 pt-6 pb-4 border-b border-white/30">
+          <div className="px-6 pt-6 pb-3 border-b border-white/30">
             <DialogTitle className="text-xl font-semibold text-gray-900">
               Invite New Admin
             </DialogTitle>
@@ -129,8 +134,8 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
           </div>
 
           {/* Modal Body */}
-          <div className="px-6 py-5">
-            <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="px-6 py-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email Address
@@ -142,7 +147,7 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="h-11 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
+                  className="h-11 px-4 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
                 />
               </div>
 
@@ -157,7 +162,7 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
                 >
                   <SelectTrigger 
                     id="role"
-                    className="h-11 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
+                    className="h-11 px-4 bg-white/60 border-gray-200/50 focus:border-[#E5262C] focus:ring-[#E5262C]/20"
                   >
                     <SelectValue placeholder={fetchingRoles ? "Loading roles..." : "Select a role"}>
                       {roleId ? roles.find(r => r.id.toString() === roleId)?.name : undefined}
@@ -173,7 +178,7 @@ export default function InviteAdminDialog({ onInviteSent }: InviteAdminDialogPro
                 </Select>
               </div>
 
-              <DialogFooter className="pt-4 flex gap-3">
+              <DialogFooter className="pt-2 flex gap-3">
                 <Button
                   type="button"
                   variant="outline"

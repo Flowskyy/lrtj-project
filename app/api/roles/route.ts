@@ -4,15 +4,37 @@ import { prisma } from "@/lib/prisma"
 // GET all roles with permission counts
 export async function GET() {
   try {
-    const roles = await prisma.auth_roles.findMany({
-      orderBy: { id: 'asc' },
-      include: {
-        _count: {
-          select: { role_permissions: true }
-        }
-      }
-    })
-    return NextResponse.json(roles)
+    // Use raw SQL to bypass Prisma's timezone conversion
+    const roles = await prisma.$queryRaw`
+      SELECT
+        id,
+        name,
+        isSuperAdmin,
+        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+      FROM auth_roles
+      ORDER BY id ASC
+    ` as any[];
+
+    // Get permission counts for each role
+    const rolesWithCounts = await Promise.all(
+      roles.map(async (role) => {
+        const countResult = await prisma.$queryRaw`
+          SELECT COUNT(*) as count
+          FROM role_permissions
+          WHERE roleId = ${role.id}
+        ` as any[];
+        
+        return {
+          ...role,
+          _count: {
+            role_permissions: Number(countResult[0]?.count || 0)
+          }
+        };
+      })
+    );
+
+    return NextResponse.json(rolesWithCounts);
   } catch (error) {
     console.error("Error fetching roles:", error)
     return NextResponse.json({ error: "Failed to fetch roles" }, { status: 500 })
@@ -30,31 +52,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if role name already exists
-    const existing = await prisma.auth_roles.findUnique({
-      where: { name }
-    })
+    const existing = await prisma.$queryRaw`
+      SELECT id FROM auth_roles WHERE name = ${name}
+    ` as any[];
 
-    if (existing) {
+    if (existing && existing.length > 0) {
       return NextResponse.json({ error: "Role name already exists" }, { status: 400 })
     }
 
-    // Create role
-    const role = await prisma.auth_roles.create({
-      data: {
+    // Create role using raw SQL to bypass Prisma's timezone conversion
+    const result = await prisma.$queryRaw`
+      INSERT INTO auth_roles (name, isSuperAdmin, createdAt, updatedAt)
+      VALUES (${name}, ${isSuperAdmin || false}, NOW(), NOW())
+    ` as any[];
+
+    // Get the inserted role
+    const newRole = await prisma.$queryRaw`
+      SELECT
+        id,
         name,
-        isSuperAdmin: isSuperAdmin || false,
-        updatedAt: new Date()
-      }
-    })
+        isSuperAdmin,
+        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+      FROM auth_roles
+      WHERE id = LAST_INSERT_ID()
+    ` as any[];
+
+    const role = newRole[0];
 
     // Add permissions if provided (unless super admin - they have all permissions by default)
     if (!isSuperAdmin && permissions && Array.isArray(permissions)) {
-      await prisma.role_permissions.createMany({
-        data: permissions.map((pageKey: string) => ({
-          roleId: role.id,
-          pageKey
-        }))
-      })
+      for (const pageKey of permissions) {
+        await prisma.$queryRaw`
+          INSERT INTO role_permissions (roleId, pageKey, createdAt, updatedAt)
+          VALUES (${role.id}, ${pageKey}, NOW(), NOW())
+        `;
+      }
     }
 
     return NextResponse.json(role)

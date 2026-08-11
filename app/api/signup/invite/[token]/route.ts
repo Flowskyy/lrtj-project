@@ -27,28 +27,52 @@ export async function GET(
     const { token: rawToken } = await params;
     const tokenHash = hashToken(rawToken);
 
-    // Find invitation by token hash
-    const invitation = await prisma.admin_invitations.findUnique({
-      where: { inviteTokenHash: tokenHash },
-      include: {
-        auth_roles: true,
-      },
-    });
+    // Find invitation by token hash using raw SQL to bypass Prisma's timezone conversion
+    const invitations = await prisma.$queryRaw`
+      SELECT
+        id,
+        email,
+        roleId,
+        inviteTokenHash,
+        DATE_FORMAT(inviteExpiresAt, '%Y-%m-%dT%H:%i:%s') as inviteExpiresAt,
+        status,
+        otpCodeHash,
+        DATE_FORMAT(otpSentAt, '%Y-%m-%dT%H:%i:%s') as otpSentAt,
+        DATE_FORMAT(otpExpiresAt, '%Y-%m-%dT%H:%i:%s') as otpExpiresAt,
+        otpAttempts,
+        createdBy
+      FROM admin_invitations
+      WHERE inviteTokenHash = ${tokenHash}
+    ` as any[];
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { error: 'Invalid invitation link' },
         { status: 404 }
       );
     }
 
-    // Check if invitation is expired
-    if (new Date() > new Date(invitation.inviteExpiresAt)) {
+    const invitation = invitations[0];
+
+    // Get role info
+    const roles = await prisma.$queryRaw`
+      SELECT id, name FROM auth_roles WHERE id = ${invitation.roleId}
+    ` as any[];
+    
+    const roleInfo = roles[0] || { name: 'Unknown' };
+
+    // Check if invitation is expired using WIB time
+    const currentTime = await prisma.$queryRaw`
+      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+    ` as any[];
+    
+    if (currentTime[0]?.currentTime > invitation.inviteExpiresAt) {
       // Mark as expired
-      await prisma.admin_invitations.update({
-        where: { id: invitation.id },
-        data: { status: 'expired' },
-      });
+      await prisma.$queryRaw`
+        UPDATE admin_invitations
+        SET status = 'expired'
+        WHERE id = ${invitation.id}
+      `;
       return NextResponse.json(
         { error: 'Invitation link has expired' },
         { status: 400 }
@@ -67,21 +91,24 @@ export async function GET(
     const rawOtp = generateOtp();
     const otpHash = hashOtp(rawOtp);
 
-    // Calculate OTP expiry (10 minutes from now)
-    const otpExpiresAt = new Date();
-    otpExpiresAt.setMinutes(otpExpiresAt.getMinutes() + 10);
+    // Calculate OTP expiry (10 minutes from now) using raw SQL
+    const otpExpiryResult = await prisma.$queryRaw`
+      SELECT DATE_ADD(NOW(), INTERVAL 10 MINUTE) as otpExpiresAt
+    ` as any[];
+    
+    const otpExpiresAt = otpExpiryResult[0]?.otpExpiresAt;
 
-    // Update invitation with OTP
-    await prisma.admin_invitations.update({
-      where: { id: invitation.id },
-      data: {
-        otpCodeHash: otpHash,
-        otpSentAt: new Date(),
-        otpExpiresAt,
-        otpAttempts: 0,
-        status: 'pending',
-      },
-    });
+    // Update invitation with OTP using raw SQL
+    await prisma.$queryRaw`
+      UPDATE admin_invitations
+      SET
+        otpCodeHash = ${otpHash},
+        otpSentAt = NOW(),
+        otpExpiresAt = ${otpExpiresAt},
+        otpAttempts = 0,
+        status = 'pending'
+      WHERE id = ${invitation.id}
+    `;
 
     // Send OTP email
     await sendOtpEmail({
@@ -94,7 +121,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       email: invitation.email,
-      role: invitation.auth_roles.name,
+      role: roleInfo.name,
       expiresAt: invitation.inviteExpiresAt,
     });
   } catch (error) {
@@ -123,17 +150,27 @@ export async function POST(
       );
     }
 
-    // Find invitation by token hash
-    const invitation = await prisma.admin_invitations.findUnique({
-      where: { inviteTokenHash: tokenHash },
-    });
+    // Find invitation by token hash using raw SQL
+    const invitations = await prisma.$queryRaw`
+      SELECT
+        id,
+        inviteTokenHash,
+        status,
+        DATE_FORMAT(otpExpiresAt, '%Y-%m-%dT%H:%i:%s') as otpExpiresAt,
+        otpCodeHash,
+        otpAttempts
+      FROM admin_invitations
+      WHERE inviteTokenHash = ${tokenHash}
+    ` as any[];
 
-    if (!invitation) {
+    if (!invitations || invitations.length === 0) {
       return NextResponse.json(
         { error: 'Invalid invitation' },
         { status: 404 }
       );
     }
+
+    const invitation = invitations[0];
 
     // Check if invitation is expired
     if (invitation.status === 'expired') {
@@ -143,12 +180,17 @@ export async function POST(
       );
     }
 
-    // Check if OTP has expired
-    if (invitation.otpExpiresAt && new Date() > new Date(invitation.otpExpiresAt)) {
-      await prisma.admin_invitations.update({
-        where: { id: invitation.id },
-        data: { status: 'expired' },
-      });
+    // Check if OTP has expired using WIB time
+    const currentTime = await prisma.$queryRaw`
+      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+    ` as any[];
+    
+    if (invitation.otpExpiresAt && currentTime[0]?.currentTime > invitation.otpExpiresAt) {
+      await prisma.$queryRaw`
+        UPDATE admin_invitations
+        SET status = 'expired'
+        WHERE id = ${invitation.id}
+      `;
       return NextResponse.json(
         { error: 'OTP has expired' },
         { status: 400 }
@@ -171,23 +213,22 @@ export async function POST(
       
       // Check if max attempts reached
       if (newAttempts >= 5) {
-        await prisma.admin_invitations.update({
-          where: { id: invitation.id },
-          data: {
-            otpAttempts: newAttempts,
-            status: 'expired',
-          },
-        });
+        await prisma.$queryRaw`
+          UPDATE admin_invitations
+          SET otpAttempts = ${newAttempts}, status = 'expired'
+          WHERE id = ${invitation.id}
+        `;
         return NextResponse.json(
           { error: 'Too many failed attempts. Please request a new invitation.' },
           { status: 400 }
         );
       }
 
-      await prisma.admin_invitations.update({
-        where: { id: invitation.id },
-        data: { otpAttempts: newAttempts },
-      });
+      await prisma.$queryRaw`
+        UPDATE admin_invitations
+        SET otpAttempts = ${newAttempts}
+        WHERE id = ${invitation.id}
+      `;
 
       return NextResponse.json(
         { error: 'Invalid OTP', attemptsRemaining: 5 - newAttempts },
@@ -195,11 +236,12 @@ export async function POST(
       );
     }
 
-    // OTP is correct - update status to otp_verified
-    await prisma.admin_invitations.update({
-      where: { id: invitation.id },
-      data: { status: 'otp_verified' },
-    });
+    // OTP is correct - update status to otp_verified using raw SQL
+    await prisma.$queryRaw`
+      UPDATE admin_invitations
+      SET status = 'otp_verified'
+      WHERE id = ${invitation.id}
+    `;
 
     return NextResponse.json({
       success: true,

@@ -21,19 +21,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 })
     }
 
-    // Check if user exists
-    const user = await prisma.auth_users.findUnique({
-      where: { id: userIdToDelete }
-    })
+    // Check if user exists using raw SQL
+    const user = await prisma.$queryRaw`
+      SELECT id FROM auth_users WHERE id = ${userIdToDelete}
+    ` as any[];
 
-    if (!user) {
+    if (!user || user.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Delete user (auth_sessions and auth_accounts will be cascade deleted due to relations)
-    await prisma.auth_users.delete({
-      where: { id: userIdToDelete }
-    })
+    // Delete user using raw SQL (auth_sessions and auth_accounts will be cascade deleted due to relations)
+    await prisma.$queryRaw`
+      DELETE FROM auth_users WHERE id = ${userIdToDelete}
+    `;
 
     return NextResponse.json({ success: true })
   } catch (error) {
