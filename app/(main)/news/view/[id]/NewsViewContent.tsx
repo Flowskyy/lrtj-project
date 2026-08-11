@@ -310,12 +310,12 @@ export default function NewsViewContent({ newsId }: NewsViewContentProps) {
       {/* Delete Confirmation Dialog */}
       {deleteItem && (
         <DeleteConfirmDialog
-          isOpen={!!deleteItem}
-          onClose={() => setDeleteItem(null)}
+          open={!!deleteItem}
+          onOpenChange={() => setDeleteItem(null)}
           onConfirm={handleDelete}
           isDeleting={isDeleting}
           title="Delete News"
-          message={`Are you sure you want to delete "${deleteItem.title || 'this news item'}"? This action cannot be undone.`}
+          description={`Are you sure you want to delete "${deleteItem.title || 'this news item'}"? This action cannot be undone.`}
         />
       )}
     </div>

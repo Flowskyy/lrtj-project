@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2, Search, Package, Check, X } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
 interface Category {
   id: number;
@@ -447,64 +447,43 @@ export default function MerchandiseCategoryContent({ }: MerchandiseCategoryConte
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{selectedCategory?.category_name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setSelectedCategory(null);
+        }}
+        title="Delete Category"
+        itemName={selectedCategory?.category_name || undefined}
+        description="Are you sure you want to delete this category?"
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+      />
 
       {/* Cascade Delete Confirmation Dialog */}
-      <AlertDialog open={cascadeDeleteDialogOpen} onOpenChange={setCascadeDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Category in Use - Force Delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              This category is used by the following merchandise item(s):
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-3 px-4">
+      <DeleteConfirmDialog
+        open={cascadeDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setCascadeDeleteDialogOpen(open);
+          if (!open) {
+            setSelectedCategory(null);
+            setAffectedItems([]);
+          }
+        }}
+        title="Category in Use - Force Delete"
+        description={
+          <div className="space-y-3">
+            <p>This category is used by the following merchandise item(s):</p>
             <ul className="list-disc list-inside space-y-1 text-sm font-medium">
               {affectedItems.map((item) => (
                 <li key={item.id}>{item.name}</li>
               ))}
             </ul>
-            <p className="text-red-600 font-semibold pt-2 text-sm">
-              Deleting this category will also permanently delete the following merchandise item(s): {affectedItems.map(i => i.name).join(", ")}. This action cannot be undone.
-            </p>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setCascadeDeleteDialogOpen(false);
-              setSelectedCategory(null);
-              setAffectedItems([]);
-            }}>
-              Never Mind
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleForceDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? "Deleting..." : "Just Do It"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        }
+        onConfirm={handleForceDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

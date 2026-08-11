@@ -1,17 +1,20 @@
 import { PrismaClient } from "../lib/generated/prisma"
+import { getWIBDate } from "../lib/utils"
 
 const prisma = new PrismaClient()
 
 async function createTestRole() {
   try {
     // Create a "Viewer" role with limited permissions
+    const now = getWIBDate()
     const viewerRole = await prisma.auth_roles.upsert({
       where: { name: 'Viewer' },
-      update: {},
+      update: { updatedAt: now },
       create: {
         name: 'Viewer',
         isSuperAdmin: false,
-        updatedAt: new Date()
+        createdAt: now,
+        updatedAt: now
       }
     })
 
@@ -27,7 +30,9 @@ async function createTestRole() {
     await prisma.role_permissions.createMany({
       data: limitedPermissions.map(pageKey => ({
         roleId: viewerRole.id,
-        pageKey
+        pageKey,
+        createdAt: now,
+        updatedAt: now
       }))
     })
 

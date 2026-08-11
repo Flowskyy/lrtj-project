@@ -128,7 +128,6 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
         stripClassNames: true,
         stripDataAttributes: true,
         preserveClassNames: [],
-        preserveWhitespace: true,
       });
 
       const finalHtml = html || '<p>-</p>';

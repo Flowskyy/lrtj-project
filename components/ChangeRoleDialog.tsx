@@ -54,7 +54,7 @@ export default function ChangeRoleDialog({ user, open, onOpenChange, onRoleChang
       const res = await fetch("/api/roles");
       if (res.ok) {
         const data = await res.json();
-        setRoles(data);
+        setRoles(data.roles || []);
       }
     } catch (err) {
       console.error("Failed to fetch roles", err);

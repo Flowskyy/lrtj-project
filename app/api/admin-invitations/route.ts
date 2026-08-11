@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendInviteEmail } from '@/lib/email-service';
 import { getSession } from '@/lib/auth';
+import { getWIBDate, formatWIB } from '@/lib/utils';
 import crypto from 'crypto';
 
 // Generate a cryptographically random token
@@ -99,9 +100,7 @@ export async function POST(request: NextRequest) {
         inviteExpiresAt,
         status: 'pending',
         createdBy: adminUser?.name || session.user.email || 'Unknown',
-      },
-      include: {
-        auth_roles: true,
+        createdAt: getWIBDate(),
       },
     });
 
@@ -127,7 +126,7 @@ export async function POST(request: NextRequest) {
       invitation: {
         id: invitation.id,
         email: invitation.email,
-        role: invitation.auth_roles.name,
+        role: role.name,
         expiresAt: formattedExpiry[0]?.formattedExpiry,
       },
     });

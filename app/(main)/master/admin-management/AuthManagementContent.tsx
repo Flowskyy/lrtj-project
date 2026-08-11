@@ -8,12 +8,14 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Circle, Shield } from "lucide-react";
+import { Trash2, Circle as CircleIcon, Shield } from "lucide-react";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import InviteAdminDialog from "@/components/InviteAdminDialog";
 import ChangeRoleDialog from "@/components/ChangeRoleDialog";
+import GlassTable, { GlassTableColumn, GlassTableRow } from "@/components/GlassTable";
 import { formatWIBDate, formatDisplayDate, formatLastSeen, formatFullDateWithTime } from "@/lib/formatWIBDate";
 import { useOnlineStatus } from "@/hooks/use-online-status";
+import { useUserListUpdates } from "@/hooks/use-user-list-updates";
 
 interface Role {
   id: number;
@@ -52,13 +54,16 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
 
   // Online status tracking for admin users
   const { onlineUsers, isConnected } = useOnlineStatus();
+  
+  // Realtime user list updates
+  const { isConnected: userListConnected, onUsersAdded, onUsersDeleted, onUsersUpdated } = useUserListUpdates();
 
   const fetchRoles = async () => {
     try {
       const res = await fetch("/api/roles");
       if (res.ok) {
         const data = await res.json();
-        setRoles(data);
+        setRoles(data.roles || []);
       }
     } catch (err) {
       console.error("Failed to fetch roles", err);
@@ -113,6 +118,68 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
     );
   }, [onlineUsers]);
 
+  // Handle realtime user list updates
+  useEffect(() => {
+    // Handle new users added
+    onUsersAdded((newUsers) => {
+      setUsers(prevUsers => {
+        // Filter out users that already exist (prevent duplicates)
+        const existingIds = new Set(prevUsers.map(u => u.id));
+        const trulyNewUsers = newUsers.filter((u: any) => !existingIds.has(u.id));
+        
+        if (trulyNewUsers.length === 0) return prevUsers;
+        
+        // If a role filter is active, only add users that match the filter
+        if (activeTab !== "all") {
+          const filteredNewUsers = trulyNewUsers.filter((u: any) => u.roleId?.toString() === activeTab);
+          if (filteredNewUsers.length === 0) return prevUsers;
+          
+          // Add filtered new users to the state
+          return [...filteredNewUsers, ...prevUsers];
+        }
+        
+        // No filter active - add all new users
+        return [...trulyNewUsers, ...prevUsers];
+      });
+      
+      // Show toast notification for new user (only if visible)
+      const visibleNewUsers = newUsers.filter((u: any) => 
+        activeTab === "all" || u.roleId?.toString() === activeTab
+      );
+      
+      if (visibleNewUsers.length === 1) {
+        const newUser = visibleNewUsers[0] as any;
+        toast.success(`New user ${newUser.email} registered`);
+      } else if (visibleNewUsers.length > 1) {
+        toast.success(`${visibleNewUsers.length} new users registered`);
+      }
+    });
+
+    // Handle users deleted
+    onUsersDeleted((deletedUserIds) => {
+      setUsers(prevUsers => prevUsers.filter(user => !deletedUserIds.includes(user.id)));
+      
+      if (deletedUserIds.length === 1) {
+        toast.info('User deleted');
+      }
+    });
+
+    // Handle users updated (role changes, etc.)
+    onUsersUpdated((updatedUsers) => {
+      setUsers(prevUsers => {
+        const updatedMap = new Map(updatedUsers.map((u: any) => [u.id, u]));
+        
+        return prevUsers.map(user => {
+          const updated = updatedMap.get(user.id);
+          if (updated) {
+            return { ...user, ...updated };
+          }
+          return user;
+        });
+      });
+    });
+  }, [onUsersAdded, onUsersDeleted, onUsersUpdated, activeTab]);
+
   const handleDelete = async () => {
     if (!userToDelete) return;
 
@@ -166,7 +233,7 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
       return (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
-            <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+            <CircleIcon className="h-2 w-2 fill-green-500 text-green-500" />
             <span className="text-xs font-medium text-green-600">Online</span>
           </div>
           <div className="text-[10px] text-gray-500 pl-3.5 truncate max-w-[12rem]" title={displayText}>
@@ -180,7 +247,7 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-1.5">
-          <Circle className="h-2 w-2 fill-gray-400 text-gray-400" />
+          <CircleIcon className="h-2 w-2 fill-gray-400 text-gray-400" />
           <span className="text-xs font-medium text-gray-500">Offline</span>
         </div>
         <div className="text-[10px] text-gray-400 pl-3.5 truncate max-w-[12rem]" title={lastSeenText}>
@@ -190,14 +257,22 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
     );
   };
 
-  const filteredUsers = users.sort((a, b) => {
-    // Online users always come first
-    if (a.isOnline && !b.isOnline) return -1;
-    if (!a.isOnline && b.isOnline) return 1;
+  const filteredUsers = users
+    .filter(user => {
+      // Apply role filter if a specific tab is selected
+      if (activeTab !== "all") {
+        return user.roleId?.toString() === activeTab;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Online users always come first
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
 
-    // Within the same online status, sort by email alphabetically
-    return a.email.localeCompare(b.email);
-  });
+      // Within the same online status, sort by email alphabetically
+      return a.email.localeCompare(b.email);
+    });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -207,7 +282,14 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
           <h1 className="text-2xl font-bold text-gray-900">Auth Management</h1>
           <p className="text-sm text-gray-500 mt-1">Manage CMS admin accounts and role assignments</p>
         </div>
-        <InviteAdminDialog onInviteSent={() => fetchUsers(activeTab === "all" ? undefined : activeTab)} />
+        <div className="flex items-center gap-2">
+          {/* Realtime connection status indicator */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <CircleIcon className={`h-2 w-2 ${userListConnected ? 'fill-green-500 text-green-500' : 'fill-gray-400 text-gray-400'}`} />
+            <span>{userListConnected ? 'Live' : 'Connecting...'}</span>
+          </div>
+          <InviteAdminDialog onInviteSent={() => fetchUsers(activeTab === "all" ? undefined : activeTab)} />
+        </div>
       </div>
 
       {/* Tabs and Table Card */}
@@ -227,87 +309,58 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-0">
-              {loading ? (
-                <div className="space-y-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-11 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
-                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Email</TableHead>
-                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 w-48">Status</TableHead>
-                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Role</TableHead>
-                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 w-24 text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-gray-500 py-12 text-sm">
-                            No admin users found
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredUsers.map((user) => (
-                          <TableRow 
-                            key={user.id}
-                            className="border-b border-gray-200/60 hover:bg-gray-50/50 transition-colors"
-                          >
-                            <TableCell className="py-3 px-4">
-                              <div>
-                                <div className="text-gray-900 font-medium text-sm">{user.email}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {getOnlineStatusBadge(user.isOnline || false, user.lastSeen || null, user.currentPage || null, user.currentAction || null)}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {user.roleName ? (
-                                <Badge 
-                                  variant="secondary" 
-                                  className="bg-gray-100/80 border border-gray-200/80 text-gray-700 font-medium text-xs hover:bg-gray-200/80"
-                                >
-                                  {user.roleName}
-                                </Badge>
-                              ) : (
-                                <span className="text-sm text-gray-400">No role</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openChangeRoleDialog(user)}
-                                  disabled={user.id === currentUserId}
-                                  className="h-8 w-8 p-0 text-gray-600 hover:text-[#E5262C] hover:bg-red-50/80 transition-colors"
-                                  title="Change Role"
-                                >
-                                  <Shield className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openDeleteDialog(user)}
-                                  disabled={user.id === currentUserId}
-                                  className="h-8 w-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50/80 transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+              <GlassTable
+                columns={[
+                  { key: "email", header: "Email" },
+                  { key: "status", header: "Status", width: "12rem" },
+                  { key: "role", header: "Role" },
+                  { key: "actions", header: "Actions", width: "6rem", className: "text-right" },
+                ]}
+                rows={filteredUsers.map((user) => ({
+                  id: user.id,
+                  cells: [
+                    <div key="email">
+                      <div className="text-gray-900 font-medium text-sm">{user.email}</div>
+                    </div>,
+                    getOnlineStatusBadge(user.isOnline || false, user.lastSeen || null, user.currentPage || null, user.currentAction || null),
+                    user.roleName ? (
+                      <Badge
+                        key="role"
+                        variant="secondary"
+                        className="bg-gray-100/80 border border-gray-200/80 text-gray-700 font-medium text-xs hover:bg-gray-200/80"
+                      >
+                        {user.roleName}
+                      </Badge>
+                    ) : (
+                      <span key="role" className="text-sm text-gray-400">No role</span>
+                    ),
+                    <div key="actions" className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openChangeRoleDialog(user)}
+                        disabled={user.id === currentUserId}
+                        className="h-8 w-8 p-0 text-gray-600 hover:text-[#E5262C] hover:bg-red-50/80 transition-colors"
+                        title="Change Role"
+                      >
+                        <Shield className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteDialog(user)}
+                        disabled={user.id === currentUserId}
+                        className="h-8 w-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>,
+                  ],
+                }))}
+                loading={loading}
+                emptyMessage="No admin users found"
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -317,14 +370,15 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Admin User"
-        footerClassName="-mx-4 -mb-2 flex-col-reverse rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end px-6 py-6 flex gap-3"
+        itemName={userToDelete?.id === currentUserId ? undefined : userToDelete?.name}
         description={
           userToDelete?.id === currentUserId
             ? "You cannot delete your own account."
-            : `Are you sure you want to delete "${userToDelete?.name}"? This will permanently remove their admin account and all associated data including sessions and permissions.`
+            : `Are you sure you want to delete "${userToDelete?.name}"? This will also delete associated accounts and sessions.`
         }
         onConfirm={handleDelete}
         isDeleting={isDeleting}
+        disableConfirm={userToDelete?.id === currentUserId}
       />
       
       <ChangeRoleDialog

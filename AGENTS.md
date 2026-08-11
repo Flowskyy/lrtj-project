@@ -55,6 +55,37 @@ mengerjakan task apapun:
 7. Kalau ragu apakah suatu perintah aman untuk data yang sudah ada,
    **STOP dan tanya user dulu**, jangan diasumsikan aman.
 
+## ⏰ Timestamp / WIB Convention — WAJIB, TIDAK BOLEH DILANGGAR
+
+1. **SEMUA field timestamp** yang ditulis oleh aplikasi ini (createdAt, updatedAt,
+   lastSeen, revertedAt, dan field DateTime lainnya) **WAJIB** digenerate menggunakan
+   helper app-side `getWIBDate()` dari `lib/utils.ts`. Helper ini mengembalikan
+   JavaScript Date object yang merepresentasikan waktu WIB yang benar
+   (Asia/Jakarta, UTC+7).
+
+2. **JANGAN PERNAH** pakai attribute Prisma `@default(now())` atau `@updatedAt`
+   untuk field DateTime di project ini. Attribute ini resolve ke MySQL's server-side
+   NOW(), yang mengembalikan UTC/SYSTEM timezone di server database project ini,
+   bukan WIB. Alasannya: MySQL session/global time_zone di database ini adalah
+   'SYSTEM', bukan Asia/Jakarta, dan mengubah itu secara sengaja dihindari demi
+   kontrol timestamp app-side.
+
+3. **JANGAN PERNAH** pakai fungsi waktu SQL mentah (NOW(), CURRENT_TIMESTAMP(),
+   UTC_TIMESTAMP(), CONVERT_TZ(...), dll) di manual migration atau raw query apapun
+   untuk kolom timestamp project ini. Kalau raw SQL insert butuh timestamp, pakai
+   hardcoded literal WIB value, atau lebih baik jalankan logic set-timestamp lewat
+   Prisma/app code menggunakan `getWIBDate()` alih-alih raw SQL.
+
+4. Kalau butuh versi STRING formatted untuk display (bukan untuk tulis ke field
+   Prisma DateTime), gunakan helper display-formatting terpisah:
+   `formatWIBDate()` dari `lib/formatWIBDate.ts`. **JANGAN PERNAH** masukkan string
+   formatted ke field Prisma DateTime — hanya Date object asli dari `getWIBDate()`
+   yang boleh.
+
+5. Convention ini strict karena ini sumber bug berulang di sesi sebelumnya:
+   mencampur sumber timestamp DB-side dan app-side menyebabkan perbedaan ~7 jam
+   di beberapa tabel.
+
 ## 🎨 Design System / UI Guidelines
 
 - **Font wajib: Plus Jakarta Sans** untuk seluruh aplikasi, load via

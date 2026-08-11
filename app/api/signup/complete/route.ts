@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { getWIBDate } from '@/lib/utils';
 import crypto from 'crypto';
 
 // Hash a token using SHA-256
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
 
     // Create user using better-auth signUp method
     // Use email as the name since we're removing username concept
+    console.log('[SIGNUP DEBUG] Attempting to sign up user:', invitation.email);
     const signUpResult = await auth.api.signUpEmail({
       body: {
         email: invitation.email,
@@ -105,10 +107,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (signUpResult.error) {
+    console.log('[SIGNUP DEBUG] Sign up result:', JSON.stringify(signUpResult, null, 2));
+
+    if ('error' in signUpResult && signUpResult.error) {
       console.error('Sign up error:', signUpResult.error);
       return NextResponse.json(
-        { error: signUpResult.error.message || 'Failed to create account' },
+        { error: (signUpResult as any).error?.message || 'Failed to create account' },
         { status: 400 }
       );
     }
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
       data: {
         roleId: invitation.roleId,
         emailVerified: true, // Auto-verify since we verified via OTP
+        updatedAt: getWIBDate(),
       },
     });
 
@@ -130,6 +135,7 @@ export async function POST(request: NextRequest) {
     `;
 
     // Create session for the user
+    console.log('[SIGNUP DEBUG] Attempting to sign in user after signup:', invitation.email);
     const sessionResult = await auth.api.signInEmail({
       body: {
         email: invitation.email,
@@ -137,7 +143,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (sessionResult.error) {
+    console.log('[SIGNUP DEBUG] Sign in result:', JSON.stringify(sessionResult, null, 2));
+
+    if ('error' in sessionResult && sessionResult.error) {
       console.error('Sign in error:', sessionResult.error);
       // User was created but session failed - still return success
       return NextResponse.json({
@@ -158,8 +166,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Set the session cookie from the sign-in response
-    if (sessionResult.headers && sessionResult.headers.get('set-cookie')) {
-      response.headers.set('set-cookie', sessionResult.headers.get('set-cookie')!);
+    const sessionWithHeaders = sessionResult as any;
+    if (sessionWithHeaders.headers && sessionWithHeaders.headers.get('set-cookie')) {
+      response.headers.set('set-cookie', sessionWithHeaders.headers.get('set-cookie')!);
     }
 
     return response;

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Pencil, Trash2, Shield, Plus } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
 interface Role {
   id: number;
@@ -53,7 +54,7 @@ export default function RolesContent({ }: RolesContentProps) {
       if (res.ok) {
         const data = await res.json();
         console.log("Roles data:", data);
-        setRoles(data);
+        setRoles(data.roles || []);
       } else {
         console.error("Failed to fetch roles, status:", res.status);
         toast.error("Failed to fetch roles");
@@ -82,7 +83,6 @@ export default function RolesContent({ }: RolesContentProps) {
       if (res.ok) {
         toast.success("Role deleted successfully");
         setDeleteDialogOpen(false);
-        setSelectedRole(null);
         fetchRoles();
       } else {
         const error = await res.json();
@@ -196,39 +196,25 @@ export default function RolesContent({ }: RolesContentProps) {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Role</DialogTitle>
-          </DialogHeader>
-          {selectedRole && (
-            <div className="py-4">
-              {selectedRole._count.auth_users > 0 ? (
-                <p className="text-red-600">
-                  Cannot delete role "{selectedRole.name}" because {selectedRole._count.auth_users} user(s) are assigned to it.
-                  Please reassign these users to another role first.
-                </p>
-              ) : (
-                <p>
-                  Are you sure you want to delete the role "{selectedRole.name}"? This action cannot be undone.
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDelete}
-              disabled={isSubmitting || (selectedRole?._count.auth_users ?? 0) > 0}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isSubmitting ? "Deleting..." : "Delete Role"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {selectedRole && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) setSelectedRole(null);
+          }}
+          title="Delete Role"
+          itemName={selectedRole.name}
+          description={
+            (selectedRole._count.auth_users ?? 0) > 0
+              ? `Cannot delete role "${selectedRole.name}" because ${selectedRole._count.auth_users ?? 0} user(s) are assigned to it. Please reassign these users to another role first.`
+              : `Are you sure you want to delete the role "${selectedRole.name}"?`
+          }
+          onConfirm={handleDelete}
+          isDeleting={isSubmitting}
+          disableConfirm={(selectedRole._count.auth_users ?? 0) > 0}
+        />
+      )}
     </div>
   );
 }

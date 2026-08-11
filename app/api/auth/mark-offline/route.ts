@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionWithUser } from '@/lib/auth';
+import { formatWIB } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +14,10 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // Immediately mark user as offline using raw SQL to bypass Prisma's timezone conversion
+    const now = formatWIB(new Date());
     await prisma.$queryRaw`
       UPDATE auth_users
-      SET isOnline = false, lastSeen = NOW()
+      SET isOnline = false, lastSeen = ${now}, updatedAt = ${now}
       WHERE id = ${userId}
     `;
 
@@ -43,9 +45,10 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id;
 
     // Immediately mark user as offline using raw SQL to bypass Prisma's timezone conversion
+    const now = formatWIB(new Date());
     await prisma.$queryRaw`
       UPDATE auth_users
-      SET isOnline = false, lastSeen = NOW()
+      SET isOnline = false, lastSeen = ${now}, updatedAt = ${now}
       WHERE id = ${userId}
     `;
 

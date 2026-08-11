@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/auth"
+import { formatWIB } from "@/lib/utils"
 
 // PATCH admin user role
 export async function PATCH(
@@ -46,8 +47,9 @@ export async function PATCH(
     }
 
     // Update user's role using raw SQL
+    const now = formatWIB(new Date());
     await prisma.$queryRaw`
-      UPDATE auth_users SET roleId = ${roleId} WHERE id = ${userIdToUpdate}
+      UPDATE auth_users SET roleId = ${roleId}, updatedAt = ${now} WHERE id = ${userIdToUpdate}
     `;
 
     return NextResponse.json({ success: true })

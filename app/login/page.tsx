@@ -25,14 +25,31 @@ export default function LoginPage() {
     setError("")
 
     try {
-      await signIn.email({
+      console.log('[LOGIN DEBUG] Attempting sign in with email:', email)
+      // Set sessionStorage flag BEFORE initiating sign-in to ensure it's available
+      // when the dashboard auth guard runs after redirect
+      sessionStorage.setItem('tab_authenticated', 'true')
+
+      const result = await signIn.email({
         email,
         password,
         callbackURL: "/dashboard",
       })
+
+      console.log('[LOGIN DEBUG] Sign in result:', result)
+
+      if (result.error) {
+        console.error('[LOGIN DEBUG] Sign in error:', result.error)
+        setError(result.error.message || "Invalid email or password")
+        setLoading(false)
+        sessionStorage.removeItem('tab_authenticated')
+      }
     } catch (err) {
+      console.error('[LOGIN DEBUG] Unexpected error during sign in:', err)
       setError("Invalid email or password")
       setLoading(false)
+      // Clear the flag on error since login failed
+      sessionStorage.removeItem('tab_authenticated')
     }
   }
 
@@ -41,6 +58,10 @@ export default function LoginPage() {
     setError("")
 
     try {
+      // Set sessionStorage flag BEFORE initiating sign-in to ensure it's available
+      // when the dashboard auth guard runs after redirect
+      sessionStorage.setItem('tab_authenticated', 'true')
+      
       await signIn.social({
         provider: "microsoft",
         callbackURL: "/dashboard",
@@ -48,6 +69,8 @@ export default function LoginPage() {
     } catch (err) {
       setError("Microsoft sign-in failed. Please try again.")
       setMicrosoftLoading(false)
+      // Clear the flag on error since login failed
+      sessionStorage.removeItem('tab_authenticated')
     }
   }
 

@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma"
 import { nextCookies } from "better-auth/next-js"
 import { prisma } from "../lib/prisma"
 import { headers } from "next/headers"
+import { getWIBDate } from "../lib/utils"
 
 // Azure AD App Role to local role mapping
 // TODO: Confirm actual Azure App Role names with Azure AD admin
@@ -20,6 +21,7 @@ const TEST_ROLE_MAPPING: Record<string, number> = {
 }
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   database: prismaAdapter(prisma, {
     provider: "mysql",
   }),
@@ -34,8 +36,23 @@ export const auth = betterAuth({
   },
   session: {
     modelName: "auth_sessions",
-    expiresIn: 10, // 10 seconds - absolute expiry from login
-    updateAge: 0, // Disable rolling/idle expiry - session expires 10 seconds from login regardless of activity
+    expiresIn: 60 * 60 * 24, // 24 hours - absolute expiry from login
+    updateAge: 0, // Disable rolling/idle expiry - session expires 24 hours from login regardless of activity
+    cookieCache: {
+      enabled: true,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      strategy: "jwt",
+      include: [
+        "user.id",
+        "user.name",
+        "user.email",
+        "user.emailVerified",
+        "user.image",
+        "user.createdAt",
+        "user.updatedAt",
+        "user.roleId",
+      ],
+    },
   },
   account: {
     modelName: "auth_accounts",
@@ -57,7 +74,159 @@ export const auth = betterAuth({
       enabled: true,
     },
   },
+  // Configure trusted origins to handle both localhost and LAN access
+  // This fixes INVALID_ORIGIN errors when accessing via LAN IP instead of localhost
+  trustedOrigins: [
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000",
+    "http://localhost:3000",
+    "http://172.16.12.230:3000", // LAN IP from dev-with-lan.js - add your LAN IP here if different
+  ],
   plugins: [nextCookies()],
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...user,
+              createdAt: now,
+              updatedAt: now,
+            }
+          }
+        }
+      },
+      update: {
+        before: async (user: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...user,
+              updatedAt: now,
+            }
+          }
+        }
+      }
+    },
+    session: {
+      create: {
+        before: async (session: any) => {
+          const now = getWIBDate()
+
+          // Fetch user permissions to include in session
+          let permissions: string[] = []
+          if (session.userId) {
+            const { getUserPermissions } = await import("./permissions")
+            const user = await prisma.auth_users.findUnique({
+              where: { id: session.userId },
+              select: { roleId: true }
+            })
+            if (user?.roleId) {
+              permissions = await getUserPermissions(user.roleId)
+            }
+          }
+
+          return {
+            data: {
+              ...session,
+              createdAt: now,
+              updatedAt: now,
+              user: {
+                ...session.user,
+                permissions,
+              },
+            }
+          }
+        }
+      },
+      update: {
+        before: async (session: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...session,
+              updatedAt: now,
+            }
+          }
+        }
+      }
+    },
+    account: {
+      create: {
+        before: async (account: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...account,
+              createdAt: now,
+              updatedAt: now,
+            }
+          }
+        }
+      },
+      update: {
+        before: async (account: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...account,
+              updatedAt: now,
+            }
+          }
+        }
+      }
+    },
+    session: {
+      create: {
+        before: async (session: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...session,
+              createdAt: now,
+              updatedAt: now,
+            }
+          }
+        }
+      },
+      update: {
+        before: async (session: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...session,
+              updatedAt: now,
+            }
+          }
+        }
+      }
+    },
+    verification: {
+      create: {
+        before: async (verification: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...verification,
+              createdAt: now,
+              updatedAt: now,
+            }
+          }
+        }
+      },
+      update: {
+        before: async (verification: any) => {
+          const now = getWIBDate()
+          return {
+            data: {
+              ...verification,
+              updatedAt: now,
+            }
+          }
+        }
+      }
+    }
+  }
 })
 
 // Helper function for server-side session retrieval
@@ -72,7 +241,7 @@ export async function getSessionWithUser() {
   const session = await auth.api.getSession({
     headers: await headers(),
   })
-  
+
   if (!session?.user?.id) {
     return null
   }
@@ -89,5 +258,55 @@ export async function getSessionWithUser() {
       ...session.user,
       roleId: user?.roleId,
     },
+  }
+}
+
+// Helper function for optimistic session validation in middleware (no DB call)
+// This reads the JWT cookie and returns session data if present and valid
+// For production use, consider using jose library for proper JWT verification
+export async function getSessionOptimistic(cookieHeader: string | null) {
+  if (!cookieHeader) {
+    return null
+  }
+
+  const cookieName = "better-auth.session_data"
+
+  // Parse cookies to find the session_data cookie
+  const cookiesArray = cookieHeader.split(';').map(c => c.trim())
+  const sessionCookie = cookiesArray.find(c => c.startsWith(`${cookieName}=`))
+
+  if (!sessionCookie) {
+    return null
+  }
+
+  try {
+    // Extract the JWT token
+    const token = sessionCookie.split('=')[1]
+    if (!token) {
+      return null
+    }
+
+    // Decode the JWT (without verification for optimistic check)
+    // In production, you should verify the signature using jose library
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        })
+        .join('')
+    )
+    const payload = JSON.parse(jsonPayload)
+
+    // Return session data from JWT payload
+    return {
+      user: payload.user,
+      session: payload.session,
+    }
+  } catch (error) {
+    console.error("Error decoding session JWT:", error)
+    return null
   }
 }

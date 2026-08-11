@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getWIBDate } from '@/lib/utils';
 
 // Mark users as offline if they haven't sent a heartbeat in 10 seconds
 const OFFLINE_THRESHOLD = 10 * 1000; // 10 seconds in milliseconds
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
       },
       data: {
         isOnline: false,
+        updatedAt: getWIBDate(),
       },
     });
 

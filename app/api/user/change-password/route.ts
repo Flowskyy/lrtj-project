@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getWIBDate } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (signInResult.error) {
+    if ('error' in signInResult && signInResult.error) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
         { status: 400 }
@@ -54,7 +55,6 @@ export async function POST(request: NextRequest) {
     // Get the user's account
     const user = await prisma.auth_users.findUnique({
       where: { id: session.user.id },
-      include: { accounts: true }
     });
 
     if (!user) {
@@ -65,9 +65,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the password account
-    const passwordAccount = user.accounts.find(
-      (account: any) => account.providerId === 'email'
-    );
+    const passwordAccount = await prisma.auth_accounts.findFirst({
+      where: {
+        userId: session.user.id,
+        providerId: 'email'
+      }
+    });
 
     if (!passwordAccount) {
       return NextResponse.json(
@@ -90,7 +93,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (tempResult.error || !tempResult.user) {
+    // Check if tempResult has error property
+    const tempUser = (tempResult as any).user;
+    if (!tempUser) {
       return NextResponse.json(
         { error: 'Failed to process password change' },
         { status: 500 }
@@ -100,7 +105,7 @@ export async function POST(request: NextRequest) {
     // Get the temp account's password hash
     const tempAccount = await prisma.auth_accounts.findFirst({
       where: { 
-        userId: tempResult.user.id,
+        userId: tempUser.id,
         providerId: 'email'
       }
     });
@@ -117,11 +122,14 @@ export async function POST(request: NextRequest) {
     // Update the real user's password
     await prisma.auth_accounts.update({
       where: { id: passwordAccount.id },
-      data: { password: tempAccount.password }
+      data: { 
+        password: tempAccount.password,
+        updatedAt: getWIBDate()
+      }
     });
 
     // Clean up temp user
-    await prisma.auth_users.delete({ where: { id: tempResult.user.id } });
+    await prisma.auth_users.delete({ where: { id: tempUser.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

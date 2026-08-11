@@ -7,9 +7,10 @@ export async function POST(request: NextRequest) {
       headers: request.headers,
     });
 
-    if (result.error) {
+    const resultAny = result as any;
+    if (resultAny.error) {
       return NextResponse.json(
-        { error: result.error.message || 'Sign out failed' },
+        { error: resultAny.error.message || 'Sign out failed' },
         { status: 400 }
       );
     }

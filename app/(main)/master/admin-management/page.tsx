@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth"
-import AuthManagementContent from "./AuthManagementContent.tsx"
+import AuthManagementContent from "./AuthManagementContent"
 
 export default async function AuthManagementPage() {
   const session = await getSession()

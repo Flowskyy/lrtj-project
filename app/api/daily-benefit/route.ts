@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatWIB } from '@/lib/utils';
+import { withActivityContextFromSession } from '@/lib/activity-middleware';
+import { logManualActivity } from '@/lib/activity-logger';
 
 // Simple in-memory cache for unfiltered total count (30 second TTL)
 let cachedTotal: { count: number; timestamp: number } | null = null;
@@ -96,36 +98,48 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
+  return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
+    const data = await request.json();
 
-  // Use raw SQL to store WIB time literally without timezone conversion
-  await prisma.$queryRaw`
-    INSERT INTO daily_benefit (name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active, created_at, updated_at)
-    VALUES (
-      ${data.name},
-      ${data.redeem_point},
-      ${data.image_url || ''},
-      ${data.term_condition || '<p>-</p>'},
-      ${data.editedBy},
-      ${data.status ?? 1},
-      ${formatWIB(data.start_date)},
-      ${formatWIB(data.end_date)},
-      ${data.is_active ?? 1},
-      ${formatWIB(new Date())},
-      ${formatWIB(new Date())}
-    )
-  `;
+    // Use raw SQL to store WIB time literally without timezone conversion
+    await prisma.$queryRaw`
+      INSERT INTO daily_benefit (name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active, created_at, updated_at)
+      VALUES (
+        ${data.name},
+        ${data.redeem_point},
+        ${data.image_url || ''},
+        ${data.term_condition || '<p>-</p>'},
+        ${data.editedBy},
+        ${data.status ?? 1},
+        ${formatWIB(data.start_date)},
+        ${formatWIB(data.end_date)},
+        ${data.is_active ?? 1},
+        ${formatWIB(new Date())},
+        ${formatWIB(new Date())}
+      )
+    `;
 
-  // Fetch the new item with proper WIB formatting
-  const newItem = await prisma.$queryRaw`
-    SELECT
-      id, name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active,
-      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
-      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
-    FROM daily_benefit
-    ORDER BY id DESC
-    LIMIT 1
-  ` as any[];
+    // Fetch the new item with proper WIB formatting
+    const newItem = await prisma.$queryRaw`
+      SELECT
+        id, name, redeem_point, image_url, term_condition, editedBy, status, start_date, end_date, is_active,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM daily_benefit
+      ORDER BY id DESC
+      LIMIT 1
+    ` as any[];
 
-  return NextResponse.json(newItem[0]);
+    const serialized = newItem[0];
+
+    // Log the activity manually since we're using raw SQL
+    await logManualActivity({
+      tableName: 'daily_benefit',
+      recordId: String(serialized.id),
+      action: 'CREATE',
+      afterState: serialized,
+    });
+
+    return NextResponse.json(serialized);
+  });
 }

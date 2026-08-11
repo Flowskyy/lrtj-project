@@ -16,9 +16,35 @@ export function getImageUrl(path: string | null | undefined): string {
 }
 
 /**
+ * Get current WIB time as a Date object
+ * This returns a JavaScript Date object representing the current WIB time
+ * Use this for Prisma DateTime fields - they accept Date objects directly
+ */
+export function getWIBDate(): Date {
+  const now = new Date();
+  // Get the current time in WIB timezone as a string
+  const wibString = now.toLocaleString('en-US', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  // Parse the WIB string back to a Date object
+  const [datePart, timePart] = wibString.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hours, minutes, seconds] = timePart.split(':');
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds));
+}
+
+/**
  * Format Date object or string to MySQL DATETIME literal in WIB: YYYY-MM-DD HH:MM:SS
  * This ensures the literal WIB time is stored without timezone conversion
- * Uses manual parsing to avoid timezone conversion from new Date()
+ * For Date objects, converts to WIB timezone before formatting
+ * NOTE: This returns a STRING for display purposes. For Prisma DateTime fields, use getWIBDate() instead.
  */
 export function formatWIB(dateStr: string | null | Date): string | null {
   if (!dateStr) return null;
@@ -59,15 +85,20 @@ export function formatWIB(dateStr: string | null | Date): string | null {
     return null;
   }
 
-  // If it's a Date object, extract components manually
+  // If it's a Date object, convert to WIB timezone before formatting
   const date = dateStr;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  const wibString = date.toLocaleString('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).replace(',', '').replace(/\//g, '-').replace(' ', ' ');
+  
+  return wibString;
 }
 
 export const cdnBaseUrl = process.env.CDN_BASE_URL || "https://appcdn.lrtjakarta.co.id:3011"

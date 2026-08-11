@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatWIB } from '@/lib/utils';
+import { withActivityContextFromSession } from '@/lib/activity-middleware';
+import { logManualActivity } from '@/lib/activity-logger';
 
 // Simple in-memory cache for unfiltered total count (30 second TTL)
 let cachedTotal: { count: number; timestamp: number } | null = null;
@@ -114,60 +116,70 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
-  try {
-    // Use raw SQL to store WIB time literally without timezone conversion
-    await prisma.$queryRaw`
-      INSERT INTO merchandise (name, redeem_point, image_url, term_condition, editedBy, status, category_id, created_at, updated_at)
-      VALUES (
-        ${data.name},
-        ${data.points},
-        ${data.image_url || ''},
-        ${data.description || '<p>-</p>'},
-        ${data.editedBy},
-        ${data.status ?? 1},
-        ${data.category_id},
-        ${formatWIB(new Date())},
-        ${formatWIB(new Date())}
-      )
-    `;
+  return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
+    const data = await request.json();
+    try {
+      // Use raw SQL to store WIB time literally without timezone conversion
+      await prisma.$queryRaw`
+        INSERT INTO merchandise (name, redeem_point, image_url, term_condition, editedBy, status, category_id, created_at, updated_at)
+        VALUES (
+          ${data.name},
+          ${data.points},
+          ${data.image_url || ''},
+          ${data.description || '<p>-</p>'},
+          ${data.editedBy},
+          ${data.status ?? 1},
+          ${data.category_id},
+          ${formatWIB(new Date())},
+          ${formatWIB(new Date())}
+        )
+      `;
 
-    // Fetch the new item with proper WIB formatting
-    const newItem = await prisma.$queryRaw`
-      SELECT
-        m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
-        DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
-        c.id as category_id, c.category_name,
-        COALESCE(u.email, m.editedBy) as display_email
-      FROM merchandise m
-      LEFT JOIN merchandise_category c ON m.category_id = c.id
-      LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
-      ORDER BY m.id DESC
-      LIMIT 1
-    ` as any[];
+      // Fetch the new item with proper WIB formatting
+      const newItem = await prisma.$queryRaw`
+        SELECT
+          m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
+          DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
+          DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+          c.id as category_id, c.category_name,
+          COALESCE(u.email, m.editedBy) as display_email
+        FROM merchandise m
+        LEFT JOIN merchandise_category c ON m.category_id = c.id
+        LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
+        ORDER BY m.id DESC
+        LIMIT 1
+      ` as any[];
 
-    const itemWithCategory = {
-      ...newItem[0],
-      merchandise_category: newItem[0]?.category_id ? {
-        id: newItem[0].category_id,
-        category_name: newItem[0].category_name
-      } : null,
-      category_id: newItem[0]?.category_id
-    };
+      const itemWithCategory = {
+        ...newItem[0],
+        merchandise_category: newItem[0]?.category_id ? {
+          id: newItem[0].category_id,
+          category_name: newItem[0].category_name
+        } : null,
+        category_id: newItem[0]?.category_id
+      };
 
-    return NextResponse.json(itemWithCategory);
-  } catch (error) {
-    console.error('Error creating merchandise:', error);
-    if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+      // Log the activity manually since we're using raw SQL
+      await logManualActivity({
+        tableName: 'merchandise',
+        recordId: String(itemWithCategory.id),
+        action: 'CREATE',
+        afterState: itemWithCategory,
+      });
+
+      return NextResponse.json(itemWithCategory);
+    } catch (error) {
+      console.error('Error creating merchandise:', error);
+      if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+        return NextResponse.json(
+          { error: 'Invalid category selected' },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
-        { error: 'Invalid category selected' },
-        { status: 400 }
+        { error: 'Failed to create merchandise' },
+        { status: 500 }
       );
     }
-    return NextResponse.json(
-      { error: 'Failed to create merchandise' },
-      { status: 500 }
-    );
-  }
+  });
 }

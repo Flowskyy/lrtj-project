@@ -25,6 +25,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const lastKnownPageRef = useRef<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -33,6 +34,11 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
 
   // Send heartbeat to server
   const sendHeartbeat = useCallback(async (currentPage?: string) => {
+    // Stop if session has already expired
+    if (sessionExpired) {
+      return;
+    }
+
     // Update the last known page when provided
     if (currentPage !== undefined) {
       lastKnownPageRef.current = currentPage;
@@ -64,12 +70,33 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
         }),
       });
       if (!response.ok) {
-        console.error('Heartbeat failed:', response.status, response.statusText);
+        if (response.status === 401) {
+          // Session expired - stop heartbeats and redirect to login
+          setSessionExpired(true);
+          // Clear sessionStorage flag
+          sessionStorage.removeItem('tab_authenticated');
+          if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
+          }
+          if (cleanupIntervalRef.current) {
+            clearInterval(cleanupIntervalRef.current);
+            cleanupIntervalRef.current = null;
+          }
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+          }
+          // Redirect to login
+          window.location.href = '/login';
+        } else {
+          console.error('Heartbeat failed:', response.status, response.statusText);
+        }
       }
     } catch (error) {
       console.error('Heartbeat failed:', error);
     }
-  }, [currentAction, actionEntity]); // Include action state in dependencies
+  }, [currentAction, actionEntity, sessionExpired]); // Include sessionExpired in dependencies
 
   // Trigger cleanup of offline users
   const triggerCleanup = useCallback(async () => {
@@ -98,6 +125,11 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   }, []);
 
   useEffect(() => {
+    // Don't set up intervals if session has expired
+    if (sessionExpired) {
+      return;
+    }
+
     // Clear any existing intervals before setting up new ones
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
@@ -163,7 +195,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [heartbeatInterval, cleanupInterval]);
+  }, [heartbeatInterval, cleanupInterval, sessionExpired]);
 
   // Send heartbeat immediately when action state changes
   useEffect(() => {
@@ -174,5 +206,6 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
     onlineUsers,
     isConnected,
     sendHeartbeat,
+    sessionExpired,
   };
 }

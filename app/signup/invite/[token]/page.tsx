@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, XCircle, Mail, Lock } from "lucide-react";
+import { Loader2, XCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 
 export default function InviteSignupPage() {
@@ -26,6 +26,9 @@ export default function InviteSignupPage() {
   const [otpVerified, setOtpVerified] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [otpResendTimer, setOtpResendTimer] = useState(0);
 
   // Validate invitation on load
@@ -122,20 +125,21 @@ export default function InviteSignupPage() {
     e.preventDefault();
 
     if (!password || !confirmPassword) {
-      toast.error("Please fill in all fields");
+      setPasswordError("Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      setPasswordError("Passwords do not match");
       return;
     }
 
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      setPasswordError("Password must be at least 8 characters");
       return;
     }
 
+    setPasswordError("");
     setSigningUp(true);
     try {
       const res = await fetch(`/api/signup/complete`, {
@@ -151,16 +155,19 @@ export default function InviteSignupPage() {
 
       if (res.ok) {
         toast.success("Account created successfully");
+        // Set sessionStorage flag BEFORE redirect to ensure it's available
+        // when the dashboard auth guard runs
+        sessionStorage.setItem('tab_authenticated', 'true')
         // Redirect to dashboard after successful signup
         setTimeout(() => {
           router.push("/dashboard");
         }, 1000);
       } else {
-        toast.error(data.error || "Failed to create account");
+        setPasswordError(data.error || "Failed to create account");
       }
     } catch (err) {
       console.error("Error creating account:", err);
-      toast.error("Failed to create account");
+      setPasswordError("Failed to create account");
     } finally {
       setSigningUp(false);
     }
@@ -326,15 +333,32 @@ export default function InviteSignupPage() {
                     <Lock className="h-4 w-4" />
                     Password
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={signingUp}
-                    className="h-9"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (passwordError) setPasswordError("");
+                      }}
+                      disabled={signingUp}
+                      className="h-9 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={signingUp}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-500">
                     Must be at least 8 characters
                   </p>
@@ -345,15 +369,35 @@ export default function InviteSignupPage() {
                     <Lock className="h-4 w-4" />
                     Confirm Password
                   </Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={signingUp}
-                    className="h-9"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (passwordError) setPasswordError("");
+                      }}
+                      disabled={signingUp}
+                      className="h-9 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      disabled={signingUp}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <p className="text-xs text-red-500">{passwordError}</p>
+                  )}
                 </div>
 
                 <Button

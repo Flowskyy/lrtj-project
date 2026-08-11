@@ -1,10 +1,20 @@
 import { PrismaClient } from './generated/prisma'
+// import { activityLoggerExtension } from './activity-logger' // Disabled temporarily
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+// Check if DATABASE_URL has timezone configured
+const databaseUrl = process.env.DATABASE_URL || ''
+if (!databaseUrl.includes('timezone=Asia/Jakarta') && process.env.NODE_ENV !== 'test') {
+  console.warn('⚠️  WARNING: DATABASE_URL does not have timezone=Asia/Jakarta configured.')
+  console.warn('   Timestamps may be stored in UTC instead of WIB (Asia/Jakarta).')
+  console.warn('   Please add ?timezone=Asia/Jakarta to your DATABASE_URL:')
+  console.warn('   Example: mysql://user:pass@host:port/db?timezone=Asia/Jakarta')
+}
+
+const basePrisma = new PrismaClient({
   log: ['error', 'warn'],
   datasources: {
     db: {
@@ -18,5 +28,12 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   // Note: MySQL connection pool settings should be configured in DATABASE_URL:
   // mysql://user:pass@host:port/db?connection_limit=20&pool_timeout=10
 })
+
+// Activity logging extension disabled temporarily due to instability
+// To re-enable: export const prisma = globalForPrisma.prisma ?? activityLoggerExtension(basePrisma)
+export const prisma = globalForPrisma.prisma ?? basePrisma
+
+// Export base client without extension for use within the logger to avoid circular dependency
+export const basePrismaClient = basePrisma
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma

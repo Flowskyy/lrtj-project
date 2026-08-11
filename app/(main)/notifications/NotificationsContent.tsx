@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatWIBDate } from "@/lib/formatWIBDate";
+import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,7 +53,7 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [payload, setPayload] = useState("");
-  const [sendPush, setSendPush] = useState(false);
+  const [sendPush, setSendPush] = useState(true);
 
   // Fetch items
   const fetchItems = async () => {
@@ -110,10 +111,6 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
       if (res.ok) {
         await fetchItems();
         setIsSendDialogOpen(false);
-        setTitle("");
-        setDescription("");
-        setPayload("");
-        setSendPush(false);
         toast.success("Notification sent successfully");
       } else {
         toast.error("Failed to send notification");
@@ -258,8 +255,15 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
         <CardContent className="p-6">
           <div className="flex flex-wrap items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Notification Management</h2>
-            <Button 
-              onClick={() => setIsSendDialogOpen(true)}
+            <Button
+              onClick={() => {
+                // Reset form to default state when opening dialog
+                setTitle("");
+                setDescription("");
+                setPayload("");
+                setSendPush(true); // Default to ON
+                setIsSendDialogOpen(true);
+              }}
               className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
             >
               <Send className="h-4 w-4 mr-2" />
@@ -347,7 +351,16 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
       </Card>
 
       {/* Send Notification Dialog */}
-      <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
+      <Dialog open={isSendDialogOpen} onOpenChange={(open) => {
+        setIsSendDialogOpen(open);
+        // Reset form to default state when dialog closes
+        if (!open) {
+          setTitle("");
+          setDescription("");
+          setPayload("");
+          setSendPush(true); // Reset to default (true)
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900">Send Broadcast Notification</DialogTitle>
@@ -564,45 +577,18 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">Delete Notification</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-gray-600">
-              Are you sure you want to delete this notification? This action cannot be undone.
-            </p>
-            {deleteItem && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="font-medium text-sm text-gray-900">{deleteItem.title}</p>
-                <p className="text-xs text-gray-500 mt-1 truncate">{deleteItem.description}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="pt-4 border-t border-gray-200">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsDeleteDialogOpen(false);
-                setDeleteItem(null);
-              }}
-              disabled={sending}
-              className="min-h-[44px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDeleteNotification}
-              disabled={sending}
-              variant="destructive"
-              className="min-h-[44px]"
-            >
-              {sending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) setDeleteItem(null);
+        }}
+        title="Delete Notification"
+        itemName={deleteItem?.title}
+        description="Are you sure you want to delete this notification?"
+        onConfirm={handleDeleteNotification}
+        isDeleting={sending}
+      />
     </div>
   );
 }

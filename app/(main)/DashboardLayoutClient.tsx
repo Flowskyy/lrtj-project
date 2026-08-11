@@ -97,6 +97,7 @@ const NAV_ITEMS = [
       { href: "/master/membership", label: "Membership", icon: <Award className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/admin-management", label: "Auth Management", icon: <User className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/master/activity-log", label: "Activity Log", icon: <Clock className="h-4 w-4" strokeWidth={2} /> },
     ],
   },
 ]
@@ -109,6 +110,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   // Permissions state
   const [userPermissions, setUserPermissions] = React.useState<string[]>([])
   const [loadingPermissions, setLoadingPermissions] = React.useState(true)
+
+  // User role state
+  const [userRole, setUserRole] = React.useState<string | null>(null)
+  const [loadingRole, setLoadingRole] = React.useState(true)
 
   // Dialog states
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] = React.useState(false)
@@ -137,6 +142,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       'membership': 'Membership',
       'roles': 'Roles',
       'admin-management': 'Auth Management',
+      'activity-log': 'Activity Log',
     }
 
     const readableSegments = segments.map(segment => {
@@ -154,6 +160,50 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   const { sendHeartbeat } = useOnlineStatus()
   const { clearAction } = useAction()
 
+  // Check sessionStorage for tab-scoped authentication on mount
+  React.useEffect(() => {
+    const isTabAuthenticated = sessionStorage.getItem('tab_authenticated')
+    if (!isTabAuthenticated && displaySession?.user) {
+      // Server session exists but this tab doesn't have the flag
+      // Check if this is a fresh login/signup (check referrer)
+      const referrer = document.referrer
+      const isFromAuthPage = referrer.includes('/login') || referrer.includes('/signup')
+      
+      if (isFromAuthPage) {
+        // User just came from login/signup - set the flag now instead of redirecting
+        // This handles any remaining race conditions in the auth flow
+        sessionStorage.setItem('tab_authenticated', 'true')
+      } else {
+        // This is a new tab or reopened tab - redirect to login
+        window.location.href = '/login'
+      }
+    }
+  }, [displaySession])
+
+  // Re-check auth on bfcache restore (back button from external site)
+  React.useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // Page was restored from bfcache - re-run auth check
+        const isTabAuthenticated = sessionStorage.getItem('tab_authenticated')
+        if (!isTabAuthenticated && displaySession?.user) {
+          // Server session exists but this tab doesn't have the flag
+          // Check if this is a fresh login/signup (check referrer)
+          const referrer = document.referrer
+          const isFromAuthPage = referrer.includes('/login') || referrer.includes('/signup')
+          
+          if (!isFromAuthPage) {
+            // This is a back navigation from external site - redirect to login
+            window.location.href = '/login'
+          }
+        }
+      }
+    }
+
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [displaySession])
+
   // Send heartbeat with current page on pathname change
   React.useEffect(() => {
     // Reset action state to reading when navigating to a new page
@@ -164,11 +214,14 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     try {
+      // Clear sessionStorage flag
+      sessionStorage.removeItem('tab_authenticated')
+      
       // Direct API call to logout endpoint
       const res = await fetch('/api/auth/signout', {
         method: 'POST',
       })
-      
+
       if (res.ok) {
         window.location.href = "/login"
       } else {
@@ -210,6 +263,29 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     }
 
     fetchPermissions()
+  }, [displaySession])
+
+  // Fetch user role
+  React.useEffect(() => {
+    const fetchRole = async () => {
+      if (displaySession?.user) {
+        try {
+          const res = await fetch('/api/user/role')
+          if (res.ok) {
+            const data = await res.json()
+            setUserRole(data.roleName)
+          }
+        } catch (error) {
+          console.error('Failed to fetch user role:', error)
+        } finally {
+          setLoadingRole(false)
+        }
+      } else {
+        setLoadingRole(false)
+      }
+    }
+
+    fetchRole()
   }, [displaySession])
 
   // Filter nav items based on permissions
@@ -556,10 +632,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
               <span className="text-xs text-gray-500">
 
-                {!displaySession ? (
+                {!displaySession || loadingRole ? (
                   <div className="h-2 w-24 animate-pulse rounded bg-gray-200 mt-1" />
                 ) : (
-                  displaySession?.user?.email ? 'Admin' : ''
+                  userRole || 'No role'
                 )}
 
               </span>

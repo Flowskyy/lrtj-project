@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatWIB } from '@/lib/utils';
+import { withActivityContextFromSession } from '@/lib/activity-middleware';
+import { logManualActivity } from '@/lib/activity-logger';
 
 // Simple in-memory cache for unfiltered total count (30 second TTL)
 let cachedTotal: { count: number; timestamp: number } | null = null;
@@ -105,43 +107,54 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
+  return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
+    const data = await request.json();
 
-  // Use raw SQL to store WIB time literally without timezone conversion
-  await prisma.$queryRaw`
-    INSERT INTO news (title, title_en, content, content_en, img_url, caption_image, type, status, publish_date, createdBy, created_at, updated_at)
-    VALUES (
-      ${data.title},
-      ${data.title_en || null},
-      ${data.content || '<p>-</p>'},
-      ${data.content_en || '<p>-</p>'},
-      ${data.img_url || ''},
-      ${data.caption_image || ''},
-      ${data.type || 'general'},
-      ${data.status ?? 1},
-      ${formatWIB(data.publish_date)},
-      ${data.createdBy},
-      ${formatWIB(new Date())},
-      ${formatWIB(new Date())}
-    )
-  `;
+    // Use raw SQL to store WIB time literally without timezone conversion
+    await prisma.$queryRaw`
+      INSERT INTO news (title, title_en, content, content_en, img_url, caption_image, type, status, publish_date, createdBy, created_at, updated_at)
+      VALUES (
+        ${data.title},
+        ${data.title_en || null},
+        ${data.content || '<p>-</p>'},
+        ${data.content_en || '<p>-</p>'},
+        ${data.img_url || ''},
+        ${data.caption_image || ''},
+        ${data.type || 'general'},
+        ${data.status ?? 1},
+        ${formatWIB(data.publish_date)},
+        ${data.createdBy},
+        ${formatWIB(new Date())},
+        ${formatWIB(new Date())}
+      )
+    `;
 
-  // Fetch the new item with proper WIB formatting
-  const newItem = await prisma.$queryRaw`
-    SELECT
-      id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
-      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
-      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
-      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
-    FROM news
-    ORDER BY id DESC
-    LIMIT 1
-  ` as any[];
+    // Fetch the new item with proper WIB formatting
+    const newItem = await prisma.$queryRaw`
+      SELECT
+        id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
+        DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      FROM news
+      ORDER BY id DESC
+      LIMIT 1
+    ` as any[];
 
-  const serialized = {
-    ...newItem[0],
-    views: newItem[0]?.views ? newItem[0].views.toString() : '0',
-    creatorEmail: data.creatorEmail || null,
-  };
-  return NextResponse.json(serialized);
+    const serialized = {
+      ...newItem[0],
+      views: newItem[0]?.views ? newItem[0].views.toString() : '0',
+      creatorEmail: data.creatorEmail || null,
+    };
+
+    // Log the activity manually since we're using raw SQL
+    await logManualActivity({
+      tableName: 'news',
+      recordId: String(newItem[0].id),
+      action: 'CREATE',
+      afterState: serialized,
+    });
+
+    return NextResponse.json(serialized);
+  });
 }

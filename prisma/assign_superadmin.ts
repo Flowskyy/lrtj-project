@@ -1,4 +1,5 @@
 import { PrismaClient } from "../lib/generated/prisma"
+import { getWIBDate } from "../lib/utils"
 
 const prisma = new PrismaClient()
 
@@ -38,7 +39,10 @@ async function assignSuperAdmin() {
     // Update user's role to Super Admin
     await prisma.auth_users.update({
       where: { id: user.id },
-      data: { roleId: superAdminRole.id }
+      data: { 
+        roleId: superAdminRole.id,
+        updatedAt: getWIBDate()
+      }
     })
 
     console.log(`✅ Successfully assigned Super Admin role to ${user.email}`)

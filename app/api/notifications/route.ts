@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatWIB } from '@/lib/utils';
 import { messaging } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin';
+import { withActivityContextFromSession } from '@/lib/activity-middleware';
+import { logManualActivity } from '@/lib/activity-logger';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -41,84 +42,145 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
+  return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
+    const data = await request.json();
 
-  const sendPush = data.sendPush === true;
-  const customPayload = data.payload || null;
+    const sendPush = data.sendPush === true;
+    const customPayload = data.payload || null;
 
-  // If push was requested, send FCM notifications
-  if (sendPush) {
-    if (!messaging) {
-      console.warn('[FCM] Firebase Admin SDK not initialized. Skipping push notification.');
-    } else {
-      try {
-        const usersWithPush = await prisma.users.findMany({
-          where: {
-            push_notification: 1,
-            device_token: {
-              not: null,
+    // If push was requested, send FCM notifications
+    if (sendPush) {
+      if (!messaging) {
+        console.warn('[FCM] Firebase Admin SDK not initialized. Skipping push notification.');
+      } else {
+        try {
+          const usersWithPush = await prisma.users.findMany({
+            where: {
+              push_notification: 1,
+              device_token: {
+                not: null,
+              },
+              status: 1, // Only active users
             },
-            status: 1, // Only active users
-          },
-          select: {
-            id: true,
-            device_token: true,
-          },
-        });
-
-        const tokens = usersWithPush.map(u => u.device_token).filter((t): t is string => t !== null && t !== '');
-        
-        if (tokens.length === 0) {
-          console.log('[FCM] No valid device tokens found for push notification.');
-        } else {
-          console.log(`[FCM] Sending push to ${tokens.length} users`);
-          
-          // Build FCM message
-          const message: any = {
-            notification: {
-              title: data.title,
-              body: data.description,
+            select: {
+              id: true,
+              device_token: true,
             },
-            data: customPayload ? customPayload : {},
-            tokens: tokens,
-          };
+          });
 
-          // Send multicast message (FCM handles batching internally)
-          const response = await (messaging as any).sendEachForMulticast(message);
-          
-          console.log(`[FCM] Sent to ${response.successCount} devices, failed for ${response.failureCount}`);
-          
-          // Handle failed tokens - clear stale device tokens
-          if (response.failureCount > 0) {
-            const tokensToClear: string[] = [];
-            const errors: string[] = [];
-            
-            response.responses.forEach((resp: any, index: number) => {
-              if (!resp.success) {
-                const token = tokens[index];
-                const error = resp.error;
-                
-                if (error) {
-                  console.error(`[FCM] Failed to send to token ${index}:`, error.message);
-                  
-                  // Clear token if it's no longer registered
-                  if (error.code === 'messaging/registration-token-not-registered' ||
-                      error.code === 'messaging/invalid-registration-token') {
-                    tokensToClear.push(token);
-                  } else {
-                    errors.push(`Token ${index}: ${error.message} (${error.code})`);
+          const tokens = usersWithPush.map(u => u.device_token).filter((t): t is string => t !== null && t !== '');
+
+          if (tokens.length === 0) {
+            console.log('[FCM] No valid device tokens found for push notification.');
+          } else {
+            console.log(`[FCM] Sending push to ${tokens.length} users`);
+
+            // FCM has a hard limit of 500 tokens per multicast call
+            const BATCH_SIZE = 500;
+            const tokenChunks: string[][] = [];
+            for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
+              tokenChunks.push(tokens.slice(i, i + BATCH_SIZE));
+            }
+
+            console.log(`[FCM] Split into ${tokenChunks.length} batches of max ${BATCH_SIZE} tokens each`);
+
+            // Aggregate results across all batches
+            let totalSuccessCount = 0;
+            let totalFailureCount = 0;
+            const allTokensToClear: string[] = [];
+            const allErrors: string[] = [];
+
+            // Process batches with limited concurrency to avoid rate limits
+            const CONCURRENCY_LIMIT = 5;
+            const BATCH_TIMEOUT_MS = 30000; // 30 seconds per batch
+
+            for (let i = 0; i < tokenChunks.length; i += CONCURRENCY_LIMIT) {
+              const batch = tokenChunks.slice(i, i + CONCURRENCY_LIMIT);
+              const batchNumber = Math.floor(i / CONCURRENCY_LIMIT) + 1;
+              const totalBatches = Math.ceil(tokenChunks.length / CONCURRENCY_LIMIT);
+
+              console.log(`[FCM] Processing batch group ${batchNumber}/${totalBatches} (${batch.length} batches, ${batch.reduce((sum, chunk) => sum + chunk.length, 0)} tokens)`);
+
+              const batchPromises = batch.map(async (chunkTokens, chunkIndex) => {
+                const chunkStartIndex = i * BATCH_SIZE + chunkIndex * BATCH_SIZE;
+                const currentBatchIndex = i + chunkIndex;
+
+                console.log(`[FCM] Starting batch ${currentBatchIndex + 1}/${tokenChunks.length} (${chunkTokens.length} tokens)`);
+
+                // Build FCM message for this chunk
+                const message: any = {
+                  notification: {
+                    title: data.title,
+                    body: data.description,
+                  },
+                  data: customPayload ? customPayload : {},
+                  tokens: chunkTokens,
+                };
+
+                try {
+                  // Add timeout to prevent indefinite hangs
+                  const response = await Promise.race([
+                    (messaging as any).sendEachForMulticast(message),
+                    new Promise((_, reject) =>
+                      setTimeout(() => reject(new Error('Batch timeout')), BATCH_TIMEOUT_MS)
+                    ),
+                  ]) as any;
+
+                  // Aggregate results
+                  totalSuccessCount += response.successCount;
+                  totalFailureCount += response.failureCount;
+
+                  console.log(`[FCM] Batch ${currentBatchIndex + 1} completed: ${response.successCount} success, ${response.failureCount} failures`);
+
+                  // Handle failed tokens in this chunk
+                  if (response.failureCount > 0) {
+                    response.responses.forEach((resp: any, index: number) => {
+                      if (!resp.success) {
+                        const token = chunkTokens[index];
+                        const error = resp.error;
+
+                        if (error) {
+                          // Only clear token if it's genuinely dead/unregistered
+                          // SenderId mismatch is a CONFIGURATION problem, not a dead token
+                          if (error.code === 'messaging/registration-token-not-registered' ||
+                              error.code === 'messaging/invalid-registration-token') {
+                            allTokensToClear.push(token);
+                            console.log(`[FCM] Token ${chunkStartIndex + index}: Marked for deletion (${error.code})`);
+                          } else {
+                            const globalIndex = chunkStartIndex + index;
+                            allErrors.push(`Token ${globalIndex}: ${error.message} (${error.code})`);
+                            console.log(`[FCM] Token ${globalIndex}: ${error.message} (${error.code}) - NOT deleting token`);
+                          }
+                        }
+                      }
+                    });
                   }
+
+                  return { success: true };
+                } catch (error: any) {
+                  console.error(`[FCM] Error sending batch ${currentBatchIndex + 1}:`, error.message || error);
+                  // Mark all tokens in this chunk as failed if the entire batch failed
+                  chunkTokens.forEach((token, idx) => {
+                    const globalIndex = chunkStartIndex + idx;
+                    allErrors.push(`Token ${globalIndex}: Batch send failed (${error.message || 'Unknown error'})`);
+                  });
+                  return { success: false };
                 }
-              }
-            });
-            
+              });
+
+              await Promise.all(batchPromises);
+              console.log(`[FCM] Batch group ${batchNumber}/${totalBatches} completed`);
+            }
+
+            console.log(`[FCM] Total: Sent to ${totalSuccessCount} devices, failed for ${totalFailureCount}`);
+
             // Clear stale tokens from database
-            if (tokensToClear.length > 0) {
-              console.log(`[FCM] Clearing ${tokensToClear.length} stale device tokens`);
+            if (allTokensToClear.length > 0) {
+              console.log(`[FCM] Clearing ${allTokensToClear.length} stale device tokens`);
               await prisma.users.updateMany({
                 where: {
                   device_token: {
-                    in: tokensToClear,
+                    in: allTokensToClear,
                   },
                 },
                 data: {
@@ -126,44 +188,54 @@ export async function POST(request: NextRequest) {
                 },
               });
             }
-            
-            if (errors.length > 0) {
-              console.error('[FCM] Non-token errors:', errors);
+
+            if (allErrors.length > 0) {
+              console.error('[FCM] Non-token errors:', allErrors);
             }
           }
+        } catch (error) {
+          console.error('[FCM] Error sending push notification:', error);
+          // Don't throw - let the DB save succeed even if FCM fails
         }
-      } catch (error) {
-        console.error('[FCM] Error sending push notification:', error);
-        // Don't throw - let the DB save succeed even if FCM fails
       }
     }
-  }
 
-  // Store payload directly as JSON (or null if empty)
-  const payloadJson = customPayload ? JSON.stringify(customPayload) : null;
+    // Store payload directly as JSON (or null if empty)
+    const payloadJson = customPayload ? JSON.stringify(customPayload) : null;
 
-  // ALWAYS force user_id to null for broadcast notifications
-  // Ignore any user_id from the request body
-  await prisma.$queryRaw`
-    INSERT INTO notifications (title, description, payload, user_id, created_at)
-    VALUES (
-      ${data.title},
-      ${data.description},
-      ${payloadJson},
-      null,
-      ${formatWIB(new Date())}
-    )
-  `;
+    // ALWAYS force user_id to null for broadcast notifications
+    // Ignore any user_id from the request body
+    await prisma.$queryRaw`
+      INSERT INTO notifications (title, description, payload, user_id, created_at)
+      VALUES (
+        ${data.title},
+        ${data.description},
+        ${payloadJson},
+        null,
+        ${formatWIB(new Date())}
+      )
+    `;
 
-  // Fetch the new item with proper WIB formatting
-  const newItem = await prisma.$queryRaw`
-    SELECT
-      id, title, description, payload, user_id,
-      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at
-    FROM notifications
-    ORDER BY id DESC
-    LIMIT 1
-  ` as any[];
+    // Fetch the new item with proper WIB formatting
+    const newItem = await prisma.$queryRaw`
+      SELECT
+        id, title, description, payload, user_id,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at
+      FROM notifications
+      ORDER BY id DESC
+      LIMIT 1
+    ` as any[];
 
-  return NextResponse.json(newItem[0]);
+    const serialized = newItem[0];
+
+    // Log the activity manually since we're using raw SQL
+    await logManualActivity({
+      tableName: 'notifications',
+      recordId: String(serialized.id),
+      action: 'CREATE',
+      afterState: serialized,
+    });
+
+    return NextResponse.json(serialized);
+  });
 }

@@ -1,5 +1,6 @@
 import { auth } from "../lib/auth"
 import { PrismaClient } from "../lib/generated/prisma"
+import { getWIBDate } from "../lib/utils"
 
 const prisma = new PrismaClient()
 
@@ -58,7 +59,10 @@ async function seedAdmin() {
       // Update user role
       await prisma.auth_users.update({
         where: { id: existingUser.id },
-        data: { roleId: role.id }
+        data: { 
+          roleId: role.id,
+          updatedAt: getWIBDate()
+        }
       })
     } else {
       console.log(`Creating new user with email "${email}"...`)
@@ -74,8 +78,8 @@ async function seedAdmin() {
       }
     })
 
-    if (result.error) {
-      console.error("Error creating user:", result.error)
+    if ('error' in result && (result as any).error) {
+      console.error("Error creating user:", (result as any).error)
       process.exit(1)
     }
 
@@ -92,7 +96,10 @@ async function seedAdmin() {
     // Assign role
     await prisma.auth_users.update({
       where: { id: user.id },
-      data: { roleId: role.id }
+      data: { 
+        roleId: role.id,
+        updatedAt: getWIBDate()
+      }
     })
 
     console.log(`✅ Successfully created/updated admin user:`)

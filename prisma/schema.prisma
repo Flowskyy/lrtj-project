@@ -1136,7 +1136,7 @@ model merchandise_category {
   category_name String?       @db.VarChar(255)
   status        Boolean?
   created_at    DateTime?     @db.DateTime(0)
-  updated_at    DateTime?     @updatedAt @db.DateTime(0)
+  updated_at    DateTime?     @db.DateTime(0)
   updated_by    String?       @db.VarChar(255)
   merchandise   merchandise[]
 }
@@ -1181,12 +1181,38 @@ model role_permissions {
   roleId     Int
   pageKey    String     @db.VarChar(100)
   createdAt  DateTime   @default(now()) @db.Timestamp(0)
-  updatedAt  DateTime   @default(now()) @updatedAt @db.Timestamp(0)
+  updatedAt  DateTime   @default(now()) @db.Timestamp(0)
   auth_roles auth_roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, pageKey])
   @@index([roleId])
   @@map("role_permissions")
+}
+
+model system_activity_logs {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  actorUserId      String?
+  actorName        String?   @db.VarChar(255)
+  actorEmail       String?   @db.VarChar(255)
+  actorRoleId      Int?
+  actorRoleName    String?   @db.VarChar(255)
+  tableName        String    @db.VarChar(255)
+  recordId         String    @db.VarChar(255)
+  action           String    @db.VarChar(50)
+  beforeState      Json?
+  afterState       Json?
+  changedFields    Json?
+  createdAt        DateTime  @db.Timestamp(0)
+  revertedAt       DateTime? @db.Timestamp(0)
+  revertedByUserId String?   @db.VarChar(255)
+
+  @@index([tableName])
+  @@index([recordId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@index([actorUserId])
+  @@index([actorRoleId])
+  @@map("system_activity_logs")
 }
 
 enum bayarind_binding_states_status {

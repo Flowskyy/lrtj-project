@@ -1,4 +1,5 @@
 import { PrismaClient } from "../lib/generated/prisma"
+import { getWIBDate } from "../lib/utils"
 
 const prisma = new PrismaClient()
 
@@ -32,7 +33,9 @@ async function checkSuperAdminPermissions() {
       await prisma.role_permissions.create({
         data: {
           roleId: superAdmin.id,
-          pageKey: 'master-roles'
+          pageKey: 'master-roles',
+          createdAt: getWIBDate(),
+          updatedAt: getWIBDate()
         }
       })
       console.log("✅ Added master-roles permission")
