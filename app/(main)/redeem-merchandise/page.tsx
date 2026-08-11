@@ -8,5 +8,5 @@ export default async function RedeemMerchandisePage() {
     return null
   }
 
-  return <RedeemMerchandiseContent username={session.user.email || "Admin"} />
+  return <RedeemMerchandiseContent />
 }

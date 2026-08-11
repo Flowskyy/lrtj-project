@@ -8,5 +8,5 @@ export default async function WelcomePointEditPage() {
     return null
   }
 
-  return <WelcomePointEditContent username={session.user.email || "Admin"} />
+  return <WelcomePointEditContent userEmail={session.user.email || ""} />
 }

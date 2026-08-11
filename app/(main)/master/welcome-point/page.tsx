@@ -8,5 +8,5 @@ export default async function WelcomePointPage() {
     return null
   }
 
-  return <WelcomePointContent username={session.user.email || "Admin"} />
+  return <WelcomePointContent />
 }

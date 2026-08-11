@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, XCircle, Mail, Lock, User } from "lucide-react";
+import { Loader2, XCircle, Mail, Lock } from "lucide-react";
 import Image from "next/image";
 
 export default function InviteSignupPage() {
@@ -24,7 +24,6 @@ export default function InviteSignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [otpResendTimer, setOtpResendTimer] = useState(0);
@@ -122,7 +121,7 @@ export default function InviteSignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!username || !password || !confirmPassword) {
+    if (!password || !confirmPassword) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -144,7 +143,6 @@ export default function InviteSignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          username,
           password,
         }),
       });
@@ -324,22 +322,6 @@ export default function InviteSignupPage() {
             ) : (
               <form onSubmit={handleSignup} className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="username" className="text-sm font-medium flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Username
-                  </Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Choose a username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    disabled={signingUp}
-                    className="h-9"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
                   <Label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
                     <Lock className="h-4 w-4" />
                     Password
@@ -377,7 +359,7 @@ export default function InviteSignupPage() {
                 <Button
                   type="submit"
                   className="w-full h-9 bg-[#E5262C] hover:bg-[#c91e24] text-white font-medium transition-colors disabled:opacity-50"
-                  disabled={signingUp || !username || !password || !confirmPassword}
+                  disabled={signingUp || !password || !confirmPassword}
                 >
                   {signingUp ? (
                     <>

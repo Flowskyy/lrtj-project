@@ -9,8 +9,7 @@ export default async function MerchandiseAddPage() {
     redirect("/login");
   }
 
-  const username = session.user.email?.split("@")[0] || "Admin";
   const userEmail = session.user.email || null;
 
-  return <MerchandiseAddContent username={username} userEmail={userEmail} />;
+  return <MerchandiseAddContent userEmail={userEmail} />;
 }

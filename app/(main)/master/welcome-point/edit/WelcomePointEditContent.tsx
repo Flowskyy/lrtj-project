@@ -23,10 +23,10 @@ interface WelcomePoint {
 }
 
 interface WelcomePointEditContentProps {
-  username: string;
+  userEmail: string;
 }
 
-export default function WelcomePointEditContent({ username }: WelcomePointEditContentProps) {
+export default function WelcomePointEditContent({ userEmail }: WelcomePointEditContentProps) {
   const router = useRouter();
   const [welcomePoint, setWelcomePoint] = useState<WelcomePoint | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +95,7 @@ export default function WelcomePointEditContent({ username }: WelcomePointEditCo
       default_point: defaultPoint,
       active_from: timeRangeOption === "default" ? null : activeFrom,
       active_to: timeRangeOption === "default" ? null : activeTo,
-      updated_by: username,
+      updated_by: userEmail,
     };
 
     try {

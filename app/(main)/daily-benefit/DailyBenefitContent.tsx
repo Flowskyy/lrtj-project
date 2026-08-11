@@ -45,10 +45,10 @@ interface DailyBenefitItem {
 }
 
 interface DailyBenefitContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function DailyBenefitContent({ username }: DailyBenefitContentProps) {
+export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
   const router = useRouter();
   const [items, setItems] = useState<DailyBenefitItem[]>([]);
   const [loading, setLoading] = useState(true);

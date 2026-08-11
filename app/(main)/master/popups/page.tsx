@@ -8,5 +8,5 @@ export default async function PopupsPage() {
     return null
   }
 
-  return <PopupsContent username={session.user.email || "Admin"} />
+  return <PopupsContent />
 }

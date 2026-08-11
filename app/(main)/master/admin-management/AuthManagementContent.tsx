@@ -36,11 +36,10 @@ interface AdminUser {
 }
 
 interface AuthManagementContentProps {
-  username: string;
   currentUserId: string;
 }
 
-export default function AuthManagementContent({ username, currentUserId }: AuthManagementContentProps) {
+export default function AuthManagementContent({ currentUserId }: AuthManagementContentProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,14 +161,15 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
   const getOnlineStatusBadge = (isOnline: boolean, lastSeen: string | null, currentPage?: string | null, currentAction?: string | null) => {
     if (isOnline) {
       // Display currentAction if available, otherwise fall back to currentPage
-      const displayText = currentAction || formatRouteForDisplay(currentPage) || 'Reading';
+      let displayText = currentAction || formatRouteForDisplay(currentPage) || 'Online';
+
       return (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <Circle className="h-2 w-2 fill-green-500 text-green-500" />
             <span className="text-xs font-medium text-green-600">Online</span>
           </div>
-          <div className="text-[10px] text-gray-500 pl-3.5">
+          <div className="text-[10px] text-gray-500 pl-3.5 truncate max-w-[12rem]" title={displayText}>
             {displayText}
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
           <Circle className="h-2 w-2 fill-gray-400 text-gray-400" />
           <span className="text-xs font-medium text-gray-500">Offline</span>
         </div>
-        <div className="text-[10px] text-gray-400 pl-3.5">
+        <div className="text-[10px] text-gray-400 pl-3.5 truncate max-w-[12rem]" title={lastSeenText}>
           {lastSeenText}
         </div>
       </div>
@@ -194,9 +194,9 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
     // Online users always come first
     if (a.isOnline && !b.isOnline) return -1;
     if (!a.isOnline && b.isOnline) return 1;
-    
-    // Within the same online status, sort by name alphabetically
-    return a.name.localeCompare(b.name);
+
+    // Within the same online status, sort by email alphabetically
+    return a.email.localeCompare(b.email);
   });
 
   return (
@@ -215,9 +215,9 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
         <CardHeader className="border-b border-gray-200/60 px-6 py-4">
           <CardTitle className="text-gray-900 font-semibold tracking-tight">Admin Accounts</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="pb-6 px-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-6 bg-gray-100/80 border border-gray-200/60" variant="default">
+            <TabsList className="group/tabs-list inline-flex w-fit items-center justify-center rounded-2xl p-1 text-muted-foreground group-data-horizontal/tabs:h-9 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none backdrop-blur-sm mb-1 bg-gray-100/80 border border-gray-200/60" variant="default">
               <TabsTrigger value="all" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">All Admin</TabsTrigger>
               {roles.map((role) => (
                 <TabsTrigger key={role.id} value={role.id.toString()} className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
@@ -238,8 +238,8 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
-                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Name</TableHead>
-                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Status</TableHead>
+                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Email</TableHead>
+                        <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 w-48">Status</TableHead>
                         <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4">Role</TableHead>
                         <TableHead className="text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 w-24 text-right">Actions</TableHead>
                       </TableRow>
@@ -259,8 +259,7 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
                           >
                             <TableCell className="py-3 px-4">
                               <div>
-                                <div className="text-gray-900 font-medium text-sm">{user.name}</div>
-                                <div className="text-xs text-gray-500 mt-0.5">{user.email}</div>
+                                <div className="text-gray-900 font-medium text-sm">{user.email}</div>
                               </div>
                             </TableCell>
                             <TableCell className="py-3 px-4">
@@ -318,6 +317,7 @@ export default function AuthManagementContent({ username, currentUserId }: AuthM
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Admin User"
+        footerClassName="-mx-4 -mb-2 flex-col-reverse rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end px-6 py-6 flex gap-3"
         description={
           userToDelete?.id === currentUserId
             ? "You cannot delete your own account."

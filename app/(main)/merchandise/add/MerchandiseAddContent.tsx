@@ -19,7 +19,6 @@ const RichTextContentField = dynamic(() => import("@/components/RichTextContentF
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface MerchandiseAddContentProps {
-  username: string;
   userEmail: string | null;
 }
 
@@ -28,7 +27,7 @@ interface Category {
   category_name: string | null;
 }
 
-export default function MerchandiseAddContent({ username, userEmail }: MerchandiseAddContentProps) {
+export default function MerchandiseAddContent({ userEmail }: MerchandiseAddContentProps) {
   const router = useRouter();
   const { setAction, clearAction } = useAction();
 
@@ -90,7 +89,7 @@ export default function MerchandiseAddContent({ username, userEmail }: Merchandi
       points: formPoints,
       image_url: formImageUrl,
       description: descriptionOverride || formDescription,
-      editedBy: userEmail || username,
+      editedBy: userEmail,
       status: formStatus,
       category_id: categoryId,
     };

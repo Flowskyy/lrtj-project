@@ -40,7 +40,7 @@ interface Popup {
 }
 
 interface PopupsContentProps {
-  username: string;
+  // No props needed anymore
 }
 
 
@@ -125,7 +125,7 @@ function SortablePopupCard({ popup, onDelete }: { popup: Popup; onDelete: (popup
   );
 }
 
-export default function PopupsContent({ username }: PopupsContentProps) {
+export default function PopupsContent({ }: PopupsContentProps) {
   const [popups, setPopups] = useState<Popup[]>([]);
   const [loading, setLoading] = useState(true);
 

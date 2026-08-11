@@ -38,10 +38,10 @@ interface EarningItem {
 }
 
 interface LarataClubEarningContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function LarataClubEarningContent({ username }: LarataClubEarningContentProps) {
+export default function LarataClubEarningContent({ }: LarataClubEarningContentProps) {
   const [items, setItems] = useState<EarningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -115,7 +115,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
   // Search scopes for LarataClub History
   const earningSearchScopes: SearchScope[] = [
     { field: "user_email", label: "Email" },
-    { field: "user_name", label: "Username" },
+    { field: "user_name", label: "Name" },
   ];
 
   // Reset filters handler
@@ -144,7 +144,7 @@ export default function LarataClubEarningContent({ username }: LarataClubEarning
 
   // Handle column visibility toggle
   const handleColumnVisibilityToggle = (key: string) => {
-    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
 
   // Generate cache key for a page with current filters

@@ -10,8 +10,7 @@ export default async function DailyBenefitEditPage({ params }: { params: Promise
   }
 
   const { id } = await params;
-  const username = session.user.email?.split("@")[0] || "Admin";
   const userEmail = session.user.email || null;
 
-  return <DailyBenefitEditContentWrapper username={username} userEmail={userEmail} dailyBenefitId={id} />;
+  return <DailyBenefitEditContentWrapper userEmail={userEmail} dailyBenefitId={id} />;
 }

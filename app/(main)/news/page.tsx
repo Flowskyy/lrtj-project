@@ -9,7 +9,5 @@ export default async function NewsPage() {
     redirect("/login");
   }
 
-  const username = session.user.email?.split("@")[0] || "Admin";
-
-  return <NewsContent username={username} />;
+  return <NewsContent />;
 }

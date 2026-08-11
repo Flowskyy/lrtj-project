@@ -23,10 +23,10 @@ interface Membership {
 }
 
 interface MembershipContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function MembershipContent({ username }: MembershipContentProps) {
+export default function MembershipContent({ }: MembershipContentProps) {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(true);
 

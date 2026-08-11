@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import ChangeUsernameDialog from "@/components/ChangeUsernameDialog"
 import ChangePasswordDialog from "@/components/ChangePasswordDialog"
 import {
   DropdownMenu,
@@ -112,7 +111,6 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   const [loadingPermissions, setLoadingPermissions] = React.useState(true)
 
   // Dialog states
-  const [changeUsernameDialogOpen, setChangeUsernameDialogOpen] = React.useState(false)
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] = React.useState(false)
 
   // Format pathname for display (breadcrumb-style)
@@ -158,9 +156,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
   // Send heartbeat with current page on pathname change
   React.useEffect(() => {
-    sendHeartbeat(formattedPathname)
     // Reset action state to reading when navigating to a new page
     clearAction()
+    // Send heartbeat with the new page - the hook will use lastKnownPageRef.current
+    sendHeartbeat(formattedPathname)
   }, [pathname, sendHeartbeat, clearAction])
 
   const handleLogout = async () => {
@@ -186,8 +185,8 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
   const getUserInitials = () => {
     if (!displaySession?.user?.email) return "U"
-    const name = displaySession.user.name || displaySession.user.email
-    return name.charAt(0).toUpperCase()
+    // Use email for initials since we're removing username concept
+    return displaySession.user.email.charAt(0).toUpperCase()
   }
 
   // Fetch user permissions
@@ -550,7 +549,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                 {!displaySession ? (
                   <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
                 ) : (
-                  displaySession?.user?.email?.split('@')[0] || displaySession?.user?.name || 'User'
+                  displaySession?.user?.email || 'User'
                 )}
 
               </span>
@@ -560,7 +559,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                 {!displaySession ? (
                   <div className="h-2 w-24 animate-pulse rounded bg-gray-200 mt-1" />
                 ) : (
-                  displaySession?.user?.email || ''
+                  displaySession?.user?.email ? 'Admin' : ''
                 )}
 
               </span>
@@ -700,13 +699,9 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
               <DropdownMenuContent align="end" className="w-48">
 
-                <DropdownMenuItem onClick={() => setChangeUsernameDialogOpen(true)} className="cursor-pointer">
-
-                  <User className="mr-2 h-4 w-4" />
-
-                  <span>Change Username</span>
-
-                </DropdownMenuItem>
+                <div className="px-2 py-1.5 text-sm text-gray-900 font-medium border-b">
+                  {displaySession?.user?.email || 'User'}
+                </div>
 
                 <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer">
 
@@ -745,16 +740,6 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
           <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
         </div>
-
-        {/* Change Username Dialog */}
-        <ChangeUsernameDialog
-          open={changeUsernameDialogOpen}
-          onOpenChange={setChangeUsernameDialogOpen}
-          onUsernameChanged={() => {
-            // Force re-render to update displayed username
-            window.location.reload()
-          }}
-        />
 
         {/* Change Password Dialog */}
         <ChangePasswordDialog

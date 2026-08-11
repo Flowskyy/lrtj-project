@@ -22,10 +22,10 @@ interface WelcomePoint {
 }
 
 interface WelcomePointContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function WelcomePointContent({ username }: WelcomePointContentProps) {
+export default function WelcomePointContent({ }: WelcomePointContentProps) {
   const router = useRouter();
   const [welcomePoint, setWelcomePoint] = useState<WelcomePoint | null>(null);
   const [loading, setLoading] = useState(true);

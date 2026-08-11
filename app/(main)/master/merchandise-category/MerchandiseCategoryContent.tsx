@@ -22,10 +22,10 @@ interface Category {
 }
 
 interface MerchandiseCategoryContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function MerchandiseCategoryContent({ username }: MerchandiseCategoryContentProps) {
+export default function MerchandiseCategoryContent({ }: MerchandiseCategoryContentProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 

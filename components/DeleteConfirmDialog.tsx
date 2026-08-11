@@ -11,6 +11,7 @@ interface DeleteConfirmDialogProps {
   description?: React.ReactNode;
   onConfirm: () => void;
   isDeleting?: boolean;
+  footerClassName?: string;
 }
 
 export default function DeleteConfirmDialog({
@@ -21,6 +22,7 @@ export default function DeleteConfirmDialog({
   description,
   onConfirm,
   isDeleting = false,
+  footerClassName,
 }: DeleteConfirmDialogProps) {
   const defaultTitle = "Delete Item";
   const defaultDescription = itemName
@@ -60,7 +62,7 @@ export default function DeleteConfirmDialog({
         </div>
 
         {/* Modal Footer */}
-        <AlertDialogFooter className="px-6 py-4 flex gap-3">
+        <AlertDialogFooter className={footerClassName || "px-6 py-4 flex gap-3"}>
           <AlertDialogCancel disabled={isDeleting} className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700">
             Cancel
           </AlertDialogCancel>

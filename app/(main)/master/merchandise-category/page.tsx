@@ -8,5 +8,5 @@ export default async function MerchandiseCategoryPage() {
     return null
   }
 
-  return <MerchandiseCategoryContent username={session.user.email || "Admin"} />
+  return <MerchandiseCategoryContent />
 }

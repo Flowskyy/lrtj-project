@@ -8,5 +8,5 @@ export default async function DailyBenefitPage() {
     return null
   }
 
-  return <DailyBenefitContent username={session.user.email || "Admin"} />
+  return <DailyBenefitContent />
 }

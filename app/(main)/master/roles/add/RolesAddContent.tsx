@@ -31,11 +31,10 @@ const ALL_PAGE_KEYS = [
 ];
 
 interface RolesAddContentProps {
-  username: string;
   userEmail: string | null;
 }
 
-export default function RolesAddContent({ username, userEmail }: RolesAddContentProps) {
+export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
   const router = useRouter();
   
   // Form states

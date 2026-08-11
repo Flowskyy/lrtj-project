@@ -60,10 +60,10 @@ interface MemberItem {
 }
 
 interface UsersContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function UsersContent({ username }: UsersContentProps) {
+export default function UsersContent({ }: UsersContentProps) {
   const router = useRouter();
   const [items, setItems] = useState<MemberItem[]>([]);
   const [loading, setLoading] = useState(true);

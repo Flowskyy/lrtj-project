@@ -50,10 +50,10 @@ interface Category {
 }
 
 interface MerchandiseContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function MerchandiseContent({ username }: MerchandiseContentProps) {
+export default function MerchandiseContent({ }: MerchandiseContentProps) {
   const router = useRouter();
   const [items, setItems] = useState<MerchandiseItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -344,7 +344,7 @@ export default function MerchandiseContent({ username }: MerchandiseContentProps
             onResetFilters={handleResetFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
-            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))}
+            onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}
             columnConfigs={[
               { key: "image", label: "Image" },
               { key: "name", label: "Name" },

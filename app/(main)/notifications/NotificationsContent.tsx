@@ -32,10 +32,10 @@ interface NotificationItem {
 }
 
 interface NotificationsContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function NotificationsContent({ username }: NotificationsContentProps) {
+export default function NotificationsContent({ }: NotificationsContentProps) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);

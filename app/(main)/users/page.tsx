@@ -8,5 +8,5 @@ export default async function UsersPage() {
     return null
   }
 
-  return <UsersContent username={session.user.email || "Admin"} />
+  return <UsersContent />
 }

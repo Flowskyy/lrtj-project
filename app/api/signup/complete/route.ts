@@ -11,11 +11,11 @@ function hashToken(token: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, username, password } = body;
+    const { token, password } = body;
 
-    if (!token || !username || !password) {
+    if (!token || !password) {
       return NextResponse.json(
-        { error: 'Token, username, and password are required' },
+        { error: 'Token and password are required' },
         { status: 400 }
       );
     }
@@ -95,24 +95,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username is already taken using raw SQL
-    const existingUsernames = await prisma.$queryRaw`
-      SELECT id FROM auth_users WHERE name = ${username}
-    ` as any[];
-
-    if (existingUsernames && existingUsernames.length > 0) {
-      return NextResponse.json(
-        { error: 'Username already taken' },
-        { status: 409 }
-      );
-    }
-
     // Create user using better-auth signUp method
+    // Use email as the name since we're removing username concept
     const signUpResult = await auth.api.signUpEmail({
       body: {
         email: invitation.email,
         password,
-        name: username,
+        name: invitation.email, // Use email as the name field
       },
     });
 
@@ -164,7 +153,6 @@ export async function POST(request: NextRequest) {
       user: {
         id: signUpResult.user?.id,
         email: signUpResult.user?.email,
-        name: signUpResult.user?.name,
         role: roleInfo.name,
       },
     });

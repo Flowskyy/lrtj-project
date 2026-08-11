@@ -45,12 +45,11 @@ interface RoleDetail {
 }
 
 interface RolesEditContentProps {
-  username: string;
   userEmail: string | null;
   roleId: string;
 }
 
-export default function RolesEditContent({ username, userEmail, roleId }: RolesEditContentProps) {
+export default function RolesEditContent({ userEmail, roleId }: RolesEditContentProps) {
   const router = useRouter();
   
   // Form states

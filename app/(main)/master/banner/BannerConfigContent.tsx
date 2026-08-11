@@ -40,7 +40,7 @@ interface Banner {
 }
 
 interface BannerConfigContentProps {
-  username: string;
+  // No props needed anymore
 }
 
 
@@ -125,7 +125,7 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
   );
 }
 
-export default function BannerConfigContent({ username }: BannerConfigContentProps) {
+export default function BannerConfigContent({ }: BannerConfigContentProps) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 

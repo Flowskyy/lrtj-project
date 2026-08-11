@@ -10,7 +10,6 @@ export default async function NewsEditPage({ params }: { params: Promise<{ id: s
   }
 
   const { id } = await params;
-  const username = session.user.email?.split("@")[0] || "Admin";
 
-  return <NewsEditContentWrapper username={username} newsId={id} />;
+  return <NewsEditContentWrapper newsId={id} />;
 }

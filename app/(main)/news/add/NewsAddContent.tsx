@@ -19,11 +19,10 @@ const RichTextContentField = dynamic(() => import("@/components/RichTextContentF
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface NewsAddContentProps {
-  username: string;
   userEmail: string | null;
 }
 
-export default function NewsAddContent({ username, userEmail }: NewsAddContentProps) {
+export default function NewsAddContent({ userEmail }: NewsAddContentProps) {
   const router = useRouter();
   const { setAction, clearAction } = useAction();
 
@@ -81,8 +80,7 @@ export default function NewsAddContent({ username, userEmail }: NewsAddContentPr
       type: formType,
       status: formStatus ? 1 : 0,
       publish_date: formPublishDate || null,
-      createdBy: username,
-      creatorEmail: userEmail,
+      createdBy: userEmail,
     };
     try {
       const res = await fetch("/api/news", {

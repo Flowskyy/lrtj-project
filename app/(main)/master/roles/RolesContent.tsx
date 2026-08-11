@@ -32,10 +32,10 @@ interface RoleDetail extends Role {
 }
 
 interface RolesContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function RolesContent({ username }: RolesContentProps) {
+export default function RolesContent({ }: RolesContentProps) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
 

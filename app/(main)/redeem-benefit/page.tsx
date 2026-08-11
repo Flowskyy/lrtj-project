@@ -8,5 +8,5 @@ export default async function RedeemBenefitPage() {
     return null
   }
 
-  return <RedeemBenefitContent username={session.user.email || "Admin"} />
+  return <RedeemBenefitContent />
 }

@@ -46,10 +46,10 @@ interface Category {
 }
 
 interface RedeemMerchandiseContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function RedeemMerchandiseContent({ username }: RedeemMerchandiseContentProps) {
+export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentProps) {
   const router = useRouter();
   const [items, setItems] = useState<RedeemItem[]>([]);
   const [loading, setLoading] = useState(true);

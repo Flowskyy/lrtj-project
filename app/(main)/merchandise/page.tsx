@@ -8,5 +8,5 @@ export default async function MerchandisePage() {
     return null
   }
 
-  return <MerchandiseContent username={session.user.email || "Admin"} />
+  return <MerchandiseContent />
 }

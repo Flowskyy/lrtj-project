@@ -127,7 +127,7 @@ export default function ChangeRoleDialog({ user, open, onOpenChange, onRoleChang
         className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden"
       >
         {/* Modal Header */}
-        <div className="px-6 pt-6 pb-3 border-b border-white/30">
+        <div className="px-6 pt-6 pb-1 border-b border-white/30">
           <DialogTitle className="text-xl font-semibold text-gray-900">
             Change Admin Role
           </DialogTitle>
@@ -137,7 +137,7 @@ export default function ChangeRoleDialog({ user, open, onOpenChange, onRoleChang
         </div>
 
         {/* Modal Body */}
-        <div className="px-6 py-4">
+        <div className="px-4 py-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="current-role" className="text-sm font-medium text-gray-700">

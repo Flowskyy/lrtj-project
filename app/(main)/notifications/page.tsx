@@ -9,7 +9,5 @@ export default async function NotificationsPage() {
     redirect("/login");
   }
 
-  const username = session.user.email?.split("@")[0] || "Admin";
-
-  return <NotificationsContent username={username} />;
+  return <NotificationsContent />;
 }

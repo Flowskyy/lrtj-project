@@ -37,10 +37,10 @@ interface RedeemBenefitItem {
 }
 
 interface RedeemBenefitContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function RedeemBenefitContent({ username }: RedeemBenefitContentProps) {
+export default function RedeemBenefitContent({ }: RedeemBenefitContentProps) {
   const router = useRouter();
   const [items, setItems] = useState<RedeemBenefitItem[]>([]);
   const [loading, setLoading] = useState(true);

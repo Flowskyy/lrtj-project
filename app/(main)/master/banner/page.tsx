@@ -8,5 +8,5 @@ export default async function BannerConfigPage() {
     return null
   }
 
-  return <BannerConfigContent username={session.user.email || "Admin"} />
+  return <BannerConfigContent />
 }

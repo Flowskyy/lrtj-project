@@ -43,10 +43,10 @@ interface NewsItem {
 }
 
 interface NewsContentProps {
-  username: string;
+  // No props needed anymore
 }
 
-export default function NewsContent({ username }: NewsContentProps) {
+export default function NewsContent({ }: NewsContentProps) {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);

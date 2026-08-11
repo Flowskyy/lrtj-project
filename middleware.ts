@@ -57,7 +57,7 @@ async function syncAzureRoles(userId: string): Promise<number | null> {
     })
 
     if (!account || !account.idToken) {
-      console.log("No Microsoft account or idToken found for user:", userId)
+      // Silent skip - most users don't have Microsoft OAuth configured
       return null
     }
 

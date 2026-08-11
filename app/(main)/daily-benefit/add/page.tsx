@@ -9,8 +9,7 @@ export default async function DailyBenefitAddPage() {
     redirect("/login");
   }
 
-  const username = session.user.email?.split("@")[0] || "Admin";
   const userEmail = session.user.email || null;
 
-  return <DailyBenefitAddContent username={username} userEmail={userEmail} />;
+  return <DailyBenefitAddContent userEmail={userEmail} />;
 }

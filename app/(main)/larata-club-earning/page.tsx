@@ -9,7 +9,5 @@ export default async function LarataClubEarningPage() {
     redirect("/login");
   }
 
-  const username = session.user?.email || "User";
-
-  return <LarataClubEarningContent username={username} />;
+  return <LarataClubEarningContent />;
 }

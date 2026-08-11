@@ -10,7 +10,7 @@ export default async function RolesPage() {
 
   return (
     <div className="min-h-screen">
-      <RolesContent username={session.user.email || "Admin"} />
+      <RolesContent />
     </div>
   )
 }

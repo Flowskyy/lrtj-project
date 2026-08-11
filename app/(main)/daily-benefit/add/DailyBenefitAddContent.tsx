@@ -17,11 +17,10 @@ const RichTextContentField = dynamic(() => import("@/components/RichTextContentF
 import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface DailyBenefitAddContentProps {
-  username: string;
   userEmail: string | null;
 }
 
-export default function DailyBenefitAddContent({ username, userEmail }: DailyBenefitAddContentProps) {
+export default function DailyBenefitAddContent({ userEmail }: DailyBenefitAddContentProps) {
   const router = useRouter();
   
   // Form states
@@ -59,7 +58,7 @@ export default function DailyBenefitAddContent({ username, userEmail }: DailyBen
       redeem_point: formPoints,
       image_url: formImageUrl,
       term_condition: termConditionOverride || formTermCondition,
-      editedBy: userEmail || username,
+      editedBy: userEmail,
       status: formStatus,
       start_date: formStartDate || null,
       end_date: formEndDate || null,

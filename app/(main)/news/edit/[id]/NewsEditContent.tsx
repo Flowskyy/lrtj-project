@@ -38,11 +38,10 @@ interface NewsItem {
 }
 
 interface NewsEditContentProps {
-  username: string;
   newsId: string;
 }
 
-export default function NewsEditContent({ username, newsId }: NewsEditContentProps) {
+export default function NewsEditContent({ newsId }: NewsEditContentProps) {
   const router = useRouter();
   const { setAction, clearAction } = useAction();
   const [loading, setLoading] = useState(true);

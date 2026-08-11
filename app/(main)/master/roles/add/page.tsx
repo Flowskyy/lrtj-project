@@ -9,8 +9,7 @@ export default async function RolesAddPage() {
     redirect("/login");
   }
 
-  const username = session.user.email?.split("@")[0] || "Admin";
   const userEmail = session.user.email || null;
 
-  return <RolesAddContent username={username} userEmail={userEmail} />;
+  return <RolesAddContent userEmail={userEmail} />;
 }

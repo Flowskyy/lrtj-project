@@ -10,8 +10,7 @@ export default async function RolesEditPage({ params }: { params: Promise<{ id: 
   }
 
   const { id } = await params;
-  const username = session.user.email?.split("@")[0] || "Admin";
   const userEmail = session.user.email || null;
 
-  return <RolesEditContent username={username} userEmail={userEmail} roleId={id} />;
+  return <RolesEditContent userEmail={userEmail} roleId={id} />;
 }

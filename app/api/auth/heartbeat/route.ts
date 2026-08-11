@@ -5,7 +5,7 @@ import { getSessionWithUser } from '@/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const session = await getSessionWithUser();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -15,10 +15,24 @@ export async function POST(request: NextRequest) {
     const currentPage = body.currentPage || null;
     const currentAction = body.currentAction || null;
 
+    // Get current values from database to avoid overwriting non-null with null
+    const currentUser = await prisma.$queryRaw`
+      SELECT currentPage, currentAction
+      FROM auth_users
+      WHERE id = ${userId}
+    ` as any[];
+
+    const existingPage = currentUser[0]?.currentPage || null;
+    const existingAction = currentUser[0]?.currentAction || null;
+
+    // Only update if new value is non-null, otherwise keep existing value
+    const finalPage = currentPage !== null ? currentPage : existingPage;
+    const finalAction = currentAction !== null ? currentAction : existingAction;
+
     // Update user's online status, last seen timestamp, current page, and current action using raw SQL
     await prisma.$queryRaw`
       UPDATE auth_users
-      SET isOnline = true, lastSeen = NOW(), currentPage = ${currentPage}, currentAction = ${currentAction}
+      SET isOnline = true, lastSeen = NOW(), currentPage = ${finalPage}, currentAction = ${finalAction}
       WHERE id = ${userId}
     `;
 

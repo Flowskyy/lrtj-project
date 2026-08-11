@@ -20,7 +20,7 @@ interface UseOnlineStatusOptions {
 export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   const {
     heartbeatInterval = 1, // Send heartbeat every 1 second
-    cleanupInterval = 30, // Trigger cleanup every 30 seconds
+    cleanupInterval = 60, // Trigger cleanup every 60 seconds (safety net, not primary detection)
   } = options;
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -43,10 +43,14 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
     if (currentAction && actionEntity) {
       const actionVerb = currentAction.charAt(0).toUpperCase() + currentAction.slice(1);
       formattedAction = `${actionVerb} ${actionEntity}`;
-    } else if (currentAction === 'reading' && lastKnownPageRef.current) {
-      // Default to "Reading {page}" when just viewing
-      formattedAction = `Reading ${lastKnownPageRef.current}`;
+    } else if (lastKnownPageRef.current) {
+      // Always include the page name as the action when no specific action is set
+      formattedAction = lastKnownPageRef.current;
     }
+
+    // Never send null if we have a last known value - send the last known value instead
+    const currentPageToSend = lastKnownPageRef.current || null;
+    const currentActionToSend = formattedAction || null;
 
     try {
       const response = await fetch('/api/auth/heartbeat', {
@@ -55,8 +59,8 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          currentPage: lastKnownPageRef.current || null,
-          currentAction: formattedAction
+          currentPage: currentPageToSend,
+          currentAction: currentActionToSend
         }),
       });
       if (!response.ok) {
@@ -94,6 +98,14 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   }, []);
 
   useEffect(() => {
+    // Clear any existing intervals before setting up new ones
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+    if (cleanupIntervalRef.current) {
+      clearInterval(cleanupIntervalRef.current);
+    }
+
     // Set up heartbeat interval - will use last known page
     heartbeatIntervalRef.current = setInterval(() => sendHeartbeat(), heartbeatInterval * 1000);
 
@@ -116,7 +128,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === 'initial' || data.type === 'update') {
           setOnlineUsers(data.users);
         }
@@ -151,7 +163,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [heartbeatInterval, cleanupInterval, sendHeartbeat, triggerCleanup, markOffline]);
+  }, [heartbeatInterval, cleanupInterval]);
 
   // Send heartbeat immediately when action state changes
   useEffect(() => {
