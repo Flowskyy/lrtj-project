@@ -277,7 +277,11 @@ async function revertUpdate(
         if (NON_REVERTIBLE_FIELDS.includes(key)) {
           skippedFields.push(key)
         } else if (key !== 'id') {
-          revertData[key] = value
+          if ((key === 'createdAt' || key === 'updatedAt') && value) {
+            revertData[key] = new Date(String(value).replace(' ', 'T'))
+          } else {
+            revertData[key] = value
+          }
         }
       }
     }
@@ -361,6 +365,8 @@ async function revertDelete(
       for (const [key, value] of Object.entries(log.beforeState)) {
         if (NON_REVERTIBLE_FIELDS.includes(key)) {
           skippedFields.push(key)
+        } else if (key === 'createdAt' || key === 'updatedAt') {
+          if (value) recreateData[key] = new Date(String(value).replace(' ', 'T'))
         } else {
           recreateData[key] = value
         }

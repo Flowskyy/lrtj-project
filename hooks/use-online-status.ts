@@ -178,10 +178,28 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       markOffline();
     };
 
+    // Handle visibility change for more accurate online tracking
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        markOffline();
+        // Clear heartbeat when hidden to save resources
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = null;
+        }
+      } else if (document.visibilityState === 'visible' && !sessionExpired) {
+        // Resume heartbeat when visible
+        sendHeartbeat();
+        if (!heartbeatIntervalRef.current) {
+          heartbeatIntervalRef.current = setInterval(() => sendHeartbeat(), heartbeatInterval * 1000);
+        }
+      }
+    };
+
     // Add event listeners for instant offline detection
-    // Note: NOT using visibilitychange because it fires on tab switch/minimize, not just close
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Cleanup function
     return () => {
@@ -194,6 +212,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [heartbeatInterval, cleanupInterval, sessionExpired]);
 

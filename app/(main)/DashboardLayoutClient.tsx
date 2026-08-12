@@ -611,7 +611,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="border-t border-white/60 group-data-[state=collapsed]:hidden">
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="mx-2 mb-2 w-[calc(100%-1rem)] cursor-pointer rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 shadow-[0_8px_32px_0_rgba(31,38,135,0.08)] backdrop-blur-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50 hover:bg-white/50 transition-colors">
+            <DropdownMenuTrigger className="mx-2 mb-2 w-[calc(100%-1rem)] cursor-pointer rounded-2xl border border-white/40 bg-white/20 px-4 py-3 shadow-[0_4px_24px_0_rgba(0,0,0,0.05)] backdrop-blur-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/30 hover:bg-white/30 transition-all duration-300">
               <div className="flex items-center gap-3">
 
                 <Avatar className="h-9 w-9 shrink-0 border border-white/60">
@@ -639,7 +639,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                   </span>
 
-                  <span className="inline-flex w-fit items-center rounded-full border border-white/40 bg-white/50 px-2 py-0.5 text-[11px] font-medium text-gray-600 backdrop-blur-sm">
+          <span className="inline-flex w-fit items-center rounded-full border border-white/20 bg-white/30 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-md">
 
                     {!displaySession || loadingRole ? (
                       <div className="h-2 w-16 animate-pulse rounded bg-gray-200/70" />
@@ -676,7 +676,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
       <SidebarInset>
 
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-gray-200/60 bg-[rgba(255,255,255,0.72)] backdrop-blur-[16px] px-4">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-white/20 bg-white/40 backdrop-blur-2xl px-6">
 
           <SidebarTrigger className="h-9 w-9 border-0" />
 
@@ -786,7 +786,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
         </header>
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto px-4 md:px-6">
 
           {children}
 

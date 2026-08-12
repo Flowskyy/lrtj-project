@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, Fragment } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -15,6 +15,10 @@ export interface GlassTableRow {
   id: string | number;
   cells: ReactNode[];
   className?: string;
+  /** When true, renders a detail row below this row */
+  showDetail?: boolean;
+  /** Content to render in the detail row */
+  detailContent?: ReactNode;
 }
 
 interface GlassTableProps {
@@ -27,6 +31,77 @@ interface GlassTableProps {
   className?: string;
 }
 
+function TableHeadRow({ columns }: { columns: GlassTableColumn[] }) {
+  return (
+    <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
+      {columns.map((column) => (
+        <TableHead
+          key={column.key}
+          className={`text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 ${column.className || ''}`}
+          style={{ width: column.width }}
+        >
+          {column.header}
+        </TableHead>
+      ))}
+    </TableRow>
+  );
+}
+
+function SkeletonRow({ columns, skeletonCount }: { columns: GlassTableColumn[], skeletonCount: number }) {
+  return (
+    <TableBody>
+      {[...Array(skeletonCount)].map((_, i) => (
+        <TableRow key={i}>
+          {columns.map((column) => (
+            <TableCell key={`${column.key}-${i}`} className="py-3 px-4">
+              <Skeleton className="h-11 w-full" />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </TableBody>
+  );
+}
+
+function EmptyRow({ columns, message }: { columns: GlassTableColumn[], message: string }) {
+  return (
+    <TableBody>
+      <TableRow>
+        <TableCell colSpan={columns.length} className="text-center text-gray-500 py-12 text-sm">
+          {message}
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  );
+}
+
+function DataRows({ columns, rows }: { columns: GlassTableColumn[], rows: GlassTableRow[] }) {
+  return (
+    <TableBody>
+          {rows.map((row) => (
+            <Fragment key={String(row.id)}>
+          <TableRow className={`border-b border-gray-200/60 hover:bg-gray-50/50 transition-colors ${row.className || ''}`}>
+            {row.cells.map((cell, index) => (
+              <TableCell key={`${row.id}-${index}`} className="py-3 px-4">
+                {cell}
+              </TableCell>
+            ))}
+          </TableRow>
+          {row.showDetail && row.detailContent && (
+            <TableRow className="border-b border-gray-200/60 hover:bg-transparent">
+              <TableCell colSpan={columns.length} className="p-0">
+                <div className="p-4 bg-gray-50/80 rounded-b-lg">
+                  {row.detailContent}
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
+        </Fragment>
+      ))}
+    </TableBody>
+  );
+}
+
 export default function GlassTable({
   columns,
   rows,
@@ -36,98 +111,19 @@ export default function GlassTable({
   skeletonCount = 5,
   className = "",
 }: GlassTableProps) {
-  if (loading) {
-    return (
-      <div className={`overflow-x-auto ${className}`}>
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  className={`text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 ${column.className || ''}`}
-                  style={{ width: column.width }}
-                >
-                  {column.header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...Array(skeletonCount)].map((_, i) => (
-              <TableRow key={i}>
-                {columns.map((column) => (
-                  <TableCell key={`${column.key}-${i}`} className="py-3 px-4">
-                    <Skeleton className="h-11 w-full" />
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
-  if (rows.length === 0) {
-    return (
-      <div className={`overflow-x-auto ${className}`}>
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  className={`text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 ${column.className || ''}`}
-                  style={{ width: column.width }}
-                >
-                  {column.header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-center text-gray-500 py-12 text-sm">
-                {emptyState || emptyMessage}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
   return (
     <div className={`overflow-x-auto ${className}`}>
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-gray-200/80 hover:bg-transparent">
-            {columns.map((column) => (
-              <TableHead
-                key={column.key}
-                className={`text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 ${column.className || ''}`}
-                style={{ width: column.width }}
-              >
-                {column.header}
-              </TableHead>
-            ))}
-          </TableRow>
+          <TableHeadRow columns={columns} />
         </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow
-              key={row.id}
-              className={`border-b border-gray-200/60 hover:bg-gray-50/50 transition-colors ${row.className || ''}`}
-            >
-              {row.cells.map((cell, index) => (
-                <TableCell key={`${row.id}-${index}`} className="py-3 px-4">
-                  {cell}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
+        {loading ? (
+          <SkeletonRow columns={columns} skeletonCount={skeletonCount} />
+        ) : rows.length === 0 ? (
+          <EmptyRow columns={columns} message={emptyState || emptyMessage} />
+        ) : (
+          <DataRows columns={columns} rows={rows} />
+        )}
       </Table>
     </div>
   );

@@ -25,10 +25,9 @@ export default function LoginPage() {
     setError("")
 
     try {
-      console.log('[LOGIN DEBUG] Attempting sign in with email:', email)
       // Set sessionStorage flag BEFORE initiating sign-in to ensure it's available
       // when the dashboard auth guard runs after redirect
-      sessionStorage.setItem('tab_authenticated', 'true')
+      try { sessionStorage.setItem('tab_authenticated', 'true') } catch {}
 
       const result = await signIn.email({
         email,
@@ -36,20 +35,19 @@ export default function LoginPage() {
         callbackURL: "/dashboard",
       })
 
-      console.log('[LOGIN DEBUG] Sign in result:', result)
-
       if (result.error) {
-        console.error('[LOGIN DEBUG] Sign in error:', result.error)
         setError(result.error.message || "Invalid email or password")
         setLoading(false)
-        sessionStorage.removeItem('tab_authenticated')
+        try { sessionStorage.removeItem('tab_authenticated') } catch {}
+        return
       }
+      
+      // Success - redirect handled by callbackURL, but ensure it happens
+      window.location.href = "/dashboard"
     } catch (err) {
-      console.error('[LOGIN DEBUG] Unexpected error during sign in:', err)
       setError("Invalid email or password")
       setLoading(false)
-      // Clear the flag on error since login failed
-      sessionStorage.removeItem('tab_authenticated')
+      try { sessionStorage.removeItem('tab_authenticated') } catch {}
     }
   }
 
@@ -60,7 +58,7 @@ export default function LoginPage() {
     try {
       // Set sessionStorage flag BEFORE initiating sign-in to ensure it's available
       // when the dashboard auth guard runs after redirect
-      sessionStorage.setItem('tab_authenticated', 'true')
+      try { sessionStorage.setItem('tab_authenticated', 'true') } catch {}
       
       await signIn.social({
         provider: "microsoft",
@@ -69,8 +67,7 @@ export default function LoginPage() {
     } catch (err) {
       setError("Microsoft sign-in failed. Please try again.")
       setMicrosoftLoading(false)
-      // Clear the flag on error since login failed
-      sessionStorage.removeItem('tab_authenticated')
+      try { sessionStorage.removeItem('tab_authenticated') } catch {}
     }
   }
 

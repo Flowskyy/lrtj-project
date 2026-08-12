@@ -304,9 +304,6 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
         {inv.roleName || "Unknown"}
       </Badge>,
       <div key="created" className="text-sm text-gray-600">{formatWIBDate(inv.createdAt)}</div>,
-      <div key="expiry" className="text-sm text-gray-600">{formatWIBDate(inv.inviteExpiresAt)}</div>,
-      <div key="opened" className="text-sm text-gray-600">{inv.openedAt ? formatWIBDate(inv.openedAt) : "-"}</div>,
-      <div key="emailSent" className="text-sm text-gray-600">{inv.emailSentAt ? formatWIBDate(inv.emailSentAt) : "-"}</div>,
       <div key="actions" className="flex items-center justify-end gap-1">
         <Button
           variant="ghost"
@@ -316,7 +313,7 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
           title="Delete invitation (invalidates the link)"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Delete
+          Cancel
         </Button>
       </div>,
     ],
@@ -401,9 +398,6 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
                   { key: "status", header: "Status", width: "8rem" },
                   { key: "role", header: "Role", width: "7rem" },
                   { key: "created", header: "Created", width: "11rem" },
-                  { key: "expiry", header: "Expires", width: "11rem" },
-                  { key: "opened", header: "Opened At", width: "11rem" },
-                  { key: "emailSent", header: "Email Sent", width: "11rem" },
                   { key: "actions", header: "Actions", width: "6rem", className: "text-right" },
                 ]}
                 rows={invitationRows}

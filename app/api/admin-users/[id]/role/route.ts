@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/auth"
-import { formatWIB } from "@/lib/utils"
+import { formatWIB, getWIBDate } from "@/lib/utils"
 
 // PATCH admin user role
 export async function PATCH(
@@ -37,22 +37,43 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Check if role exists using raw SQL
-    const role = await prisma.$queryRaw`
-      SELECT id FROM auth_roles WHERE id = ${roleId}
-    ` as any[];
+     // Check if role exists using raw SQL
+     const roleResult = await prisma.$queryRaw`
+       SELECT id, name FROM auth_roles WHERE id = ${roleId}
+     ` as any[];
 
-    if (!role || role.length === 0) {
-      return NextResponse.json({ error: "Role not found" }, { status: 404 })
-    }
+     if (!roleResult || roleResult.length === 0) {
+       return NextResponse.json({ error: "Role not found" }, { status: 404 })
+     }
 
-    // Update user's role using raw SQL
-    const now = formatWIB(new Date());
-    await prisma.$queryRaw`
-      UPDATE auth_users SET roleId = ${roleId}, updatedAt = ${now} WHERE id = ${userIdToUpdate}
-    `;
+     const roleName = roleResult[0].name
+     const oldRoleId = user[0].roleId
 
-    return NextResponse.json({ success: true })
+     // Update user's role using raw SQL
+     const now = formatWIB(new Date());
+     await prisma.$queryRaw`
+       UPDATE auth_users SET roleId = ${roleId}, updatedAt = ${now} WHERE id = ${userIdToUpdate}
+     `;
+
+     const sessionRoleName = (session.user as any).role || 'Unknown'
+
+     // Log activity
+     await prisma.system_activity_logs.create({
+       data: {
+         tableName: 'auth_users',
+         action: 'UPDATE',
+         actorUserId: session.user.id,
+         actorRoleName: sessionRoleName,
+         actorRoleId: session.user.roleId || null,
+         recordId: userIdToUpdate,
+         beforeState: { roleId: oldRoleId },
+         afterState: { roleId: roleId },
+         changedFields: ['roleId'],
+         createdAt: getWIBDate(),
+       },
+     })
+
+     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error changing admin user role:", error)
     return NextResponse.json({ error: "Failed to change admin user role" }, { status: 500 })

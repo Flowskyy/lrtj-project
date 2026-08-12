@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { formatWIB } from '@/lib/utils';
+import { formatWIB, getWIBDate } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const finalAction = currentAction !== null ? currentAction : existingAction;
 
     // Update user's online status, last seen timestamp, current page, and current action using raw SQL
-    const now = formatWIB(new Date());
+    const now = getWIBDate();
     await prisma.$queryRaw`
       UPDATE auth_users
       SET isOnline = true, lastSeen = ${now}, updatedAt = ${now}, currentPage = ${finalPage}, currentAction = ${finalAction}

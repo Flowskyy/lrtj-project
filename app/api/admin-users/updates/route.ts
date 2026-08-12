@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { getWIBDate } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 
@@ -13,11 +14,10 @@ export async function GET(request: NextRequest) {
 
   const encoder = new TextEncoder();
   
-  // Create a readable stream for SSE
   const stream = new ReadableStream({
     async start(controller) {
       let isClosed = false;
-      let lastUserCount = 0;
+      let lastPoll: Date;
       let lastUserIds: string[] = [];
 
       const sendEvent = (data: any) => {
@@ -54,48 +54,60 @@ export async function GET(request: NextRequest) {
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
         ` as any[];
-        lastUserCount = initialUsers.length;
         lastUserIds = initialUsers.map((u: any) => u.id);
         sendEvent({ type: 'initial', users: initialUsers });
+
+        // Initialize lastPoll to the max updatedAt from initial fetch (or now)
+        const maxUpdatedAt = initialUsers.length > 0
+          ? new Date(Math.max(...initialUsers.map((u: any) => new Date(u.updatedAt).getTime())))
+          : getWIBDate();
+        lastPoll = maxUpdatedAt;
       } catch (error) {
         console.error('Error fetching initial users:', error);
+        lastPoll = getWIBDate();
       }
 
       // Poll for changes every 15 seconds
       const interval = setInterval(async () => {
         if (isClosed) return;
         try {
-          const currentUsers = await prisma.$queryRaw`
-            SELECT
-              au.id,
-              au.name,
-              au.email,
-              au.roleId,
-              ar.name as roleName,
-              DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-              DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
-              au.isOnline,
-              DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-              au.currentPage
-            FROM auth_users au
-            LEFT JOIN auth_roles ar ON au.roleId = ar.id
-            ORDER BY au.createdAt DESC
-          ` as any[];
+          // Fetch only users changed since last poll (new or updated)
+          // Also fetch all IDs for deletion detection
+          const [changedUsersRaw, allUserIdsRaw] = await Promise.all([
+            prisma.$queryRaw`
+              SELECT
+                au.id,
+                au.name,
+                au.email,
+                au.roleId,
+                ar.name as roleName,
+                DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+                DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+                au.isOnline,
+                DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+                au.currentPage
+              FROM auth_users au
+              LEFT JOIN auth_roles ar ON au.roleId = ar.id
+              WHERE au.updatedAt > ${lastPoll}
+              ORDER BY au.updatedAt ASC
+            `,
+            prisma.$queryRaw`
+              SELECT id FROM auth_users
+            `,
+          ]);
+          const changedUsers = changedUsersRaw as any[];
+          const allUserIds = allUserIdsRaw as any[];
 
-          const currentUserIds = currentUsers.map((u: any) => u.id);
-          const currentUserCount = currentUsers.length;
+          const currentUserIds = allUserIds.map((u: any) => u.id);
 
-          // Check for new users
-          const newUsers = currentUsers.filter((u: any) => !lastUserIds.includes(u.id));
+          // Detect new users (in changedUsers but not in lastUserIds)
+          const newUsers = changedUsers.filter((u: any) => !lastUserIds.includes(u.id));
           
-          // Check for deleted users
+          // Detect deleted users (in lastUserIds but not in currentUserIds)
           const deletedUserIds = lastUserIds.filter((id: string) => !currentUserIds.includes(id));
           
-          // Check for updated users ( roleId, name, email changes)
-          // For simplicity, we'll send full list if count changed but no add/delete
-          // This handles role changes, name updates, etc.
-          const hasCountChanged = currentUserCount !== lastUserCount;
-          const hasChanges = newUsers.length > 0 || deletedUserIds.length > 0 || hasCountChanged;
+          // Updated users are those in changedUsers that are NOT new (existing users with changes)
+          const updatedUsers = changedUsers.filter((u: any) => lastUserIds.includes(u.id));
 
           // Send events if there are changes
           if (newUsers.length > 0) {
@@ -106,14 +118,17 @@ export async function GET(request: NextRequest) {
             sendEvent({ type: 'users_deleted', userIds: deletedUserIds });
           }
           
-          // Send full update if there are structural changes (count changed)
-          if (hasCountChanged && newUsers.length === 0 && deletedUserIds.length === 0) {
-            sendEvent({ type: 'users_updated', users: currentUsers });
+          if (updatedUsers.length > 0) {
+            sendEvent({ type: 'users_updated', users: updatedUsers });
           }
 
-          // Update baseline
-          lastUserCount = currentUserCount;
+          // Update baseline for next poll
           lastUserIds = currentUserIds;
+          if (changedUsers.length > 0) {
+            lastPoll = new Date(Math.max(...changedUsers.map((u: any) => new Date(u.updatedAt).getTime())));
+          } else {
+            lastPoll = getWIBDate();
+          }
 
           const currentTime = await prisma.$queryRaw`
             SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime

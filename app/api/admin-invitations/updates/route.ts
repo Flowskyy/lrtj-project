@@ -44,9 +44,13 @@ export async function GET(request: NextRequest) {
             DATE_FORMAT(ai.completedAt, '%Y-%m-%dT%H:%i:%s') as completedAt,
             DATE_FORMAT(ai.openedAt, '%Y-%m-%dT%H:%i:%s') as openedAt,
             DATE_FORMAT(ai.emailSentAt, '%Y-%m-%dT%H:%i:%s') as emailSentAt,
+            ai.activityStep,
+            DATE_FORMAT(ai.lastActivityAt, '%Y-%m-%dT%H:%i:%s') as lastActivityAt,
             ai.createdBy
           FROM admin_invitations ai
           LEFT JOIN auth_roles ar ON ai.roleId = ar.id
+          WHERE ai.status IN ('pending', 'otp_verified')
+            AND ai.inviteExpiresAt > NOW()
           ORDER BY ai.createdAt DESC
         ` as any[];
 

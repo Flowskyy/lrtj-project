@@ -250,12 +250,19 @@ export function formatLastSeen(wibString: string | null | undefined): string {
  * 
  * This function does NOT use same-day time-only logic - always shows full date
  */
-export function formatFullDateWithTime(wibString: string | null | undefined): string {
-  if (!wibString) {
+export function formatFullDateWithTime(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) {
     return 'Never'
   }
 
-  const parsedDate = parseWIBString(wibString)
+  let parsedDate: Date | null = null
+
+  if (dateInput instanceof Date) {
+    parsedDate = dateInput
+  } else {
+    parsedDate = parseWIBString(dateInput)
+  }
+
   if (!parsedDate) {
     return '-'
   }

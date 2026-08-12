@@ -13,6 +13,7 @@ export default function WaitingForApprovalContent() {
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   const check = useCallback(async () => {
     try {
@@ -20,8 +21,6 @@ export default function WaitingForApprovalContent() {
       const data = await res.json()
 
       if (data.redirect) {
-        // Approval detected — refresh the session cookie (if the endpoint
-        // sent Set-Cookie with the new roleId) then navigate.
         sessionStorage.setItem('tab_authenticated', 'true')
         router.replace(data.redirect)
         return
@@ -37,7 +36,6 @@ export default function WaitingForApprovalContent() {
     }
   }, [router])
 
-  // Check once on mount, then poll every 5 s while the tab is visible
   useEffect(() => {
     let cancelled = false
     const guardedCheck = async () => {
@@ -49,14 +47,36 @@ export default function WaitingForApprovalContent() {
 
     pollingRef.current = setInterval(guardedCheck, 5000)
 
+    eventSourceRef.current = new EventSource('/api/admin-users/updates')
+    
+    eventSourceRef.current.onmessage = (event) => {
+      if (cancelled) return
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'pending_users_updated') {
+          guardedCheck()
+        }
+      } catch (error) {
+        console.error('Failed to parse SSE data:', error)
+      }
+    }
+
+    eventSourceRef.current.onerror = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+      }
+    }
+
     return () => {
       cancelled = true
       if (pollingRef.current) clearInterval(pollingRef.current)
+      if (eventSourceRef.current) eventSourceRef.current.close()
     }
   }, [check])
 
   const handleLogout = async () => {
     if (pollingRef.current) clearInterval(pollingRef.current)
+    if (eventSourceRef.current) eventSourceRef.current.close()
     sessionStorage.removeItem("tab_authenticated")
     try {
       await fetch("/api/auth/signout", { method: "POST" })
@@ -135,7 +155,7 @@ export default function WaitingForApprovalContent() {
                 )}
 
                 <p className="text-xs text-gray-500 text-center mb-6 leading-relaxed">
-                  This page automatically checks for approval every few seconds. You will be redirected as soon as your role is assigned.
+                  This page automatically checks for approval. You will be redirected as soon as your role is assigned.
                 </p>
 
                 <div className="flex flex-col gap-2">

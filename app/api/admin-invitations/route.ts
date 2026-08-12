@@ -22,13 +22,13 @@ export async function GET(request: NextRequest) {
         ar.name as roleName,
         ai.inviteTokenHash,
         ai.status,
-        DATE_FORMAT(ai.inviteExpiresAt, '%Y-%m-%dT%H:%i:%s') as inviteExpiresAt,
-        DATE_FORMAT(ai.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(ai.completedAt, '%Y-%m-%dT%H:%i:%s') as completedAt,
-        DATE_FORMAT(ai.openedAt, '%Y-%m-%dT%H:%i:%s') as openedAt,
-        DATE_FORMAT(ai.emailSentAt, '%Y-%m-%dT%H:%i:%s') as emailSentAt,
+        ai.inviteExpiresAt,
+        ai.createdAt,
+        ai.completedAt,
+        ai.openedAt,
+        ai.emailSentAt,
         ai.activityStep,
-        DATE_FORMAT(ai.lastActivityAt, '%Y-%m-%dT%H:%i:%s') as lastActivityAt,
+        ai.lastActivityAt,
         ai.createdBy
       FROM admin_invitations ai
       LEFT JOIN auth_roles ar ON ai.roleId = ar.id
@@ -37,20 +37,45 @@ export async function GET(request: NextRequest) {
       ORDER BY ai.createdAt DESC
     ` as any[];
 
-    // Add computed validity state
-    const currentTime = await prisma.$queryRaw`
-      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
-    ` as any[];
-    const now = currentTime[0]?.currentTime;
+    const formatDate = (val: any) => {
+      if (!val) return null
+      const d = new Date(val)
+      if (isNaN(d.getTime())) return null
+      return d.toLocaleString('en-CA', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(',', '').replace(/\//g, '-').replace(' ', 'T')
+    }
 
     const invitationsWithState = invitations.map(inv => {
+      const inviteExpiresAtStr = formatDate(inv.inviteExpiresAt)
+      const createdAtStr = formatDate(inv.createdAt)
+      const completedAtStr = formatDate(inv.completedAt)
+      const openedAtStr = formatDate(inv.openedAt)
+      const emailSentAtStr = formatDate(inv.emailSentAt)
+      const lastActivityAtStr = formatDate(inv.lastActivityAt)
+
+      const nowStr = formatDate(getWIBDate())
+
       let validityState = 'active';
       if (inv.status === 'completed') validityState = 'used';
-      else if (inv.status === 'expired' || (inv.inviteExpiresAt && now > inv.inviteExpiresAt)) validityState = 'expired';
+      else if (inv.status === 'expired' || (inviteExpiresAtStr && nowStr && nowStr > inviteExpiresAtStr)) validityState = 'expired';
       else if (inv.openedAt && !inv.completedAt) validityState = 'opened_not_completed';
       
       return {
         ...inv,
+        inviteExpiresAt: inviteExpiresAtStr,
+        createdAt: createdAtStr,
+        completedAt: completedAtStr,
+        openedAt: openedAtStr,
+        emailSentAt: emailSentAtStr,
+        lastActivityAt: lastActivityAtStr,
         validityState,
         isOpened: !!inv.openedAt,
         isEmailSent: !!inv.emailSentAt,
