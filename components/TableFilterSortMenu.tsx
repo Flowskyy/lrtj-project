@@ -28,6 +28,8 @@ interface TableFilterSortMenuProps {
   onTypeFilterChange?: (value: string) => void;
   categoryFilter?: string;
   onCategoryFilterChange?: (value: string) => void;
+  actorFilter?: string;
+  onActorFilterChange?: (value: string) => void;
   statusOptions?: { value: string; label: string }[];
   genderOptions?: { value: string; label: string }[];
   verifiedOptions?: { value: string; label: string }[];
@@ -35,6 +37,7 @@ interface TableFilterSortMenuProps {
   tierOptions?: { value: string; label: string }[];
   typeOptions?: { value: string; label: string }[];
   categoryOptions?: { value: string; label: string }[];
+  actorOptions?: { value: string; label: string }[];
   showTypeFilter?: boolean;
   showGenderFilter?: boolean;
   showVerifiedFilter?: boolean;
@@ -42,6 +45,7 @@ interface TableFilterSortMenuProps {
   showTierFilter?: boolean;
   showStatusFilter?: boolean;
   showCategoryFilter?: boolean;
+  showActorFilter?: boolean;
   
   // Sort props
   sortBy: string;
@@ -77,6 +81,8 @@ export default function TableFilterSortMenu({
   onTypeFilterChange,
   categoryFilter = "all",
   onCategoryFilterChange,
+  actorFilter = "all",
+  onActorFilterChange,
   sortBy,
   onSortByChange,
   sortOrder,
@@ -112,6 +118,9 @@ export default function TableFilterSortMenu({
   categoryOptions = [
     { value: "all", label: "All" },
   ],
+  actorOptions = [
+    { value: "all", label: "All" },
+  ],
   sortByOptions = [
     { value: "id", label: "ID" },
     { value: "createdAt", label: "Created Date" },
@@ -124,6 +133,7 @@ export default function TableFilterSortMenu({
   showTierFilter = false,
   showStatusFilter = false,
   showCategoryFilter = false,
+  showActorFilter = false,
   dateFrom = "",
   onDateFromChange,
   dateTo = "",
@@ -329,9 +339,36 @@ export default function TableFilterSortMenu({
             </>
           )}
           
-          {showDateRange && onDateFromChange && onDateToChange && (
+          {showActorFilter && onActorFilterChange && (
             <>
               {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter) && <DropdownMenuSeparator className="my-1.5" />}
+              <div className="space-y-1.5">
+                <div className="px-2 py-0.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Actor</label>
+                </div>
+                <div className="px-2 pb-1.5">
+                  <Select value={actorFilter} onValueChange={(v) => onActorFilterChange(v || 'all')}>
+                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                      <SelectValue placeholder="Select actor">
+                        {actorOptions.find(opt => opt.value === actorFilter)?.label || "Select actor"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent side="bottom">
+                      {actorOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {showDateRange && onDateFromChange && onDateToChange && (
+            <>
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showActorFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">From Date</label>
@@ -361,7 +398,7 @@ export default function TableFilterSortMenu({
           
           {onResetFilters && activeFilterCount > 0 && (
             <>
-              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showDateRange) && <DropdownMenuSeparator className="my-1.5" />}
+              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showActorFilter || showDateRange) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="px-2 pb-1.5">
                 <button
                   onClick={onResetFilters}

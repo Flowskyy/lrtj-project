@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,46 @@ export default function InviteSignupPage() {
       return () => clearTimeout(timer);
     }
   }, [otpResendTimer]);
+
+  // ─── Activity reporting (mirrors auth_users heartbeat, keyed to the invitation)
+  const lastStepRef = useRef<string | null>(null);
+  const reportActivity = useCallback(async (step: string) => {
+    lastStepRef.current = step;
+    try {
+      await fetch(`/api/signup/invite/${token}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step }),
+      });
+    } catch (err) {
+      console.error("Failed to report activity", err);
+    }
+  }, [token]);
+
+  // Report current step whenever it changes
+  useEffect(() => {
+    if (loading || error) return;
+    const step = !otpVerified
+      ? "entering_otp"
+      : signingUp
+      ? "submitting"
+      : "setting_password";
+    reportActivity(step);
+  }, [loading, error, otpVerified, signingUp, reportActivity]);
+
+  // Heartbeat: refresh the last known step every 10s so it stays "active"
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (lastStepRef.current) {
+        fetch(`/api/signup/invite/${token}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step: lastStepRef.current }),
+        }).catch(() => {});
+      }
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [token]);
 
   const validateInvitation = async () => {
     try {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionWithUser } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { formatWIB } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSessionWithUser();
+    const session = await getSession();
     
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 // Also handle GET for sendBeacon (which uses GET by default with empty body)
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSessionWithUser();
+    const session = await getSession();
     
     if (!session?.user?.id) {
       return new Response('Unauthorized', { status: 401 });

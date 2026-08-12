@@ -24,7 +24,7 @@ let hasShownLanInfo = false;
 const devServer = spawn('npx', ['next', 'dev', '-H', '0.0.0.0'], {
   stdio: ['inherit', 'pipe', 'inherit'],
   shell: true,
-  env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0', TZ: 'Asia/Jakarta' }
+  env: { ...process.env, TZ: 'Asia/Jakarta' }
 });
 
 devServer.stdout.on('data', (data) => {

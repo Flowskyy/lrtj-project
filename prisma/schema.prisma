@@ -78,6 +78,10 @@ model admin_invitations {
   createdAt       DateTime   @default(now()) @db.DateTime(0)
   createdBy       String?    @db.VarChar(255)
   completedAt     DateTime?  @db.DateTime(0)
+  openedAt        DateTime?  @db.DateTime(0)
+  emailSentAt     DateTime?  @db.DateTime(0)
+  activityStep    String?    @db.VarChar(100)
+  lastActivityAt  DateTime?  @db.DateTime(0)
   auth_roles      auth_roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@index([email])

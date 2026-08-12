@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import GlassTable, { GlassTableColumn, GlassTableRow } from "@/components/GlassTable";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
+import Pagination from "@/components/Pagination";
 import { formatFullDateWithTime } from "@/lib/formatWIBDate";
+import { useActivityLogUpdates } from "@/hooks/use-activity-log-updates";
 
 interface ActivityLog {
   id: bigint;
@@ -81,8 +81,9 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
     }
   };
 
-  const fetchLogs = async (filters: any = {}) => {
-    setLoading(true);
+  const fetchLogs = async (filters: any = {}, opts: { silent?: boolean } = {}) => {
+    // Silent refetches (live updates) keep the current view state and avoid a loading flicker
+    if (!opts.silent) setLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -90,7 +91,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
         ...filters,
       });
 
-      const url = userTimelineUserId 
+      const url = userTimelineUserId
         ? `/api/activity-logs?actor=${userTimelineUserId}&${params.toString()}`
         : `/api/activity-logs?${params.toString()}`;
 
@@ -114,6 +115,28 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
     fetchRoles();
   }, []);
 
+  // Live updates via SSE (same mechanism as Admin Management)
+  const { isConnected, onLogsAdded, onLogsReverted } = useActivityLogUpdates();
+
+  // Always call the latest fetchLogs closure (current filters/sort/page) from SSE handlers
+  const fetchLogsRef = useRef(fetchLogs);
+  fetchLogsRef.current = fetchLogs;
+
+  useEffect(() => {
+    onLogsAdded(() => fetchLogsRef.current({}, { silent: true }));
+    onLogsReverted(() => fetchLogsRef.current({}, { silent: true }));
+  }, [onLogsAdded, onLogsReverted]);
+
+  // Re-sync the filtered list when the SSE stream connects/reconnects to close any
+  // baseline gap between the initial fetch and the stream's start position.
+  const wasConnectedRef = useRef(false);
+  useEffect(() => {
+    if (isConnected && !wasConnectedRef.current) {
+      fetchLogsRef.current({}, { silent: true });
+    }
+    wasConnectedRef.current = isConnected;
+  }, [isConnected]);
+
   useEffect(() => {
     const filters: any = {};
     if (selectedTable) filters.table = selectedTable;
@@ -124,7 +147,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
     if (endDate) filters.endDate = endDate;
     if (sortBy) filters.sortBy = sortBy;
     if (sortOrder) filters.order = sortOrder;
-    
+
     fetchLogs(filters);
   }, [page, selectedTable, selectedAction, selectedActor, activeTab, startDate, endDate, sortBy, sortOrder, userTimelineUserId]);
 
@@ -144,8 +167,18 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
         setLogToRevert(null);
         fetchLogs();
       } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to revert");
+        try {
+          if (res.headers.get('content-type')?.includes('application/json')) {
+            const error = await res.json();
+            toast.error(error.error || "Failed to revert");
+          } else {
+            const text = await res.text();
+            toast.error(text || `Failed to revert (${res.status})`);
+          }
+        } catch (parseErr) {
+          console.error("Failed to parse error response:", parseErr);
+          toast.error(`Failed to revert (${res.status})`);
+        }
       }
     } catch (err) {
       console.error("Failed to revert", err);
@@ -174,11 +207,11 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
 
   const getActionBadge = (action: string) => {
     const colors: Record<string, string> = {
-      CREATE: "bg-green-100 text-green-800",
-      UPDATE: "bg-blue-100 text-blue-800",
-      DELETE: "bg-red-100 text-red-800",
+      CREATE: "bg-green-100 text-green-800 border-green-200/80",
+      UPDATE: "bg-blue-100 text-blue-800 border-blue-200/80",
+      DELETE: "bg-red-100 text-red-800 border-red-200/80",
     };
-    return colors[action] || "bg-gray-100 text-gray-800";
+    return colors[action] || "bg-gray-100 text-gray-800 border-gray-200/80";
   };
 
   const formatTableForDisplay = (tableName: string) => {
@@ -192,7 +225,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
     if (log.action === 'CREATE') return 'New record created';
     if (log.action === 'DELETE') return 'Record deleted';
     if (!log.changedFields || log.changedFields.length === 0) return 'No changes';
-    
+
     if (log.changedFields.length <= 3) {
       return `Changed: ${log.changedFields.join(', ')}`;
     }
@@ -205,10 +238,24 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
   }));
 
   const actionOptions = [
-    { value: "", label: "All actions" },
     { value: "CREATE", label: "Create" },
     { value: "UPDATE", label: "Update" },
     { value: "DELETE", label: "Delete" }
+  ];
+
+  const actorOptions = Array.from(new Map(
+    logs
+      .filter(log => log.actorUserId && log.actorName)
+      .map(log => [log.actorUserId!, log.actorName!])
+  ).entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const columns: GlassTableColumn[] = [
+    { key: "activity", header: "Activity" },
+    { key: "time", header: "Time", width: "11rem" },
+    { key: "status", header: "Status", width: "8rem" },
+    { key: "actions", header: "", width: "3rem" },
   ];
 
   return (
@@ -221,7 +268,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
               variant="ghost"
               size="sm"
               onClick={closeUserTimeline}
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -231,262 +278,127 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
               {showUserTimeline ? 'User Activity Timeline' : 'Activity Log'}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              {showUserTimeline 
+              {showUserTimeline
                 ? 'Track all changes made by this user'
-                : 'Track all changes across the system'
+                : 'Monitor system changes and activity history'
               }
             </p>
           </div>
         </div>
+        {!showUserTimeline && (
+          <div className="flex items-center gap-2">
+            <TableFilterSortMenu
+              sortBy={sortBy}
+              onSortByChange={setSortBy}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              sortByOptions={[
+                { value: "createdAt", label: "Created Date" },
+                { value: "action", label: "Action" },
+                { value: "tableName", label: "Table" }
+              ]}
+              typeFilter={selectedTable}
+              onTypeFilterChange={setSelectedTable}
+              typeOptions={tableOptions}
+              showTypeFilter={true}
+              statusFilter={selectedAction}
+              onStatusFilterChange={setSelectedAction}
+              statusOptions={actionOptions}
+              showStatusFilter={true}
+              actorFilter={selectedActor}
+              onActorFilterChange={setSelectedActor}
+              actorOptions={actorOptions}
+              showActorFilter={true}
+              dateFrom={startDate}
+              onDateFromChange={setStartDate}
+              dateTo={endDate}
+              onDateToChange={setEndDate}
+              showDateRange={true}
+              onResetFilters={handleResetFilters}
+              activeFilterCount={activeFilterCount}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Filters Toolbar */}
-      {!showUserTimeline && (
-        <div className="flex items-center gap-2">
-          <TableFilterSortMenu
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-            sortByOptions={[
-              { value: "createdAt", label: "Created Date" },
-              { value: "action", label: "Action" },
-              { value: "tableName", label: "Table" }
-            ]}
-            typeFilter={selectedTable}
-            onTypeFilterChange={setSelectedTable}
-            typeOptions={tableOptions}
-            showTypeFilter={true}
-            statusFilter={selectedAction}
-            onStatusFilterChange={setSelectedAction}
-            statusOptions={actionOptions}
-            showStatusFilter={true}
-            dateFrom={startDate}
-            onDateFromChange={setStartDate}
-            dateTo={endDate}
-            onDateToChange={setEndDate}
-            showDateRange={true}
-            onResetFilters={handleResetFilters}
-            activeFilterCount={activeFilterCount}
-          />
-        </div>
-      )}
-
-      {/* Main Content Card */}
+      {/* Tabs and Table Card */}
       <Card className="bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg">
         <CardHeader className="border-b border-gray-200/60 px-6 py-4">
           <CardTitle className="text-gray-900 font-semibold tracking-tight">
-            {showUserTimeline ? 'User Activity' : activeTab === 'all' ? 'All Activity' : `${activeTab} Activity`}
+            {showUserTimeline ? 'Timeline Activity' : 'Activity Logs'}
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-6 px-6">
-          {!showUserTimeline ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="group/tabs-list inline-flex w-fit items-center justify-center rounded-2xl p-1 text-muted-foreground group-data-horizontal/tabs:h-9 group-data-vertical/tabs:h-fit group-data-vertical/tabs:data-[variant=line]:rounded-none backdrop-blur-sm mb-1 bg-gray-100/80 border border-gray-200/60" variant="default">
-                <TabsTrigger value="all" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">All Activity</TabsTrigger>
-                {roles.map((role) => (
-                  <TabsTrigger key={role.id} value={role.name} className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
-                    {role.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="group/tabs-list inline-flex w-fit items-center justify-center rounded-2xl p-1 text-muted-foreground group-data-horizontal/tabs:h-9 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none backdrop-blur-sm mb-1 bg-gray-100/80 border border-gray-200/60" variant="default">
+              <TabsTrigger value="all" className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
+                All Activity
+              </TabsTrigger>
+              {roles.map((role) => (
+                <TabsTrigger key={role.id} value={role.name} className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
+                  {role.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-              <TabsContent value={activeTab} className="mt-0">
-                <GlassTable
-                  columns={[
-                    { key: "actor", header: "Actor", width: "12rem" },
-                    { key: "action", header: "Action", width: "6rem" },
-                    { key: "table", header: "Table" },
-                    { key: "changes", header: "Changes" },
-                    { key: "time", header: "Time", width: "10rem" },
-                    { key: "actions", header: "Actions", width: "8rem" },
-                  ]}
-                  rows={logs.map((log) => ({
-                    id: log.id.toString(),
-                    cells: [
-                      <div key="actor" className="flex flex-col">
-                        <span className="font-medium">{log.actorName || 'System'}</span>
+            <TabsContent value={activeTab} className="mt-0">
+              <GlassTable
+                columns={columns}
+                rows={logs.map((log) => ({
+                  id: log.id.toString(),
+                  className: expandedLogId === log.id ? "bg-gray-50/70" : undefined,
+                  cells: [
+                    <div key="activity" className="py-1.5">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <button
+                          onClick={() => {
+                            if (log.actorUserId) handleShowUserTimeline(log.actorUserId);
+                          }}
+                          className={`font-medium text-gray-900 text-sm ${log.actorUserId ? "hover:text-[#E5262C] hover:underline transition-colors cursor-pointer" : ""}`}
+                          title={log.actorUserId ? `View ${log.actorName || 'System'}'s activity timeline` : undefined}
+                        >
+                          {log.actorName || 'System'}
+                        </button>
                         {log.actorEmail && (
                           <span className="text-xs text-gray-500">{log.actorEmail}</span>
                         )}
-                        {log.actorUserId && (
-                          <button
-                            onClick={() => handleShowUserTimeline(log.actorUserId!)}
-                            className="text-xs text-blue-600 hover:text-blue-700 hover:underline mt-1"
-                          >
-                            View timeline
-                          </button>
-                        )}
-                      </div>,
-                      <Badge key="action" className={getActionBadge(log.action)}>
-                        {log.action}
-                      </Badge>,
-                      <span key="table" className="font-medium">
-                        {formatTableForDisplay(log.tableName)}
-                      </span>,
-                      <span key="changes" className="text-sm text-gray-600">
-                        {getChangedFieldsSummary(log)}
-                      </span>,
-                      <span key="time" className="text-sm">
-                        {formatFullDateWithTime(log.createdAt)}
-                      </span>,
-                      <div key="actions" className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setExpandedLogId(
-                            expandedLogId === log.id ? null : log.id
-                          )}
-                          className="h-8 w-8 p-0"
-                        >
-                          {expandedLogId === log.id ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                        {!log.revertedAt && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openRevertDialog(log)}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            title="Revert this change"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {log.revertedAt && (
-                          <Badge variant="outline" className="text-xs">
-                            Reverted
-                          </Badge>
-                        )}
-                      </div>,
-                    ],
-                  }))}
-                  loading={loading}
-                  emptyMessage="No activity logs found"
-                />
-
-                {/* Expanded Details */}
-                {expandedLogId && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                    {(() => {
-                      const log = logs.find(l => l.id === expandedLogId);
-                      if (!log) return null;
-                      return (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="font-medium">Record ID:</span> {log.recordId}
-                            </div>
-                            <div>
-                              <span className="font-medium">Table:</span> {log.tableName}
-                            </div>
-                            {log.revertedAt && (
-                              <>
-                                <div>
-                                  <span className="font-medium">Reverted At:</span> {formatFullDateWithTime(log.revertedAt)}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Reverted By:</span> {log.revertedByUserId}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          
-                          {log.beforeState && (
-                            <div>
-                              <h4 className="font-medium text-sm mb-2">Before State:</h4>
-                              <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-48">
-                                {JSON.stringify(log.beforeState, null, 2)}
-                              </pre>
-                            </div>
-                          )}
-                          
-                          {log.afterState && (
-                            <div>
-                              <h4 className="font-medium text-sm mb-2">After State:</h4>
-                              <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-48">
-                                {JSON.stringify(log.afterState, null, 2)}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-gray-500">
-                      Page {page} of {totalPages}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <>
-              {/* User Timeline view - no tabs, just the table */}
-              <GlassTable
-                columns={[
-                  { key: "actor", header: "Actor", width: "12rem" },
-                  { key: "action", header: "Action", width: "6rem" },
-                  { key: "table", header: "Table" },
-                  { key: "changes", header: "Changes" },
-                  { key: "time", header: "Time", width: "10rem" },
-                  { key: "actions", header: "Actions", width: "8rem" },
-                ]}
-                rows={logs.map((log) => ({
-                  id: log.id.toString(),
-                  cells: [
-                    <div key="actor" className="flex flex-col">
-                      <span className="font-medium">{log.actorName || 'System'}</span>
-                      {log.actorEmail && (
-                        <span className="text-xs text-gray-500">{log.actorEmail}</span>
+                        <Badge variant="outline" className={`${getActionBadge(log.action)} shrink-0 ml-auto`}>
+                          {log.action}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap text-sm">
+                        <span className="font-medium text-gray-700">
+                          {formatTableForDisplay(log.tableName)}
+                        </span>
+                        <span className="text-xs text-gray-400">&bull;</span>
+                        <span className="text-gray-600">
+                          {getChangedFieldsSummary(log)}
+                        </span>
+                      </div>
+                    </div>,
+                    <div key="time" className="text-sm text-gray-500">
+                      {formatFullDateWithTime(log.createdAt)}
+                    </div>,
+                    <div key="status">
+                      {log.revertedAt ? (
+                        <Badge variant="outline" className="text-xs bg-gray-100/80 border-gray-200/80 text-gray-600">
+                          Reverted
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-green-50 border-green-200/80 text-green-700">
+                          Active
+                        </Badge>
                       )}
                     </div>,
-                    <Badge key="action" className={getActionBadge(log.action)}>
-                      {log.action}
-                    </Badge>,
-                    <span key="table" className="font-medium">
-                      {formatTableForDisplay(log.tableName)}
-                    </span>,
-                    <span key="changes" className="text-sm text-gray-600">
-                      {getChangedFieldsSummary(log)}
-                    </span>,
-                    <span key="time" className="text-sm">
-                      {formatFullDateWithTime(log.createdAt)}
-                    </span>,
-                    <div key="actions" className="flex gap-2">
+                    <div key="actions" className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setExpandedLogId(
                           expandedLogId === log.id ? null : log.id
                         )}
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                        title={expandedLogId === log.id ? "Collapse details" : "View details"}
                       >
                         {expandedLogId === log.id ? (
                           <ChevronUp className="h-4 w-4" />
@@ -494,22 +406,6 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                           <ChevronDown className="h-4 w-4" />
                         )}
                       </Button>
-                      {!log.revertedAt && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openRevertDialog(log)}
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          title="Revert this change"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {log.revertedAt && (
-                        <Badge variant="outline" className="text-xs">
-                          Reverted
-                        </Badge>
-                      )}
                     </div>,
                   ],
                 }))}
@@ -517,145 +413,177 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                 emptyMessage="No activity logs found"
               />
 
-              {/* Expanded Details - User Timeline */}
-              {expandedLogId && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                  {(() => {
-                    const log = logs.find(l => l.id === expandedLogId);
-                    if (!log) return null;
-                    return (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="font-medium">Record ID:</span> {log.recordId}
-                          </div>
-                          <div>
-                            <span className="font-medium">Table:</span> {log.tableName}
-                          </div>
-                          {log.revertedAt && (
-                            <>
-                              <div>
-                                <span className="font-medium">Reverted At:</span> {formatFullDateWithTime(log.revertedAt)}
-                              </div>
-                              <div>
-                                <span className="font-medium">Reverted By:</span> {log.revertedByUserId}
-                              </div>
-                            </>
-                          )}
+              {logs.map((log) => (
+                expandedLogId === log.id ? (
+                  <div key={`expanded-${log.id}`} className="bg-gray-50/70 border-b border-gray-200/60">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 text-sm">
+                      {[
+                        { label: 'Record ID', value: log.recordId },
+                        { label: 'Table', value: log.tableName },
+                        ...(log.revertedAt ? [
+                          { label: 'Reverted At', value: formatFullDateWithTime(log.revertedAt) },
+                          { label: 'Reverted By', value: log.revertedByUserId || '—' }
+                        ] : [
+                          { label: 'Actor', value: log.actorName || 'System' },
+                          { label: 'Action', value: log.action }
+                        ])
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">{label}</span>
+                          <span className="font-medium text-gray-900 break-all">{value}</span>
                         </div>
+                      ))}
+                    </div>
 
-                        {log.beforeState && (
-                          <div>
-                            <h4 className="font-medium text-sm mb-2">Before State:</h4>
-                            <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-48">
-                              {JSON.stringify(log.beforeState, null, 2)}
-                            </pre>
+                    <div className="grid md:grid-cols-2 gap-4 px-6 pb-6">
+                      {log.beforeState && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="h-2 w-2 rounded-full bg-gray-400"></span>
+                            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Before State</h4>
                           </div>
-                        )}
+                          <pre className="text-xs bg-white p-4 rounded-lg border border-gray-200/80 overflow-auto max-h-48 font-mono text-gray-800">
+                            {JSON.stringify(log.beforeState, null, 2)}
+                          </pre>
+                        </div>
+                      )}
 
-                        {log.afterState && (
-                          <div>
-                            <h4 className="font-medium text-sm mb-2">After State:</h4>
-                            <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-48">
-                              {JSON.stringify(log.afterState, null, 2)}
-                            </pre>
+                      {log.afterState && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">After State</h4>
                           </div>
-                        )}
+                          <pre className="text-xs bg-white p-4 rounded-lg border border-gray-200/80 overflow-auto max-h-48 font-mono text-gray-800">
+                            {JSON.stringify(log.afterState, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+
+                    {!log.revertedAt && (
+                      <div className="px-6 pb-6">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openRevertDialog(log)}
+                          className="border-red-200 bg-red-50/50 text-[#E5262C] hover:bg-red-50 hover:text-[#c41e24] transition-colors"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Revert this change
+                        </Button>
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+                    )}
+                  </div>
+                ) : null
+              ))}
 
-              {/* Pagination - User Timeline */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-gray-500">
-                    Page {page} of {totalPages}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
       {/* Revert Confirmation Dialog */}
       {logToRevert && (
         <Dialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Revert Activity Log Entry</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to revert this {logToRevert.action.toLowerCase()} action?
-                This will restore the record to its state before this change.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Action:</span> {logToRevert.action}
+          <DialogContent className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden">
+            <div className="p-6">
+              <DialogHeader className="mb-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
+                    <RotateCcw className="h-5 w-5 text-[#E5262C]" />
+                  </div>
+                  <DialogTitle className="text-xl font-semibold text-gray-900">
+                    Revert Activity
+                  </DialogTitle>
                 </div>
-                <div>
-                  <span className="font-medium">Table:</span> {formatTableForDisplay(logToRevert.tableName)}
-                </div>
-                <div>
-                  <span className="font-medium">Record ID:</span> {logToRevert.recordId}
-                </div>
-                <div>
-                  <span className="font-medium">Time:</span> {formatFullDateWithTime(logToRevert.createdAt)}
-                </div>
-              </div>
-              
-              {logToRevert.changedFields && logToRevert.changedFields.length > 0 && (
-                <div>
-                  <span className="font-medium text-sm">Changed fields:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {logToRevert.changedFields.map(field => (
-                      <Badge key={field} variant="outline" className="text-xs">
-                        {field}
+                <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+                  Are you sure you want to revert this {logToRevert.action.toLowerCase()} action?
+                  This will restore the record to its state before this change.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2">
+                <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Action</span>
+                      <Badge variant="outline" className={`${getActionBadge(logToRevert.action)} mt-1`}>
+                        {logToRevert.action}
                       </Badge>
-                    ))}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Table</span>
+                      <div className="font-medium text-gray-900 mt-1">
+                        {formatTableForDisplay(logToRevert.tableName)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Record ID</span>
+                      <div className="font-medium text-gray-900 font-mono mt-1 truncate">
+                        {logToRevert.recordId}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Time</span>
+                      <div className="font-medium text-gray-900 mt-1">
+                        {formatFullDateWithTime(logToRevert.createdAt)}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {logToRevert.changedFields && logToRevert.changedFields.length > 0 && (
+                  <div className="rounded-xl border border-gray-200/80 p-4">
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Changed Fields</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {logToRevert.changedFields.map(field => (
+                        <Badge
+                          key={field}
+                          variant="outline"
+                          className="text-xs bg-gray-100/80 border-gray-200/80 text-gray-700"
+                        >
+                          {field}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="mt-6 pt-4 border-t border-gray-200/60">
+                <Button
+                  variant="outline"
+                  onClick={() => setRevertDialogOpen(false)}
+                  disabled={isReverting}
+                  className="min-h-[44px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRevert}
+                  disabled={isReverting}
+                  className="bg-[#E5262C] hover:bg-[#c41e24] text-white font-medium shadow-sm min-h-[44px]"
+                >
+                  {isReverting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                      Reverting...
+                    </span>
+                  ) : (
+                    'Confirm Revert'
+                  )}
+                </Button>
+              </DialogFooter>
             </div>
-            
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setRevertDialogOpen(false)}
-                disabled={isReverting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRevert}
-                disabled={isReverting}
-                className="bg-[#E5262C] hover:bg-[#c91e24] text-white"
-              >
-                {isReverting ? 'Reverting...' : 'Confirm Revert'}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

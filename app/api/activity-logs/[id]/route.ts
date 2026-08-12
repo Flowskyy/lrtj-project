@@ -7,10 +7,11 @@ import { prisma } from '@/lib/prisma'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const logId = BigInt(params.id)
+    const { id } = await params;
+    const logId = BigInt(id)
 
     const log = await prisma.system_activity_logs.findUnique({
       where: { id: logId },

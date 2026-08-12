@@ -40,7 +40,7 @@ export const auth = betterAuth({
     updateAge: 0, // Disable rolling/idle expiry - session expires 24 hours from login regardless of activity
     cookieCache: {
       enabled: true,
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 24 * 60 * 60, // 1 day
       strategy: "jwt",
       include: [
         "user.id",
@@ -170,31 +170,6 @@ export const auth = betterAuth({
           return {
             data: {
               ...account,
-              updatedAt: now,
-            }
-          }
-        }
-      }
-    },
-    session: {
-      create: {
-        before: async (session: any) => {
-          const now = getWIBDate()
-          return {
-            data: {
-              ...session,
-              createdAt: now,
-              updatedAt: now,
-            }
-          }
-        }
-      },
-      update: {
-        before: async (session: any) => {
-          const now = getWIBDate()
-          return {
-            data: {
-              ...session,
               updatedAt: now,
             }
           }

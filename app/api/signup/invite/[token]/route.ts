@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendOtpEmail } from '@/lib/email-service';
+import { getWIBDate, formatWIB } from '@/lib/utils';
 import crypto from 'crypto';
 
 // Hash a token using SHA-256
@@ -98,6 +99,9 @@ export async function GET(
     
     const otpExpiresAt = otpExpiryResult[0]?.otpExpiresAt;
 
+    // WIB literal timestamp for openedAt first-open tracking
+    const openedAtLiteral = formatWIB(getWIBDate());
+
     // Update invitation with OTP using raw SQL
     await prisma.$queryRaw`
       UPDATE admin_invitations
@@ -106,6 +110,7 @@ export async function GET(
         otpSentAt = NOW(),
         otpExpiresAt = ${otpExpiresAt},
         otpAttempts = 0,
+        openedAt = IFNULL(openedAt, ${openedAtLiteral}),
         status = 'pending'
       WHERE id = ${invitation.id}
     `;
@@ -128,6 +133,45 @@ export async function GET(
     console.error('Error validating invitation:', error);
     return NextResponse.json(
       { error: 'Failed to validate invitation' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: Report the invited user's current step in the signup flow (heartbeat)
+// Unauthenticated by design - the invitee has no session until signup completes.
+// Mirrors auth_users.currentAction tracking, but keyed to the invitation.
+const VALID_ACTIVITY_STEPS = ['viewing', 'entering_otp', 'setting_password', 'submitting'];
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  try {
+    const { token: rawToken } = await params;
+    const { step } = await request.json();
+
+    if (!VALID_ACTIVITY_STEPS.includes(step)) {
+      return NextResponse.json(
+        { error: 'Invalid activity step' },
+        { status: 400 }
+      );
+    }
+
+    const tokenHash = hashToken(rawToken);
+    const nowLiteral = formatWIB(getWIBDate());
+
+    await prisma.$queryRaw`
+      UPDATE admin_invitations
+      SET activityStep = ${step}, lastActivityAt = ${nowLiteral}
+      WHERE inviteTokenHash = ${tokenHash}
+    `;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error reporting invite activity:', error);
+    return NextResponse.json(
+      { error: 'Failed to report activity' },
       { status: 500 }
     );
   }

@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionWithUser } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
-  const session = await getSessionWithUser();
+  const session = await getSession();
   
   if (!session?.user?.id) {
     return new Response('Unauthorized', { status: 401 });
@@ -49,19 +49,11 @@ export async function GET(request: NextRequest) {
             DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
             au.isOnline,
             DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-            au.currentPage,
-            DATE_FORMAT(
-              (SELECT asess.updatedAt FROM auth_sessions asess 
-               WHERE asess.userId = au.id 
-               ORDER BY asess.updatedAt DESC 
-               LIMIT 1),
-              '%Y-%m-%dT%H:%i:%s'
-            ) as lastOnline
+            au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
         ` as any[];
-        
         lastUserCount = initialUsers.length;
         lastUserIds = initialUsers.map((u: any) => u.id);
         sendEvent({ type: 'initial', users: initialUsers });
@@ -69,7 +61,7 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching initial users:', error);
       }
 
-      // Poll for changes every 3 seconds
+      // Poll for changes every 15 seconds
       const interval = setInterval(async () => {
         if (isClosed) return;
         try {
@@ -84,14 +76,7 @@ export async function GET(request: NextRequest) {
               DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
               au.isOnline,
               DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-              au.currentPage,
-              DATE_FORMAT(
-                (SELECT asess.updatedAt FROM auth_sessions asess 
-                 WHERE asess.userId = au.id 
-                 ORDER BY asess.updatedAt DESC 
-                 LIMIT 1),
-                '%Y-%m-%dT%H:%i:%s'
-              ) as lastOnline
+              au.currentPage
             FROM auth_users au
             LEFT JOIN auth_roles ar ON au.roleId = ar.id
             ORDER BY au.createdAt DESC
@@ -139,7 +124,7 @@ export async function GET(request: NextRequest) {
           isClosed = true;
           clearInterval(interval);
         }
-      }, 3000);
+      }, 15000);
 
       // Clean up on client disconnect
       request.signal.addEventListener('abort', () => {

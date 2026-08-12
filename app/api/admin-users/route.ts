@@ -6,6 +6,29 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const roleId = searchParams.get('roleId')
+    const pending = searchParams.get('pending')
+
+    // Handle pending users query (users with roleId IS NULL - signed in via SSO but not approved)
+    if (pending === 'true') {
+      try {
+        const users = await prisma.$queryRaw`
+          SELECT
+            au.id,
+            au.name,
+            au.email,
+            au.image,
+            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+          FROM auth_users au
+          WHERE au.roleId IS NULL
+          ORDER BY au.createdAt DESC
+        ` as any[];
+        return NextResponse.json(users)
+      } catch (error) {
+        console.error('Error fetching pending users:', error)
+        return NextResponse.json({ error: 'Failed to fetch pending users' }, { status: 500 })
+      }
+    }
 
     let users: any[];
     
@@ -23,14 +46,7 @@ export async function GET(request: NextRequest) {
             DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
             au.isOnline,
             DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-            au.currentPage,
-            DATE_FORMAT(
-              (SELECT asess.updatedAt FROM auth_sessions asess 
-               WHERE asess.userId = au.id 
-               ORDER BY asess.updatedAt DESC 
-               LIMIT 1),
-              '%Y-%m-%dT%H:%i:%s'
-            ) as lastOnline
+            au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
@@ -49,14 +65,7 @@ export async function GET(request: NextRequest) {
             DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
             DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-            DATE_FORMAT(
-              (SELECT asess.updatedAt FROM auth_sessions asess 
-               WHERE asess.userId = au.id 
-               ORDER BY asess.updatedAt DESC 
-               LIMIT 1),
-              '%Y-%m-%dT%H:%i:%s'
-            ) as lastOnline
+            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
@@ -77,14 +86,7 @@ export async function GET(request: NextRequest) {
             DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
             au.isOnline,
             DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-            au.currentPage,
-            DATE_FORMAT(
-              (SELECT asess.updatedAt FROM auth_sessions asess 
-               WHERE asess.userId = au.id 
-               ORDER BY asess.updatedAt DESC 
-               LIMIT 1),
-              '%Y-%m-%dT%H:%i:%s'
-            ) as lastOnline
+            au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
@@ -102,14 +104,7 @@ export async function GET(request: NextRequest) {
             DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
             DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
-            DATE_FORMAT(
-              (SELECT asess.updatedAt FROM auth_sessions asess 
-               WHERE asess.userId = au.id 
-               ORDER BY asess.updatedAt DESC 
-               LIMIT 1),
-              '%Y-%m-%dT%H:%i:%s'
-            ) as lastOnline
+            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC

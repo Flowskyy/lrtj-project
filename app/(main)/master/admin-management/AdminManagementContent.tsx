@@ -4,13 +4,10 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Circle as CircleIcon, Shield } from "lucide-react";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
-import InviteAdminDialog from "@/components/InviteAdminDialog";
 import ChangeRoleDialog from "@/components/ChangeRoleDialog";
 import GlassTable, { GlassTableColumn, GlassTableRow } from "@/components/GlassTable";
 import { formatWIBDate, formatDisplayDate, formatLastSeen, formatFullDateWithTime } from "@/lib/formatWIBDate";
@@ -37,11 +34,11 @@ interface AdminUser {
   currentAction?: string | null;
 }
 
-interface AuthManagementContentProps {
+interface AdminManagementContentProps {
   currentUserId: string;
 }
 
-export default function AuthManagementContent({ currentUserId }: AuthManagementContentProps) {
+export default function AdminManagementContent({ currentUserId }: AdminManagementContentProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +276,7 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Auth Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Admin Management</h1>
           <p className="text-sm text-gray-500 mt-1">Manage CMS admin accounts and role assignments</p>
         </div>
         <div className="flex items-center gap-2">
@@ -288,7 +285,6 @@ export default function AuthManagementContent({ currentUserId }: AuthManagementC
             <CircleIcon className={`h-2 w-2 ${userListConnected ? 'fill-green-500 text-green-500' : 'fill-gray-400 text-gray-400'}`} />
             <span>{userListConnected ? 'Live' : 'Connecting...'}</span>
           </div>
-          <InviteAdminDialog onInviteSent={() => fetchUsers(activeTab === "all" ? undefined : activeTab)} />
         </div>
       </div>
 

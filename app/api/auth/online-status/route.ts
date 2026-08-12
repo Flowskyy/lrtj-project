@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionWithUser } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
-  const session = await getSessionWithUser();
+  const session = await getSession();
   
   if (!session?.user?.id) {
     return new Response('Unauthorized', { status: 401 });
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching initial users:', error);
       }
 
-      // Poll for changes every 5 seconds
+      // Poll for changes every 15 seconds
       const interval = setInterval(async () => {
         if (isClosed) return;
         try {

@@ -96,7 +96,8 @@ const NAV_ITEMS = [
       { href: "/master/popups", label: "Popups", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/membership", label: "Membership", icon: <Award className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
-      { href: "/master/admin-management", label: "Auth Management", icon: <User className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/master/admin-management", label: "Admin Management", icon: <User className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/master/invitation", label: "Invitation", icon: <Mail className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/activity-log", label: "Activity Log", icon: <Clock className="h-4 w-4" strokeWidth={2} /> },
     ],
   },
@@ -141,7 +142,8 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       'popups': 'Popups',
       'membership': 'Membership',
       'roles': 'Roles',
-      'admin-management': 'Auth Management',
+      'admin-management': 'Admin Management',
+      'invitation': 'Invitation',
       'activity-log': 'Activity Log',
     }
 
@@ -486,8 +488,13 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       }
     : pathname === "/master/admin-management"
     ? {
-        title: "Auth Management",
-        breadcrumb: ["Master", "Auth Management"],
+        title: "Admin Management",
+        breadcrumb: ["Master", "Admin Management"],
+      }
+    : pathname === "/master/invitation"
+    ? {
+        title: "Invitation",
+        breadcrumb: ["Master", "Invitation"],
       }
     : pathname === "/users"
     ? {
@@ -536,7 +543,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Sidebar collapsible="icon" className="border-r border-gray-100 group-data-[state=expanded]:min-w-64">
+      <Sidebar collapsible="icon" className="border-r border-gray-200/60 group-data-[state=expanded]:min-w-64">
 
         <SidebarHeader className="pt-4 pb-2 flex items-center justify-center overflow-hidden">
 
@@ -571,7 +578,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         <SidebarContent className="px-2 group-data-[state=collapsed]:px-0">
 
           <div className="px-3 pt-1 pb-2">
-<div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
+<SidebarSeparator />
 </div>
 
           <SidebarMenu>
@@ -589,7 +596,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
                 {item.label === "Merchandise" && (
                   <div className="px-3 pt-1 pb-2">
-<div data-orientation="horizontal" role="separator" aria-orientation="horizontal" data-slot="sidebar-separator" data-sidebar="separator" className="shrink-0 data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch bg-sidebar-border"></div>
+<SidebarSeparator />
 </div>
                 )}
 
@@ -601,48 +608,67 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-gray-100 group-data-[state=collapsed]:hidden">
+        <SidebarFooter className="border-t border-white/60 group-data-[state=collapsed]:hidden">
 
-          <div className="flex items-center gap-3 px-3 py-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="mx-2 mb-2 w-[calc(100%-1rem)] cursor-pointer rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 shadow-[0_8px_32px_0_rgba(31,38,135,0.08)] backdrop-blur-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50 hover:bg-white/50 transition-colors">
+              <div className="flex items-center gap-3">
 
-            <Avatar className="h-8 w-8 border border-gray-100">
+                <Avatar className="h-9 w-9 shrink-0 border border-white/60">
 
-              <AvatarFallback className="bg-[#E5262C]/10 text-[#E5262C] font-semibold text-sm">
+                  <AvatarFallback className="bg-white/70 text-[#E5262C] font-semibold text-sm">
 
-                {!displaySession ? (
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-[#E5262C]/50" />
-                ) : (
-                  getUserInitials()
-                )}
-              </AvatarFallback>
+                    {!displaySession ? (
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-[#E5262C]/50" />
+                    ) : (
+                      getUserInitials()
+                    )}
+                  </AvatarFallback>
 
-            </Avatar>
+                </Avatar>
 
-            <div className="flex flex-col">
+                <div className="flex flex-col min-w-0 gap-1">
 
-              <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-gray-900 truncate text-left" title={displaySession?.user?.email || 'User'}>
 
-                {!displaySession ? (
-                  <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
-                ) : (
-                  displaySession?.user?.email || 'User'
-                )}
+                    {!displaySession ? (
+                      <div className="h-3 w-20 animate-pulse rounded bg-gray-200/70" />
+                    ) : (
+                      displaySession?.user?.email || 'User'
+                    )}
 
-              </span>
+                  </span>
 
-              <span className="text-xs text-gray-500">
+                  <span className="inline-flex w-fit items-center rounded-full border border-white/40 bg-white/50 px-2 py-0.5 text-[11px] font-medium text-gray-600 backdrop-blur-sm">
 
-                {!displaySession || loadingRole ? (
-                  <div className="h-2 w-24 animate-pulse rounded bg-gray-200 mt-1" />
-                ) : (
-                  userRole || 'No role'
-                )}
+                    {!displaySession || loadingRole ? (
+                      <div className="h-2 w-16 animate-pulse rounded bg-gray-200/70" />
+                    ) : (
+                      userRole || 'No role'
+                    )}
 
-              </span>
+                  </span>
 
-            </div>
+                </div>
 
-          </div>
+              </div>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent side="top" align="center" className="w-56">
+              <div className="px-2 py-1.5 text-sm text-gray-900 font-medium border-b truncate" title={displaySession?.user?.email || 'User'}>
+                {displaySession?.user?.email || 'User'}
+              </div>
+              <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer">
+                <Key className="mr-2 h-4 w-4" />
+                <span>Change Password</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
+                <Lock className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
         </SidebarFooter>
 
@@ -650,7 +676,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
 
       <SidebarInset>
 
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 bg-white px-4 shadow-[0_0.5px_0_rgba(0,0,0,0.1)]">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-gray-200/60 bg-[rgba(255,255,255,0.72)] backdrop-blur-[16px] px-4">
 
           <SidebarTrigger className="h-9 w-9 border-0" />
 
@@ -729,8 +755,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             ? "/master/membership"
                             : item === "Roles"
                             ? "/master/roles"
-                            : item === "Auth Management"
+                            : item === "Admin Management"
                             ? "/master/admin-management"
+                            : item === "Invitation"
+                            ? "/master/invitation"
                             : "/"
                         }
                       >
@@ -753,53 +781,6 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
               <Clock className="h-4 w-4" />
               <span className="font-mono">{currentTime}</span>
             </div>
-
-            <DropdownMenu>
-
-              <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-full hover:bg-muted">
-
-                <Avatar className="h-8 w-8 border border-gray-100">
-
-                  <AvatarFallback className="bg-[#E5262C]/10 text-[#E5262C] font-semibold text-sm">
-
-                    {!displaySession ? (
-                      <div className="h-2 w-2 animate-pulse rounded-full bg-[#E5262C]/50" />
-                    ) : (
-                      getUserInitials()
-                    )}
-                  </AvatarFallback>
-
-                </Avatar>
-
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end" className="w-48">
-
-                <div className="px-2 py-1.5 text-sm text-gray-900 font-medium border-b">
-                  {displaySession?.user?.email || 'User'}
-                </div>
-
-                <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer">
-
-                  <Key className="mr-2 h-4 w-4" />
-
-                  <span>Change Password</span>
-
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
-
-                  <Lock className="mr-2 h-4 w-4" />
-
-                  <span>Logout</span>
-
-                </DropdownMenuItem>
-
-              </DropdownMenuContent>
-
-            </DropdownMenu>
 
           </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getSessionOptimistic } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 export const runtime = 'nodejs'
 
@@ -11,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/access-denied"]
+  const publicRoutes = ["/login", "/access-denied", "/waiting-for-approval"]
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next()
   }
@@ -28,9 +29,25 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check if user has a role assigned
-    const roleId = session.user?.roleId
-    if (!roleId) {
-      return NextResponse.redirect(new URL("/access-denied", request.url))
+    const userId = session.user?.id
+    const cachedRoleId = session.user?.roleId
+
+    if (!cachedRoleId && userId) {
+      // JWT cookie cache may be stale (24h cache) - fall back to DB for users whose
+      // cached roleId is null. This lets a just-approved SSO user in without re-login.
+      // Only this branch hits the DB; normal users keep the fast cached path.
+      try {
+        const dbUser = await prisma.auth_users.findUnique({
+          where: { id: userId },
+          select: { roleId: true },
+        })
+        if (dbUser?.roleId) {
+          return NextResponse.next()
+        }
+      } catch (error) {
+        console.error("Middleware DB role check failed:", error)
+      }
+      return NextResponse.redirect(new URL("/waiting-for-approval", request.url))
     }
 
     // Note: Detailed permission checking moved to page level to avoid DB calls in middleware

@@ -9,9 +9,10 @@ import { prisma } from '@/lib/prisma'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
       // Check if user is authenticated
       if (!userId) {
@@ -27,7 +28,7 @@ export async function POST(
         where: { id: userId },
         select: {
           roleId: true,
-          auth_roles: {
+          admin_roles: {
             select: {
               isSuperAdmin: true,
             },
@@ -43,7 +44,7 @@ export async function POST(
       }
 
       // Check if user is super admin
-      const isSuperAdmin = (user.auth_roles as any)?.isSuperAdmin ?? false
+      const isSuperAdmin = (user.admin_roles as any)?.isSuperAdmin ?? false
 
       if (!isSuperAdmin) {
         return NextResponse.json(
@@ -53,7 +54,7 @@ export async function POST(
       }
 
       // Parse the log ID
-      const logId = BigInt(params.id)
+      const logId = BigInt(id)
 
       // Perform the revert
       const result = await revertActivityLog(

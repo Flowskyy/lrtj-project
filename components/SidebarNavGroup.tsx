@@ -2,16 +2,12 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronRight, ChevronDown } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import {
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
@@ -44,11 +40,11 @@ export function SidebarNavGroup({
   const pathname = usePathname()
   const { state, toggleSidebar } = useSidebar()
   const isCollapsedState = state === "collapsed"
-  
+
   // For flat items (no subItems)
   if (!subItems || subItems.length === 0) {
     if (!href) return null
-    
+
     const isActive = href === "/dashboard"
       ? pathname === "/dashboard"
       : pathname.startsWith(href)
@@ -102,15 +98,21 @@ export function SidebarNavGroup({
           {icon}
         </SidebarMenuButton>
       </div>
+
       {/* Full collapsible version when expanded */}
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/collapsible group-data-[collapsible=icon]:hidden">
-        <CollapsibleTrigger className={`flex w-full items-center justify-between rounded-md p-2 transition-colors ${isGroupActive ? 'bg-primary/10 text-primary' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}>
-          <div className="flex items-center gap-2">
-            {icon}
-            <span className="text-sm font-medium">{label}</span>
-          </div>
-          {isOpen ? <ChevronDown className="h-4 w-4 transition-transform duration-200" /> : <ChevronRight className="h-4 w-4 transition-transform duration-200" />}
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          render={
+            <SidebarMenuButton
+              isActive={isGroupActive}
+              tooltip={isCollapsedState ? label : undefined}
+            >
+              {icon}
+              <span className="text-sm font-medium">{label}</span>
+              <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+            </SidebarMenuButton>
+          }
+        />
         <CollapsibleContent>
           <SidebarMenuSub>
             {subItems.map((subItem) => {

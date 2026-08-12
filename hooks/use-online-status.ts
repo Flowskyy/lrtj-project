@@ -19,7 +19,7 @@ interface UseOnlineStatusOptions {
 
 export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   const {
-    heartbeatInterval = 1, // Send heartbeat every 1 second
+    heartbeatInterval = 10, // Send heartbeat every 10 seconds
     cleanupInterval = 60, // Trigger cleanup every 60 seconds (safety net, not primary detection)
   } = options;
 

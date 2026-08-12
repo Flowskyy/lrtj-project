@@ -18,6 +18,7 @@ const ROUTE_TO_PAGE_KEY: Record<string, string> = {
   '/master/membership': 'master-membership',
   '/master/roles': 'master-roles',
   '/master/admin-management': 'master-admin-management',
+  '/master/invitation': 'master-invitation',
   '/master/activity-log': 'master-activity-log',
   '/master/banner/add': 'master-banner',
   '/master/banner/edit': 'master-banner',
@@ -55,6 +56,7 @@ const PAGE_ROUTE_MAP: Record<string, string> = {
   'master-membership': '/master/membership',
   'master-roles': '/master/roles',
   'master-admin-management': '/master/admin-management',
+  'master-invitation': '/master/invitation',
   'master-activity-log': '/master/activity-log',
 }
 

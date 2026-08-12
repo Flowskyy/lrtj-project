@@ -11,10 +11,19 @@ export default async function ActivityLogPage() {
   }
 
   // Check specific permission for activity log
-  const hasAccess = await hasPageAccess(session.user.roleId, '/master/activity-log')
+  const hasAccess = await hasPageAccess(session.user.roleId ?? null, '/master/activity-log')
   if (!hasAccess) {
     redirect('/access-denied')
   }
 
-  return <ActivityLogContent currentUserId={session.user.id} />
+  return (
+    <div
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(135deg, rgba(229, 38, 44, 0.02) 0%, rgba(189, 130, 38, 0.015) 50%, rgba(51, 51, 51, 0.01) 100%)',
+      }}
+    >
+      <ActivityLogContent currentUserId={session.user.id} />
+    </div>
+  )
 }
