@@ -6,29 +6,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save, X } from "lucide-react";
 import Link from "next/link";
-
-const ALL_PAGE_KEYS = [
-  { key: 'dashboard', label: 'Dashboard', group: 'Main' },
-  { key: 'users', label: 'Users', group: 'Main' },
-  { key: 'news', label: 'News', group: 'Main' },
-  { key: 'notifications', label: 'Notifications', group: 'Main' },
-  { key: 'larata-club-earning', label: 'LarataClub History', group: 'Main' },
-  { key: 'merchandise', label: 'Merchandise', group: 'Merchandise' },
-  { key: 'redeem-merchandise', label: 'Redeem Merchandise', group: 'Merchandise' },
-  { key: 'daily-benefit', label: 'Daily Benefit', group: 'Daily Benefit' },
-  { key: 'redeem-benefit', label: 'Redeem Benefit', group: 'Daily Benefit' },
-  { key: 'master-merchandise-category', label: 'Merchandise Category', group: 'Master' },
-  { key: 'master-welcome-point', label: 'Welcome Point', group: 'Master' },
-  { key: 'master-banner', label: 'Banner', group: 'Master' },
-  { key: 'master-popups', label: 'Popups', group: 'Master' },
-  { key: 'master-membership', label: 'Membership', group: 'Master' },
-  { key: 'master-roles', label: 'Roles', group: 'Master' },
-];
+import PagePermissionSelector from "@/components/PagePermissionSelector";
 
 interface RolesAddContentProps {
   userEmail: string | null;
@@ -83,23 +65,12 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
     }));
   };
 
-  const selectAllInGroup = (group: string) => {
-    const groupKeys = ALL_PAGE_KEYS.filter(p => p.group === group).map(p => p.key);
-    const allSelected = groupKeys.every(key => formData.permissions.includes(key));
-    
+  const handleBatchPermissionChange = (newPermissions: string[]) => {
     setFormData(prev => ({
       ...prev,
-      permissions: allSelected
-        ? prev.permissions.filter(p => !groupKeys.includes(p))
-        : [...new Set([...prev.permissions, ...groupKeys])]
+      permissions: newPermissions
     }));
   };
-
-  const groupedPages = ALL_PAGE_KEYS.reduce((acc, page) => {
-    if (!acc[page.group]) acc[page.group] = [];
-    acc[page.group].push(page);
-    return acc;
-  }, {} as Record<string, typeof ALL_PAGE_KEYS>);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -152,54 +123,12 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
 
           {/* Permissions */}
           {!formData.isSuperAdmin && (
-            <div className="space-y-4">
-              <div>
-                <Label>Page Permissions</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select which pages this role can access
-                </p>
-              </div>
-
-              {Object.entries(groupedPages).map(([group, pages]) => (
-                <Card key={group} className="border">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{group}</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => selectAllInGroup(group)}
-                        disabled={isSubmitting}
-                      >
-                        {pages.every(p => formData.permissions.includes(p.key))
-                          ? "Deselect All"
-                          : "Select All"}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {pages.map((page) => (
-                        <div key={page.key} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={page.key}
-                            checked={formData.permissions.includes(page.key)}
-                            onCheckedChange={() => togglePermission(page.key)}
-                            disabled={isSubmitting}
-                          />
-                          <Label
-                            htmlFor={page.key}
-                            className="text-sm font-normal cursor-pointer"
-                          >
-                            {page.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <PagePermissionSelector
+              selectedPermissions={formData.permissions}
+              onPermissionToggle={togglePermission}
+              onBatchPermissionChange={handleBatchPermissionChange}
+              disabled={isSubmitting}
+            />
           )}
 
           {/* Footer Actions */}

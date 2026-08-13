@@ -6,30 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Save, X } from "lucide-react";
+import { ArrowLeft, Save, X, UserX } from "lucide-react";
 import Link from "next/link";
-
-const ALL_PAGE_KEYS = [
-  { key: 'dashboard', label: 'Dashboard', group: 'Main' },
-  { key: 'users', label: 'Users', group: 'Main' },
-  { key: 'news', label: 'News', group: 'Main' },
-  { key: 'notifications', label: 'Notifications', group: 'Main' },
-  { key: 'larata-club-earning', label: 'LarataClub History', group: 'Main' },
-  { key: 'merchandise', label: 'Merchandise', group: 'Merchandise' },
-  { key: 'redeem-merchandise', label: 'Redeem Merchandise', group: 'Merchandise' },
-  { key: 'daily-benefit', label: 'Daily Benefit', group: 'Daily Benefit' },
-  { key: 'redeem-benefit', label: 'Redeem Benefit', group: 'Daily Benefit' },
-  { key: 'master-merchandise-category', label: 'Merchandise Category', group: 'Master' },
-  { key: 'master-welcome-point', label: 'Welcome Point', group: 'Master' },
-  { key: 'master-banner', label: 'Banner', group: 'Master' },
-  { key: 'master-popups', label: 'Popups', group: 'Master' },
-  { key: 'master-membership', label: 'Membership', group: 'Master' },
-  { key: 'master-roles', label: 'Roles', group: 'Master' },
-];
+import PagePermissionSelector from "@/components/PagePermissionSelector";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface RoleDetail {
   id: number;
@@ -42,6 +25,13 @@ interface RoleDetail {
     role_permissions: number;
     auth_users: number;
   };
+}
+
+interface RoleUser {
+  id: string;
+  name: string;
+  email: string;
+  roleId: number | null;
 }
 
 interface RolesEditContentProps {
@@ -61,6 +51,13 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
     permissions: [] as string[]
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // User list states
+  const [users, setUsers] = useState<RoleUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [kickDialogOpen, setKickDialogOpen] = useState(false);
+  const [userToKick, setUserToKick] = useState<RoleUser | null>(null);
+  const [isKicking, setIsKicking] = useState(false);
 
   const fetchRole = async () => {
     setLoading(true);
@@ -72,7 +69,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
         setFormData({
           name: roleDetail.name,
           isSuperAdmin: roleDetail.isSuperAdmin,
-          permissions: roleDetail.role_permissions.map(p => p.pageKey)
+          permissions: roleDetail.role_permissions.map(p => p.pageKey).filter(p => p !== 'daily-benefit')
         });
       } else {
         toast.error("Failed to fetch role details");
@@ -89,7 +86,25 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
 
   useEffect(() => {
     fetchRole();
+    fetchUsers();
   }, [roleId]);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch(`/api/roles/${roleId}/users`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users || []);
+      } else {
+        console.error("Failed to fetch users for role");
+      }
+    } catch (err) {
+      console.error("Failed to fetch users for role", err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const handleEdit = async () => {
     if (!formData.name.trim()) {
@@ -129,23 +144,45 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
     }));
   };
 
-  const selectAllInGroup = (group: string) => {
-    const groupKeys = ALL_PAGE_KEYS.filter(p => p.group === group).map(p => p.key);
-    const allSelected = groupKeys.every(key => formData.permissions.includes(key));
-    
+  const handleBatchPermissionChange = (newPermissions: string[]) => {
     setFormData(prev => ({
       ...prev,
-      permissions: allSelected
-        ? prev.permissions.filter(p => !groupKeys.includes(p))
-        : [...new Set([...prev.permissions, ...groupKeys])]
+      permissions: newPermissions
     }));
   };
 
-  const groupedPages = ALL_PAGE_KEYS.reduce((acc, page) => {
-    if (!acc[page.group]) acc[page.group] = [];
-    acc[page.group].push(page);
-    return acc;
-  }, {} as Record<string, typeof ALL_PAGE_KEYS>);
+  const openKickDialog = (user: RoleUser) => {
+    setUserToKick(user);
+    setKickDialogOpen(true);
+  };
+
+  const handleKick = async () => {
+    if (!userToKick) return;
+
+    setIsKicking(true);
+    try {
+      const res = await fetch(`/api/admin-users/${userToKick.id}/role`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success(`User "${userToKick.name}" removed from role`);
+        setKickDialogOpen(false);
+        setUserToKick(null);
+        fetchUsers();
+        // Refresh role details to update user count
+        fetchRole();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to remove user from role");
+      }
+    } catch (err) {
+      console.error("Failed to remove user from role", err);
+      toast.error("Failed to remove user from role");
+    } finally {
+      setIsKicking(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -230,56 +267,63 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
             </div>
           )}
 
+          {/* Users with this role */}
+          <div className="space-y-4">
+            <div>
+              <Label>Users with this role</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Manage users currently assigned to this role
+              </p>
+            </div>
+
+            {loadingUsers ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                No users assigned to this role
+              </div>
+            ) : (
+              <div className="border rounded-lg divide-y">
+                {users.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-600">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">{user.name}</div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openKickDialog(user)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Remove user from role"
+                    >
+                      <UserX className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Permissions */}
           {!formData.isSuperAdmin && (
-            <div className="space-y-4">
-              <div>
-                <Label>Page Permissions</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select which pages this role can access
-                </p>
-              </div>
-
-              {Object.entries(groupedPages).map(([group, pages]) => (
-                <Card key={group} className="border">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{group}</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => selectAllInGroup(group)}
-                        disabled={isSubmitting}
-                      >
-                        {pages.every(p => formData.permissions.includes(p.key))
-                          ? "Deselect All"
-                          : "Select All"}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {pages.map((page) => (
-                        <div key={page.key} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={page.key}
-                            checked={formData.permissions.includes(page.key)}
-                            onCheckedChange={() => togglePermission(page.key)}
-                            disabled={isSubmitting}
-                          />
-                          <Label
-                            htmlFor={page.key}
-                            className="text-sm font-normal cursor-pointer"
-                          >
-                            {page.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <PagePermissionSelector
+              selectedPermissions={formData.permissions}
+              onPermissionToggle={togglePermission}
+              onBatchPermissionChange={handleBatchPermissionChange}
+              disabled={isSubmitting}
+            />
           )}
 
           {/* Footer Actions */}
@@ -297,6 +341,37 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
           </div>
         </CardContent>
       </Card>
+
+      {/* Kick Confirmation Dialog */}
+      {userToKick && (
+        <Dialog open={kickDialogOpen} onOpenChange={setKickDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Remove User from Role</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to remove <strong>{userToKick.name}</strong> from this role?
+                This will revoke their access to pages granted by this role and force them to re-login.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setKickDialogOpen(false)}
+                disabled={isKicking}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleKick}
+                disabled={isKicking}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isKicking ? "Removing..." : "Remove User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

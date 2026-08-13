@@ -98,7 +98,7 @@ const NAV_ITEMS = [
     ],
   },
   {
-    label: "Admin Control Panel",
+    label: "Security",
     icon: <Shield {...SIDEBAR_ICON_PROPS} />,
     subItems: [
       { href: "/admin-control-panel/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
@@ -147,7 +147,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       'banner': 'Banner',
       'popups': 'Popups',
       'membership': 'Membership',
-      'admin-control-panel': 'Admin Control Panel',
+      'admin-control-panel': 'Security',
       'roles': 'Roles',
       'admin-management': 'Admin Management',
       'invitation': 'Invitation',
@@ -485,32 +485,32 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     : pathname === "/admin-control-panel/roles"
     ? {
         title: "Roles",
-        breadcrumb: ["Admin Control Panel", "Roles"],
+        breadcrumb: ["Security", "Roles"],
       }
     : pathname === "/admin-control-panel/roles/add"
     ? {
         title: "Add Role",
-        breadcrumb: ["Admin Control Panel", "Roles", "Add Role"],
+        breadcrumb: ["Security", "Roles", "Add Role"],
       }
     : pathname.startsWith("/admin-control-panel/roles/edit/")
     ? {
         title: "Edit Role",
-        breadcrumb: ["Admin Control Panel", "Roles", "Edit Role"],
+        breadcrumb: ["Security", "Roles", "Edit Role"],
       }
     : pathname === "/admin-control-panel/admin-management"
     ? {
         title: "Admin Management",
-        breadcrumb: ["Admin Control Panel", "Admin Management"],
+        breadcrumb: ["Security", "Admin Management"],
       }
     : pathname === "/admin-control-panel/invitation"
     ? {
         title: "Invitation",
-        breadcrumb: ["Admin Control Panel", "Invitation"],
+        breadcrumb: ["Security", "Invitation"],
       }
     : pathname === "/admin-control-panel/activity-log"
     ? {
         title: "Activity Log",
-        breadcrumb: ["Admin Control Panel", "Activity Log"],
+        breadcrumb: ["Security", "Activity Log"],
       }
     : pathname === "/users"
     ? {
@@ -610,7 +610,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                   subItems={item.subItems}
                 />
 
-                {(item.label === "Merchandise" || item.label === "Master") && (
+                {(item.label === "Merchandise" || item.label === "Master" || item.label === "Security") && (
                   <div className="px-3 pt-1 pb-2">
 <SidebarSeparator />
 </div>

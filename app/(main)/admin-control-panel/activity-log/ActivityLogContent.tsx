@@ -393,20 +393,6 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                             </div>
                           )}
                         </div>
-
-                        {!log.revertedAt && (
-                          <div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openRevertDialog(log)}
-                              className="border-red-200 bg-red-50/50 text-[#E5262C] hover:bg-red-50 hover:text-[#c41e24] transition-colors gap-2 text-xs"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              Revert this change
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     ),
                     cells: [
@@ -453,21 +439,36 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                         )}
                       </div>,
                       <div key="actions" className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setExpandedLogId(
-                            expandedLogId === log.id ? null : log.id
-                          )}
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                          title={isExpanded ? "Collapse details" : "View details"}
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
+                        {log.revertedAt ? (
+                          <span className="text-xs text-gray-500 italic">(reverted)</span>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openRevertDialog(log)}
+                              className="h-8 w-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Revert this change"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setExpandedLogId(
+                                expandedLogId === log.id ? null : log.id
+                              )}
+                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                              title={isExpanded ? "Collapse details" : "View details"}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </>
+                        )}
                       </div>,
                     ],
                   };
@@ -488,99 +489,97 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
 
       {logToRevert && (
         <Dialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
-          <DialogContent className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden">
-            <div className="p-6">
-              <DialogHeader className="mb-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
-                    <RotateCcw className="h-5 w-5 text-[#E5262C]" />
-                  </div>
-                  <DialogTitle className="text-xl font-semibold text-gray-900">
-                    Revert Activity
-                  </DialogTitle>
+          <DialogContent showCloseButton={false} className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg">
+            <DialogHeader className="mb-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
+                  <RotateCcw className="h-5 w-5 text-[#E5262C]" />
                 </div>
-                <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-                  Are you sure you want to revert this {logToRevert.action.toLowerCase()} action?
-                  This will restore the record to its state before this change.
-                </DialogDescription>
-              </DialogHeader>
+                <DialogTitle className="text-xl font-semibold text-gray-900">
+                  Revert Activity
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+                Are you sure you want to revert this {logToRevert.action.toLowerCase()} action?
+                This will restore the record to its state before this change.
+              </DialogDescription>
+            </DialogHeader>
 
-              <div className="space-y-4 py-2">
-                <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Action</span>
-                      <Badge variant="outline" className={`${getActionBadge(logToRevert.action)} mt-1`}>
-                        {logToRevert.action}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Table</span>
-                      <div className="font-medium text-gray-900 mt-1">
-                        {formatTableForDisplay(logToRevert.tableName)}
-                      </div>
-                    </div>
+            <div className="space-y-4 py-2">
+              <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-1">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Action</span>
+                    <Badge variant="outline" className={`${getActionBadge(logToRevert.action)} mt-1`}>
+                      {logToRevert.action}
+                    </Badge>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Record ID</span>
-                      <div className="font-medium text-gray-900 font-mono mt-1 truncate">
-                        {logToRevert.recordId}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">Time</span>
-                      <div className="font-medium text-gray-900 mt-1 text-xs">
-                        {formatFullDateWithTime(logToRevert.createdAt)}
-                      </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Table</span>
+                    <div className="font-medium text-gray-900 mt-1">
+                      {formatTableForDisplay(logToRevert.tableName)}
                     </div>
                   </div>
                 </div>
 
-                {logToRevert.changedFields && logToRevert.changedFields.length > 0 && (
-                  <div className="rounded-xl border border-gray-200/80 p-4">
-                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Changed Fields</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {logToRevert.changedFields.map(field => (
-                        <Badge
-                          key={field}
-                          variant="outline"
-                          className="text-xs bg-gray-100/80 border-gray-200/80 text-gray-700"
-                        >
-                          {field}
-                        </Badge>
-                      ))}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-1">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Record ID</span>
+                    <div className="font-medium text-gray-900 font-mono mt-1 truncate">
+                      {logToRevert.recordId}
                     </div>
                   </div>
-                )}
+                  <div className="space-y-1">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Time</span>
+                    <div className="font-medium text-gray-900 mt-1 text-xs">
+                      {formatFullDateWithTime(logToRevert.createdAt)}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <DialogFooter className="mt-6 pt-4 border-t border-gray-200/60 flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setRevertDialogOpen(false)}
-                  disabled={isReverting}
-                  className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleRevert}
-                  disabled={isReverting}
-                  className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41e24] text-white font-medium shadow-sm"
-                >
-                  {isReverting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
-                      Reverting...
-                    </span>
-                  ) : (
-                    'Confirm Revert'
-                  )}
-                </Button>
-              </DialogFooter>
+              {logToRevert.changedFields && logToRevert.changedFields.length > 0 && (
+                <div className="rounded-xl border border-gray-200/80 p-4">
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Changed Fields</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {logToRevert.changedFields.map(field => (
+                      <Badge
+                        key={field}
+                        variant="outline"
+                        className="text-xs bg-gray-100/80 border-gray-200/80 text-gray-700"
+                      >
+                        {field}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
+            <DialogFooter className="mt-6 pt-4 border-t border-gray-200/60 flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRevertDialogOpen(false)}
+                disabled={isReverting}
+                className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRevert}
+                disabled={isReverting}
+                className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41e24] text-white font-medium shadow-sm"
+              >
+                {isReverting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                    Reverting...
+                  </span>
+                ) : (
+                  'Confirm Revert'
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
