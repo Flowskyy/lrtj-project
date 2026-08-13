@@ -1,11 +1,19 @@
 import { getSession } from "@/lib/auth"
+import { hasPageAccess } from "@/lib/permissions"
+import { redirect } from "next/navigation"
 import InvitationContent from "./InvitationContent"
 
 export default async function InvitationPage() {
   const session = await getSession()
 
   if (!session?.user) {
-    return null
+    redirect('/login')
+  }
+
+  // Check specific permission for invitation
+  const hasAccess = await hasPageAccess(session.user.roleId ?? null, '/admin-control-panel/invitation')
+  if (!hasAccess) {
+    redirect('/access-denied')
   }
 
   return (

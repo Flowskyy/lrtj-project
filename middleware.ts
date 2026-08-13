@@ -12,9 +12,14 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/access-denied", "/waiting-for-approval"]
+  const publicRoutes = ["/login", "/access-denied"]
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next()
+  }
+
+  // Redirect old waiting-for-approval route to access-denied
+  if (pathname === "/waiting-for-approval") {
+    return NextResponse.redirect(new URL("/access-denied", request.url))
   }
 
   // Protected routes under (main) group
@@ -47,7 +52,7 @@ export async function middleware(request: NextRequest) {
       } catch (error) {
         console.error("Middleware DB role check failed:", error)
       }
-      return NextResponse.redirect(new URL("/waiting-for-approval", request.url))
+      return NextResponse.redirect(new URL("/access-denied", request.url))
     }
 
     // Note: Detailed permission checking moved to page level to avoid DB calls in middleware

@@ -6,14 +6,9 @@ export function useInvitationUpdates() {
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const onInvitationsUpdatedRef = useRef<((invitations: any[]) => void) | null>(null);
-  const onPendingUsersUpdatedRef = useRef<((users: any[]) => void) | null>(null);
 
   const onInvitationsUpdated = useCallback((callback: (invitations: any[]) => void) => {
     onInvitationsUpdatedRef.current = callback;
-  }, []);
-
-  const onPendingUsersUpdated = useCallback((callback: (users: any[]) => void) => {
-    onPendingUsersUpdatedRef.current = callback;
   }, []);
 
   useEffect(() => {
@@ -39,8 +34,6 @@ export function useInvitationUpdates() {
 
         if (data.type === 'invitations_updated') {
           if (onInvitationsUpdatedRef.current) onInvitationsUpdatedRef.current(data.invitations);
-        } else if (data.type === 'pending_users_updated') {
-          if (onPendingUsersUpdatedRef.current) onPendingUsersUpdatedRef.current(data.users);
         }
       } catch (error) {
         console.error('Failed to parse invitation SSE data:', error);
@@ -58,6 +51,5 @@ export function useInvitationUpdates() {
   return {
     isConnected,
     onInvitationsUpdated,
-    onPendingUsersUpdated,
   };
 }

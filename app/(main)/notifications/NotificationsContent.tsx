@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -45,9 +45,11 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [editingItem, setEditingItem] = useState<NotificationItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<NotificationItem | null>(null);
+  const [countdown, setCountdown] = useState(5);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -76,6 +78,21 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // Countdown effect for warning dialog
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+    if (isWarningDialogOpen && countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (isWarningDialogOpen && countdown === 0) {
+      if (interval) clearInterval(interval);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isWarningDialogOpen, countdown]);
 
   // Send notification
   const handleSendNotification = async () => {
@@ -257,12 +274,8 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
             <h2 className="text-xl font-semibold text-gray-900">Notification Management</h2>
             <Button
               onClick={() => {
-                // Reset form to default state when opening dialog
-                setTitle("");
-                setDescription("");
-                setPayload("");
-                setSendPush(true); // Default to ON
-                setIsSendDialogOpen(true);
+                setIsWarningDialogOpen(true);
+                setCountdown(5);
               }}
               className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white"
             >
@@ -350,6 +363,59 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
         </CardContent>
       </Card>
 
+      {/* Warning Confirmation Dialog */}
+      <Dialog open={isWarningDialogOpen} onOpenChange={(open) => {
+        setIsWarningDialogOpen(open);
+        if (!open) {
+          setCountdown(5);
+        }
+      }}>
+        <DialogContent showCloseButton={false} className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg">
+          <DialogHeader className="mb-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
+                <Send className="h-5 w-5 text-[#E5262C]" />
+              </div>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
+                Send Broadcast Notification
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              This will send a push notification to <strong>all users</strong> in the database. This action cannot be undone and will immediately reach every user.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="mt-6 pt-4 border-t border-gray-200/60 flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsWarningDialogOpen(false);
+                setCountdown(5);
+              }}
+              className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700"
+            >
+              Nevermind
+            </Button>
+            <Button
+              onClick={() => {
+                setIsWarningDialogOpen(false);
+                // Reset form to default state when opening dialog
+                setTitle("");
+                setDescription("");
+                setPayload("");
+                setSendPush(true); // Default to ON
+                setIsSendDialogOpen(true);
+                setCountdown(5);
+              }}
+              disabled={countdown > 0}
+              className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41e24] text-white font-medium shadow-sm"
+            >
+              {countdown > 0 ? `Okay (${countdown})` : 'Okay'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Send Notification Dialog */}
       <Dialog open={isSendDialogOpen} onOpenChange={(open) => {
         setIsSendDialogOpen(open);
@@ -359,6 +425,7 @@ export default function NotificationsContent({ }: NotificationsContentProps) {
           setDescription("");
           setPayload("");
           setSendPush(true); // Reset to default (true)
+          setCountdown(5);
         }
       }}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">

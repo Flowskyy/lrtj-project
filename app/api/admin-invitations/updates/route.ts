@@ -73,33 +73,19 @@ export async function GET(request: NextRequest) {
           };
         });
 
-        const pendingUsers = await prisma.$queryRaw`
-          SELECT
-            au.id,
-            au.name,
-            au.email,
-            au.image,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
-          FROM auth_users au
-          WHERE au.roleId IS NULL
-          ORDER BY au.createdAt DESC
-        ` as any[];
-
-        return { invitations: invitationsWithState, pendingUsers };
+        return { invitations: invitationsWithState };
       };
 
-      const publish = (invitations: any[], pendingUsers: any[]) => {
+      const publish = (invitations: any[]) => {
         sendEvent({ type: 'invitations_updated', invitations });
-        sendEvent({ type: 'pending_users_updated', users: pendingUsers });
       };
 
       // Push current state immediately so the client syncs on connect,
       // then only push again when something actually changed.
       try {
-        const { invitations, pendingUsers } = await fetchData();
-        lastSignature = JSON.stringify({ invitations, pendingUsers });
-        publish(invitations, pendingUsers);
+        const { invitations } = await fetchData();
+        lastSignature = JSON.stringify({ invitations });
+        publish(invitations);
       } catch (error) {
         console.error('Error fetching initial invitation data:', error);
       }
@@ -107,13 +93,13 @@ export async function GET(request: NextRequest) {
       const interval = setInterval(async () => {
         if (isClosed) return;
         try {
-          const { invitations, pendingUsers } = await fetchData();
-          const signature = JSON.stringify({ invitations, pendingUsers });
+          const { invitations } = await fetchData();
+          const signature = JSON.stringify({ invitations });
 
           if (signature === lastSignature) return;
 
           lastSignature = signature;
-          publish(invitations, pendingUsers);
+          publish(invitations);
         } catch (error) {
           console.error('Error polling invitation changes:', error);
           isClosed = true;

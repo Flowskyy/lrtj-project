@@ -1,5 +1,5 @@
-import WaitingForApprovalContent from "./WaitingForApprovalContent"
+import { redirect } from "next/navigation"
 
 export default function WaitingForApprovalPage() {
-  return <WaitingForApprovalContent />
+  redirect("/access-denied")
 }

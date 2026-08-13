@@ -109,18 +109,22 @@ const NAV_ITEMS = [
   },
 ]
 
-function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
+function SidebarContentWrapper({ children, initialPermissions }: { children: React.ReactNode; initialPermissions: string[] }) {
   const { state } = useSidebar()
   const pathname = usePathname()
   const { session: displaySession, isPending } = useSessionContext()
   
-  // Permissions state
-  const [userPermissions, setUserPermissions] = React.useState<string[]>([])
-  const [loadingPermissions, setLoadingPermissions] = React.useState(true)
+  // Permissions state - initialized from server-side session
+  const [userPermissions, setUserPermissions] = React.useState<string[]>(initialPermissions)
+  const [loadingPermissions, setLoadingPermissions] = React.useState(false)
 
   // User role state
   const [userRole, setUserRole] = React.useState<string | null>(null)
   const [loadingRole, setLoadingRole] = React.useState(true)
+
+  // Auth provider state
+  const [isMicrosoftUser, setIsMicrosoftUser] = React.useState(false)
+  const [loadingAuthProvider, setLoadingAuthProvider] = React.useState(true)
 
   // Dialog states
   const [changePasswordDialogOpen, setChangePasswordDialogOpen] = React.useState(false)
@@ -251,28 +255,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     return displaySession.user.email.charAt(0).toUpperCase()
   }
 
-  // Fetch user permissions
-  React.useEffect(() => {
-    const fetchPermissions = async () => {
-      if (displaySession?.user) {
-        try {
-          const res = await fetch('/api/user-permissions')
-          if (res.ok) {
-            const data = await res.json()
-            setUserPermissions(data.permissions || [])
-          }
-        } catch (error) {
-          console.error('Failed to fetch permissions:', error)
-        } finally {
-          setLoadingPermissions(false)
-        }
-      } else {
-        setLoadingPermissions(false)
-      }
-    }
 
-    fetchPermissions()
-  }, [displaySession])
 
   // Fetch user role
   React.useEffect(() => {
@@ -297,9 +280,32 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     fetchRole()
   }, [displaySession])
 
+  // Fetch auth provider
+  React.useEffect(() => {
+    const fetchAuthProvider = async () => {
+      if (displaySession?.user) {
+        try {
+          const res = await fetch('/api/user/auth-provider')
+          if (res.ok) {
+            const data = await res.json()
+            setIsMicrosoftUser(data.isMicrosoftUser)
+          }
+        } catch (error) {
+          console.error('Failed to fetch auth provider:', error)
+        } finally {
+          setLoadingAuthProvider(false)
+        }
+      } else {
+        setLoadingAuthProvider(false)
+      }
+    }
+
+    fetchAuthProvider()
+  }, [displaySession])
+
   // Filter nav items based on permissions
   const filteredNavItems = React.useMemo(() => {
-    if (loadingPermissions || !displaySession) return NAV_ITEMS // Show all while loading
+    if (!displaySession) return NAV_ITEMS // Show all if no session
 
     const getPageKey = (href: string) => {
       // Special handling for master routes
@@ -318,7 +324,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         // Single item - check if user has permission
         if (!item.href) return null
         const pageKey = getPageKey(item.href)
-        if (userPermissions.length === 0 || userPermissions.includes(pageKey)) {
+        if (userPermissions.includes(pageKey)) {
           return item
         }
         return null
@@ -327,7 +333,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         const filteredSubItems = item.subItems.filter(subItem => {
           if (!subItem.href) return false
           const pageKey = getPageKey(subItem.href)
-          return userPermissions.length === 0 || userPermissions.includes(pageKey)
+          return userPermissions.includes(pageKey)
         })
 
         if (filteredSubItems.length > 0) {
@@ -336,7 +342,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         return null
       }
     }).filter(Boolean) as typeof NAV_ITEMS
-  }, [userPermissions, loadingPermissions, isPending])
+  }, [userPermissions, isPending])
 
   // Live WIB clock state
   const [currentTime, setCurrentTime] = React.useState<string>("")
@@ -349,7 +355,9 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
     updateTime()
     const interval = setInterval(updateTime, 1000)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [])
 
   const pageMeta = pathname === "/merchandise"
@@ -674,11 +682,15 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
               <div className="px-2 py-1.5 text-sm text-gray-900 font-medium border-b truncate" title={displaySession?.user?.email || 'User'}>
                 {displaySession?.user?.email || 'User'}
               </div>
-              <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer">
-                <Key className="mr-2 h-4 w-4" />
-                <span>Change Password</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {!loadingAuthProvider && !isMicrosoftUser && (
+                <>
+                  <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer">
+                    <Key className="mr-2 h-4 w-4" />
+                    <span>Change Password</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
                 <Lock className="mr-2 h-4 w-4" />
                 <span>Logout</span>
@@ -831,12 +843,12 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function DashboardLayoutClient({ children, initialSession }: { children: React.ReactNode; initialSession: any }) {
+export function DashboardLayoutClient({ children, initialSession, initialPermissions }: { children: React.ReactNode; initialSession: any; initialPermissions: string[] }) {
   return (
     <SessionProvider initialSession={initialSession}>
       <ActionProvider>
         <SidebarProvider defaultOpen={true}>
-          <SidebarContentWrapper>{children}</SidebarContentWrapper>
+          <SidebarContentWrapper initialPermissions={initialPermissions}>{children}</SidebarContentWrapper>
         </SidebarProvider>
       </ActionProvider>
     </SessionProvider>

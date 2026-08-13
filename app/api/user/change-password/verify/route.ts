@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getWIBDate } from '@/lib/utils';
+import crypto from 'crypto';
+
+// Hash OTP using SHA-256
+function hashOtp(otp: string): string {
+  return crypto.createHash('sha256').update(otp).digest('hex');
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,11 +23,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { currentPassword, newPassword } = body;
+    const { otp, newPassword } = body;
 
-    if (!currentPassword || !newPassword) {
+    if (!otp || !newPassword) {
       return NextResponse.json(
-        { error: 'Current password and new password are required' },
+        { error: 'OTP and new password are required' },
         { status: 400 }
       );
     }
@@ -33,34 +39,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify current password by attempting to sign in
-    const signInResult = await auth.api.signInEmail({
-      body: {
-        email: session.user.email,
-        password: currentPassword,
+    // Check if user is Microsoft-authenticated (should not be able to change password)
+    const microsoftAccount = await prisma.auth_accounts.findFirst({
+      where: {
+        userId: session.user.id,
+        providerId: 'microsoft',
       },
     });
 
-    if ('error' in signInResult && signInResult.error) {
+    if (microsoftAccount) {
       return NextResponse.json(
-        { error: 'Current password is incorrect' },
+        { error: 'Microsoft-authenticated users cannot change password' },
+        { status: 403 }
+      );
+    }
+
+    // Verify OTP
+    const otpHash = hashOtp(otp);
+    const verifications = await prisma.$queryRaw`
+      SELECT 
+        id,
+        value,
+        DATE_FORMAT(expiresAt, '%Y-%m-%dT%H:%i:%s') as expiresAt
+      FROM auth_verifications
+      WHERE identifier = ${`password-change:${session.user.id}`}
+    ` as any[];
+
+    if (!verifications || verifications.length === 0) {
+      return NextResponse.json(
+        { error: 'No verification code found. Please request a new code.' },
         { status: 400 }
       );
     }
 
-    // Update password using better-auth's internal method
-    // Better-auth stores password in auth_accounts table
-    // We need to update it using the same hashing method
-    
-    // Get the user's account
-    const user = await prisma.auth_users.findUnique({
-      where: { id: session.user.id },
-    });
+    const verification = verifications[0];
 
-    if (!user) {
+    // Check if OTP has expired
+    const currentTime = await prisma.$queryRaw`
+      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
+    ` as any[];
+    
+    if (currentTime[0]?.currentTime > verification.expiresAt) {
+      // Delete expired verification
+      await prisma.$queryRaw`
+        DELETE FROM auth_verifications WHERE id = ${verification.id}
+      `;
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+        { error: 'Verification code has expired. Please request a new code.' },
+        { status: 400 }
+      );
+    }
+
+    // Verify OTP hash
+    if (otpHash !== verification.value) {
+      return NextResponse.json(
+        { error: 'Invalid verification code' },
+        { status: 400 }
       );
     }
 
@@ -68,8 +102,8 @@ export async function POST(request: NextRequest) {
     const passwordAccount = await prisma.auth_accounts.findFirst({
       where: {
         userId: session.user.id,
-        providerId: 'email'
-      }
+        providerId: 'email',
+      },
     });
 
     if (!passwordAccount) {
@@ -79,11 +113,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use better-auth's password update if available, otherwise use workaround
-    // Since better-auth doesn't expose a direct password update method,
-    // we'll use the sign up method to generate a proper hash
-    
-    // Create a temporary user to get the proper password hash
+    // Generate proper password hash using better-auth's signUp method
     const tempEmail = `temp_${Date.now()}@temp.com`;
     const tempResult = await auth.api.signUpEmail({
       body: {
@@ -93,7 +123,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Check if tempResult has error property
     const tempUser = (tempResult as any).user;
     if (!tempUser) {
       return NextResponse.json(
@@ -104,10 +133,10 @@ export async function POST(request: NextRequest) {
 
     // Get the temp account's password hash
     const tempAccount = await prisma.auth_accounts.findFirst({
-      where: { 
+      where: {
         userId: tempUser.id,
-        providerId: 'email'
-      }
+        providerId: 'email',
+      },
     });
 
     if (!tempAccount?.password) {
@@ -122,20 +151,25 @@ export async function POST(request: NextRequest) {
     // Update the real user's password
     await prisma.auth_accounts.update({
       where: { id: passwordAccount.id },
-      data: { 
+      data: {
         password: tempAccount.password,
-        updatedAt: getWIBDate()
-      }
+        updatedAt: getWIBDate(),
+      },
     });
 
     // Clean up temp user
     await prisma.auth_users.delete({ where: { id: tempUser.id } });
 
+    // Delete used verification
+    await prisma.$queryRaw`
+      DELETE FROM auth_verifications WHERE id = ${verification.id}
+    `;
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error changing password:', error);
+    console.error('Error verifying password change OTP:', error);
     return NextResponse.json(
-      { error: 'Failed to change password' },
+      { error: 'Failed to verify code' },
       { status: 500 }
     );
   }

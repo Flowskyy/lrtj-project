@@ -1,11 +1,19 @@
 import { getSession } from "@/lib/auth"
+import { hasPageAccess } from "@/lib/permissions"
+import { redirect } from "next/navigation"
 import AdminManagementContent from "./AdminManagementContent"
 
 export default async function AdminManagementPage() {
   const session = await getSession()
 
   if (!session?.user) {
-    return null
+    redirect('/login')
+  }
+
+  // Check specific permission for admin management
+  const hasAccess = await hasPageAccess(session.user.roleId ?? null, '/admin-control-panel/admin-management')
+  if (!hasAccess) {
+    redirect('/access-denied')
   }
 
   return (

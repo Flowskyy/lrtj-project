@@ -107,9 +107,9 @@ export function SidebarNavGroup({
               isActive={isGroupActive}
               tooltip={isCollapsedState ? label : undefined}
             >
-              {icon}
-              <span className="text-sm font-medium">{label}</span>
-              <ChevronRight className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+               {icon}
+               <span className="text-sm font-medium">{label}</span>
+               <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[open]/collapsible:rotate-90" />
             </SidebarMenuButton>
           }
         />

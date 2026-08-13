@@ -46,11 +46,9 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
-  headerPadding = "py-1",
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
-  headerPadding?: string
 }) {
   return (
     <DialogPortal>
@@ -65,7 +63,7 @@ function DialogContent({
         {...props}
       >
         {/* Header section - fixed, contains close button */}
-        <div className={`flex items-center justify-between px-4 py-1 shrink-0`}>
+        <div className={`flex items-center justify-between px-4 pt-4 shrink-0`}>
           <div className="flex-1">
             {React.Children.map(children, (child) => {
               if (React.isValidElement(child) && (child as any).type?.displayName === 'DialogHeader') {
@@ -94,7 +92,7 @@ function DialogContent({
         </div>
 
         {/* Body section - scrollable */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto px-4 scrollbar-hide">
           <div className="space-y-4">
             {React.Children.map(children, (child) => {
               if (React.isValidElement(child)) {

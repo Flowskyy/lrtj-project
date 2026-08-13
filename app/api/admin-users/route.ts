@@ -6,29 +6,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const roleId = searchParams.get('roleId')
-    const pending = searchParams.get('pending')
-
-    // Handle pending users query (users with roleId IS NULL - signed in via SSO but not approved)
-    if (pending === 'true') {
-      try {
-        const users = await prisma.$queryRaw`
-          SELECT
-            au.id,
-            au.name,
-            au.email,
-            au.image,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
-          FROM auth_users au
-          WHERE au.roleId IS NULL
-          ORDER BY au.createdAt DESC
-        ` as any[];
-        return NextResponse.json(users)
-      } catch (error) {
-        console.error('Error fetching pending users:', error)
-        return NextResponse.json({ error: 'Failed to fetch pending users' }, { status: 500 })
-      }
-    }
 
     let users: any[];
     

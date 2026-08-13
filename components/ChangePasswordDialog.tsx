@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye, EyeOff, Mail } from "lucide-react"
+import { toast } from "sonner"
 
 interface ChangePasswordDialogProps {
   open: boolean
@@ -14,18 +15,45 @@ interface ChangePasswordDialogProps {
 }
 
 export default function ChangePasswordDialog({ open, onOpenChange, onPasswordChanged }: ChangePasswordDialogProps) {
-  const [currentPassword, setCurrentPassword] = useState("")
+  const [step, setStep] = useState<'request' | 'verify'>('request')
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [otp, setOtp] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [requestingOtp, setRequestingOtp] = useState(false)
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [otpResendTimer, setOtpResendTimer] = useState(0)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // OTP resend timer
+  useEffect(() => {
+    if (otpResendTimer > 0) {
+      const timer = setTimeout(() => setOtpResendTimer(otpResendTimer - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [otpResendTimer])
+
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setStep('request')
+      setNewPassword("")
+      setConfirmPassword("")
+      setOtp("")
+      setError("")
+      setShowPassword(false)
+      setShowConfirmPassword(false)
+      setOtpResendTimer(0)
+    }
+  }, [open])
+
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("All fields are required")
+    if (!newPassword || !confirmPassword) {
+      setError("Please fill in all password fields")
       return
     }
 
@@ -39,14 +67,74 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
       return
     }
 
+    setRequestingOtp(true)
+
+    try {
+      const res = await fetch('/api/user/change-password/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to send verification code')
+        return
+      }
+
+      toast.success('Verification code sent to your email')
+      setStep('verify')
+      setOtpResendTimer(60)
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setRequestingOtp(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (otpResendTimer > 0) return
+
+    setRequestingOtp(true)
+    try {
+      const res = await fetch('/api/user/change-password/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        toast.success('New verification code sent')
+        setOtp("")
+        setOtpResendTimer(60)
+      } else {
+        toast.error(data.error || 'Failed to resend code')
+      }
+    } catch (err) {
+      toast.error('Failed to resend code')
+    } finally {
+      setRequestingOtp(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    if (!otp || otp.length !== 4) {
+      setError("Please enter a valid 4-digit code")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      const res = await fetch('/api/user/change-password', {
+      const res = await fetch('/api/user/change-password/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          currentPassword,
+          otp,
           newPassword
         })
       })
@@ -54,15 +142,13 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Failed to change password')
+        setError(data.error || 'Failed to verify code')
         return
       }
 
+      toast.success('Password changed successfully')
       onPasswordChanged()
       onOpenChange(false)
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
     } catch (err) {
       setError('An error occurred. Please try again.')
     } finally {
@@ -76,56 +162,115 @@ export default function ChangePasswordDialog({ open, onOpenChange, onPasswordCha
         <DialogHeader>
           <DialogTitle>Change Password</DialogTitle>
           <DialogDescription>
-            Enter your current password and new password to update your credentials.
+            {step === 'request' 
+              ? 'Enter your new password and we\'ll send a verification code to your email.'
+              : 'Enter the verification code sent to your email to complete the password change.'
+            }
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                disabled={isSubmitting}
-              />
+
+        {step === 'request' ? (
+          <form onSubmit={handleRequestOtp}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 8 characters)"
+                    disabled={requestingOtp}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={requestingOtp}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    disabled={requestingOtp}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={requestingOtp}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="new-password">New Password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 characters)"
-                disabled={isSubmitting}
-              />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={requestingOtp}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={requestingOtp}>
+                {requestingOtp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Send Verification Code
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="otp">Verification Code</Label>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Enter the 4-digit code sent to your email</p>
+                </div>
+                <Input
+                  id="otp"
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="1234"
+                  maxLength={4}
+                  disabled={isSubmitting}
+                  className="text-center text-lg tracking-widest"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={otpResendTimer > 0 || requestingOtp}
+                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 underline"
+              >
+                {otpResendTimer > 0 
+                  ? `Resend code in ${otpResendTimer}s` 
+                  : requestingOtp ? 'Sending...' : 'Resend code'}
+              </button>
+              {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                disabled={isSubmitting}
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Change Password
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setStep('request')} disabled={isSubmitting}>
+                Back
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Verify & Change Password
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )

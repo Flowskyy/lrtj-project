@@ -51,6 +51,7 @@ export const auth = betterAuth({
         "user.createdAt",
         "user.updatedAt",
         "user.roleId",
+        "user.permissions",
       ],
     },
   },
@@ -155,6 +156,26 @@ export const auth = betterAuth({
       create: {
         before: async (account: any) => {
           const now = getWIBDate()
+          
+          // Check if this is a Microsoft OAuth account creation
+          if (account.providerId === 'microsoft') {
+            const { prisma } = await import("./prisma")
+            
+            // Check if the user exists and has a roleId
+            const user = await prisma.auth_users.findUnique({
+              where: { id: account.userId },
+              select: { roleId: true, email: true }
+            })
+            
+            if (!user) {
+              throw new Error("User not found for Microsoft account linking")
+            }
+            
+            if (!user.roleId) {
+              throw new Error("Microsoft OAuth users must be pre-provisioned with a role. Please contact your administrator to request access.")
+            }
+          }
+          
           return {
             data: {
               ...account,
