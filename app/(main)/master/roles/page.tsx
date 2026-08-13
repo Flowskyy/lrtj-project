@@ -1,16 +1,5 @@
-import { getSession } from "@/lib/auth"
-import RolesContent from "./RolesContent"
+import { redirect } from 'next/navigation'
 
-export default async function RolesPage() {
-  const session = await getSession()
-
-  if (!session?.user) {
-    return null
-  }
-
-  return (
-    <div className="min-h-screen">
-      <RolesContent />
-    </div>
-  )
+export default function RolesRedirect() {
+  redirect('/admin-control-panel/roles')
 }

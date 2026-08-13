@@ -61,7 +61,7 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
 
       if (res.ok) {
         toast.success("Role created successfully");
-        router.push("/master/roles");
+        router.push("/admin-control-panel/roles");
       } else {
         const error = await res.json();
         toast.error(error.error || "Failed to create role");
@@ -105,7 +105,7 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/master/roles">
+        <Link href="/admin-control-panel/roles">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -204,7 +204,7 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            <Link href="/master/roles">
+            <Link href="/admin-control-panel/roles">
               <Button variant="outline" disabled={isSubmitting}>
                 <X className="h-4 w-4 mr-2" />
                 Cancel

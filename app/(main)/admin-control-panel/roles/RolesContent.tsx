@@ -118,7 +118,7 @@ export default function RolesContent({ }: RolesContentProps) {
           <h1 className="text-2xl font-bold text-gray-900">Roles</h1>
           <p className="text-sm text-gray-500 mt-1">Manage user roles and page access permissions</p>
         </div>
-        <Link href="/master/roles/add">
+        <Link href="/admin-control-panel/roles/add">
           <Button className="min-h-[44px] bg-[#E5262C] hover:bg-[#c91e24] text-white">
             <Plus className="h-4 w-4 mr-2" />
             Add Role
@@ -166,7 +166,7 @@ export default function RolesContent({ }: RolesContentProps) {
                         <TableCell>{formatWIBDate(role.updatedAt)}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Link href={`/master/roles/edit/${role.id}`}>
+                            <Link href={`/admin-control-panel/roles/edit/${role.id}`}>
                               <Button
                                 variant="ghost"
                                 size="sm"

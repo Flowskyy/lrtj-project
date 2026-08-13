@@ -95,10 +95,16 @@ const NAV_ITEMS = [
       { href: "/master/banner", label: "Banner", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/popups", label: "Popups", icon: <ImageIcon className="h-4 w-4" strokeWidth={2} /> },
       { href: "/master/membership", label: "Membership", icon: <Award className="h-4 w-4" strokeWidth={2} /> },
-      { href: "/master/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
-      { href: "/master/admin-management", label: "Admin Management", icon: <User className="h-4 w-4" strokeWidth={2} /> },
-      { href: "/master/invitation", label: "Invitation", icon: <Mail className="h-4 w-4" strokeWidth={2} /> },
-      { href: "/master/activity-log", label: "Activity Log", icon: <Clock className="h-4 w-4" strokeWidth={2} /> },
+    ],
+  },
+  {
+    label: "Admin Control Panel",
+    icon: <Shield {...SIDEBAR_ICON_PROPS} />,
+    subItems: [
+      { href: "/admin-control-panel/roles", label: "Roles", icon: <Shield className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/admin-control-panel/admin-management", label: "Admin Management", icon: <User className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/admin-control-panel/invitation", label: "Invitation", icon: <Mail className="h-4 w-4" strokeWidth={2} /> },
+      { href: "/admin-control-panel/activity-log", label: "Activity Log", icon: <Clock className="h-4 w-4" strokeWidth={2} /> },
     ],
   },
 ]
@@ -141,6 +147,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       'banner': 'Banner',
       'popups': 'Popups',
       'membership': 'Membership',
+      'admin-control-panel': 'Admin Control Panel',
       'roles': 'Roles',
       'admin-management': 'Admin Management',
       'invitation': 'Invitation',
@@ -298,6 +305,10 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
       // Special handling for master routes
       if (href.startsWith('/master/')) {
         return 'master-' + href.replace('/master/', '').replace(/\//g, '-')
+      }
+      // Special handling for admin-control-panel routes
+      if (href.startsWith('/admin-control-panel/')) {
+        return 'master-' + href.replace('/admin-control-panel/', '').replace(/\//g, '-')
       }
       return href.replace(/^\//, '').replace(/\//g, '-')
     }
@@ -471,30 +482,35 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
         title: "Edit Membership",
         breadcrumb: ["Master", "Membership", "Edit Membership"],
       }
-    : pathname === "/master/roles"
+    : pathname === "/admin-control-panel/roles"
     ? {
         title: "Roles",
-        breadcrumb: ["Master", "Roles"],
+        breadcrumb: ["Admin Control Panel", "Roles"],
       }
-    : pathname === "/master/roles/add"
+    : pathname === "/admin-control-panel/roles/add"
     ? {
         title: "Add Role",
-        breadcrumb: ["Master", "Roles", "Add Role"],
+        breadcrumb: ["Admin Control Panel", "Roles", "Add Role"],
       }
-    : pathname.startsWith("/master/roles/edit/")
+    : pathname.startsWith("/admin-control-panel/roles/edit/")
     ? {
         title: "Edit Role",
-        breadcrumb: ["Master", "Roles", "Edit Role"],
+        breadcrumb: ["Admin Control Panel", "Roles", "Edit Role"],
       }
-    : pathname === "/master/admin-management"
+    : pathname === "/admin-control-panel/admin-management"
     ? {
         title: "Admin Management",
-        breadcrumb: ["Master", "Admin Management"],
+        breadcrumb: ["Admin Control Panel", "Admin Management"],
       }
-    : pathname === "/master/invitation"
+    : pathname === "/admin-control-panel/invitation"
     ? {
         title: "Invitation",
-        breadcrumb: ["Master", "Invitation"],
+        breadcrumb: ["Admin Control Panel", "Invitation"],
+      }
+    : pathname === "/admin-control-panel/activity-log"
+    ? {
+        title: "Activity Log",
+        breadcrumb: ["Admin Control Panel", "Activity Log"],
       }
     : pathname === "/users"
     ? {
@@ -594,7 +610,7 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                   subItems={item.subItems}
                 />
 
-                {item.label === "Merchandise" && (
+                {(item.label === "Merchandise" || item.label === "Master") && (
                   <div className="px-3 pt-1 pb-2">
 <SidebarSeparator />
 </div>
@@ -753,12 +769,16 @@ function SidebarContentWrapper({ children }: { children: React.ReactNode }) {
                             ? "/master/popups"
                             : item === "Membership"
                             ? "/master/membership"
+                            : item === "Admin Control Panel"
+                            ? "/admin-control-panel/roles"
                             : item === "Roles"
-                            ? "/master/roles"
+                            ? "/admin-control-panel/roles"
                             : item === "Admin Management"
-                            ? "/master/admin-management"
+                            ? "/admin-control-panel/admin-management"
                             : item === "Invitation"
-                            ? "/master/invitation"
+                            ? "/admin-control-panel/invitation"
+                            : item === "Activity Log"
+                            ? "/admin-control-panel/activity-log"
                             : "/"
                         }
                       >

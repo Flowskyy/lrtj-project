@@ -76,12 +76,12 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
         });
       } else {
         toast.error("Failed to fetch role details");
-        router.push("/master/roles");
+        router.push("/admin-control-panel/roles");
       }
     } catch (err) {
       console.error("Failed to fetch role details", err);
       toast.error("Failed to fetch role details");
-      router.push("/master/roles");
+      router.push("/admin-control-panel/roles");
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
 
       if (res.ok) {
         toast.success("Role updated successfully");
-        router.push("/master/roles");
+        router.push("/admin-control-panel/roles");
       } else {
         const error = await res.json();
         toast.error(error.error || "Failed to update role");
@@ -175,7 +175,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/master/roles">
+        <Link href="/admin-control-panel/roles">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -284,7 +284,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            <Link href="/master/roles">
+            <Link href="/admin-control-panel/roles">
               <Button variant="outline" disabled={isSubmitting}>
                 <X className="h-4 w-4 mr-2" />
                 Cancel
