@@ -11,7 +11,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { DatePicker } from "@/components/ui/date-picker";
 import Link from "next/link";
 import { ArrowLeft, Eye } from "lucide-react";
-import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import dynamic from "next/dynamic";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { useAction } from "@/contexts/ActionContext";
@@ -361,7 +361,7 @@ Format: JPG / PNG / WebP"
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
               <div className="text-sm text-gray-900">
-                {item.created_at ? formatDisplayDate(item.created_at) : "-"}
+                {item.created_at ? formatWIBDate(item.created_at) : "-"}
               </div>
             </div>
             <div>
@@ -371,7 +371,7 @@ Format: JPG / PNG / WebP"
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
               <div className="text-sm text-gray-900">
-                {item.updated_at ? formatDisplayDate(item.updated_at) : "-"}
+                {item.updated_at ? formatWIBDate(item.updated_at) : "-"}
               </div>
             </div>
           </div>

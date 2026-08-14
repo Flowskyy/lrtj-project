@@ -11,7 +11,7 @@ import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp, Activity } from "lucide-r
 import GlassTable from "@/components/GlassTable";
 import TableFilterSortMenu from "@/components/TableFilterSortMenu";
 import Pagination from "@/components/Pagination";
-import { formatFullDateWithTime } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { useActivityLogUpdates } from "@/hooks/use-activity-log-updates";
 
 interface ActivityLog {
@@ -347,7 +347,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                             <>
                               <div>
                                 <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Reverted At</span>
-                                <span className="font-medium text-gray-900">{formatFullDateWithTime(log.revertedAt)}</span>
+                                <span className="font-medium text-gray-900">{formatWIBDate(log.revertedAt)}</span>
                               </div>
                               <div>
                                 <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Reverted By</span>
@@ -425,7 +425,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                         </div>
                       </div>,
                       <div key="time" className="text-gray-500">
-                        {formatFullDateWithTime(log.createdAt)}
+                        {formatWIBDate(log.createdAt)}
                       </div>,
                       <div key="status">
                         {log.revertedAt ? (
@@ -532,7 +532,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                   <div className="space-y-1">
                     <span className="text-xs text-gray-500 uppercase tracking-wide">Time</span>
                     <div className="font-medium text-gray-900 mt-1 text-xs">
-                      {formatFullDateWithTime(logToRevert.createdAt)}
+                      {formatWIBDate(logToRevert.createdAt)}
                     </div>
                   </div>
                 </div>

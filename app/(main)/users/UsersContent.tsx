@@ -14,7 +14,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Pagination from "@/components/Pagination";
 import { useExportJob } from "@/hooks/use-export-job";
 import ExportProgressDialog from "@/components/ExportProgressDialog";
-import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { MoreVertical, Eye, Trash2, Search, Columns, Check, X, Users, Filter, Download } from "lucide-react";
 import { useRouter } from "next/navigation";

@@ -75,42 +75,56 @@ export async function GET(request: NextRequest) {
     where.OR = searchConditions;
   }
 
-  const orderBy: any = {};
-  if (sortBy === 'id') {
-    orderBy.id = order;
-  } else if (sortBy === 'created_at') {
-    orderBy.created_at = order;
-  } else if (sortBy === 'updated_at') {
-    orderBy.updated_at = order;
-  } else {
-    orderBy.created_at = 'desc';
-  }
+  // Validate sortBy against whitelist to prevent SQL injection
+  const validSortColumns = ['id', 'created_at', 'updated_at'];
+  const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'created_at';
+  const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
 
-  // Build WHERE clause for reuse
-  const whereClause = Object.keys(where).length > 0 ?
-    'WHERE ' + Object.entries(where).map(([key, value]) => {
-      if (key === 'OR') {
-        const orConditions = (value as any[]).map((cond: any) => {
-          const [field, op] = Object.entries(cond)[0];
-          const fieldValue = Object.values(cond)[0];
-          if (op === 'contains') return `${field} LIKE '%${fieldValue}%'`;
-          return `${field} = ${fieldValue}`;
-        }).join(' OR ');
-        return `(${orConditions})`;
-      }
-      if (typeof value === 'object' && value !== null) {
-        const [op, val] = Object.entries(value)[0];
-        // Map Prisma operators to SQL operators
-        const sqlOp = {
-          gte: '>=',
-          lte: '<=',
-          gt: '>',
-          lt: '<',
-        }[op] || '=';
-        return `${key} ${sqlOp} ${val}`;
-      }
-      return `${key} = ${value}`;
-    }).join(' AND ') : '';
+  // Build WHERE clause for reuse with proper parameterization
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  const processCondition = (key: string, value: any) => {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const [op, val] = Object.entries(value)[0];
+      const sqlOp = {
+        gte: '>=',
+        lte: '<=',
+        gt: '>',
+        lt: '<',
+      }[op] || '=';
+      conditions.push(`${key} ${sqlOp} ?`);
+      params.push(val);
+    } else if (Array.isArray(value)) {
+      conditions.push(`${key} IN (${value.map(() => '?').join(',')})`);
+      params.push(...value);
+    } else {
+      conditions.push(`${key} = ?`);
+      params.push(value);
+    }
+  };
+
+  Object.entries(where).forEach(([key, value]) => {
+    if (key === 'OR') {
+      const orConditions: string[] = [];
+      (value as any[]).forEach((cond: any) => {
+        const [field, op] = Object.entries(cond)[0];
+        const fieldValue = Object.values(cond)[0];
+        if (op === 'contains') {
+          orConditions.push(`${field} LIKE ?`);
+          params.push(`%${fieldValue}%`);
+        } else {
+          orConditions.push(`${field} = ?`);
+          params.push(fieldValue);
+        }
+      });
+      conditions.push(`(${orConditions.join(' OR ')})`);
+    } else {
+      processCondition(key, value);
+    }
+  });
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Use raw SQL for consistent WIB formatting
   let redeemBenefits: any[];
@@ -130,8 +144,9 @@ export async function GET(request: NextRequest) {
           DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
         FROM redeem_benefit
         ${whereClause}
-        ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY id DESC'}
-        LIMIT ${offset}, ${batchSize}`
+        ORDER BY ${sortColumn} ${sortDirection}
+        LIMIT ${offset}, ${batchSize}`,
+        ...params
       ) as any[];
       
       redeemBenefits.push(...batch);
@@ -147,8 +162,9 @@ export async function GET(request: NextRequest) {
         DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
       FROM redeem_benefit
       ${whereClause}
-      ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY id DESC'}
-      LIMIT ${(page - 1) * limit}, ${limit}`
+      ORDER BY ${sortColumn} ${sortDirection}
+      LIMIT ${(page - 1) * limit}, ${limit}`,
+      ...params
     ) as any[];
   }
 
@@ -159,7 +175,8 @@ export async function GET(request: NextRequest) {
   if (hasFilters) {
     // Use exact COUNT(*) when filters are applied (necessary and typically faster)
     const countResult = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*) as total FROM redeem_benefit ${whereClause}`
+      `SELECT COUNT(*) as total FROM redeem_benefit ${whereClause}`,
+      ...params
     ) as any[];
     total = Number(countResult[0]?.total || 0);
   } else {

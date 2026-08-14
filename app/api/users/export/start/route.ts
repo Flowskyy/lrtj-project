@@ -125,31 +125,23 @@ export async function POST(request: NextRequest) {
       const orConditions = where.OR.map((cond: any) => {
         const [field, op] = Object.entries(cond)[0];
         const fieldValue = Object.values(cond)[0];
-        if (op === 'contains') return `${field} LIKE ?`;
+        if (op === 'contains') {
+          params.push(`%${fieldValue}%`);
+          return `${field} LIKE ?`;
+        }
+        params.push(fieldValue);
         return `${field} = ?`;
       });
       conditions.push(`(${orConditions.join(' OR ')})`);
-      where.OR.forEach((cond: any) => {
-        const fieldValue = Object.values(cond)[0];
-        if (typeof fieldValue === 'string' && fieldValue.includes && fieldValue.includes('%')) {
-          params.push(fieldValue);
-        } else {
-          params.push(fieldValue);
-        }
-      });
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Build ORDER BY clause
-    let orderByClause = 'ORDER BY id DESC';
-    if (orderBy.id) orderByClause = `ORDER BY id ${orderBy.id.toUpperCase()}`;
-    else if (orderBy.name) orderByClause = `ORDER BY name ${orderBy.name.toUpperCase()}`;
-    else if (orderBy.email) orderByClause = `ORDER BY email ${orderBy.email.toUpperCase()}`;
-    else if (orderBy.created_at) orderByClause = `ORDER BY created_at ${orderBy.created_at.toUpperCase()}`;
-    else if (orderBy.lrtj_saldo) orderByClause = `ORDER BY lrtj_saldo ${orderBy.lrtj_saldo.toUpperCase()}`;
-    else if (orderBy.slc_point) orderByClause = `ORDER BY slc_point ${orderBy.slc_point.toUpperCase()}`;
-    else if (orderBy.trip_count) orderByClause = `ORDER BY trip_count ${orderBy.trip_count.toUpperCase()}`;
+    // Build ORDER BY clause with column whitelist to prevent SQL injection
+    const validSortColumns = ['id', 'name', 'email', 'created_at', 'lrtj_saldo', 'slc_point', 'trip_count'];
+    const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'id';
+    const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
+    const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
     // Get total count
     let total: number;

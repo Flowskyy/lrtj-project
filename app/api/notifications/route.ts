@@ -10,16 +10,10 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get('sortBy');
   const order = searchParams.get('order') || 'desc';
 
-  const orderBy: any = {};
-  if (sortBy === 'id') {
-    orderBy.id = order;
-  } else if (sortBy === 'created_at') {
-    orderBy.created_at = order;
-  } else if (sortBy === 'title') {
-    orderBy.title = order;
-  } else {
-    orderBy.id = 'desc';
-  }
+  // Validate sortBy against whitelist to prevent SQL injection
+  const validSortColumns = ['id', 'created_at', 'title'];
+  const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'id';
+  const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
 
   // Use raw SQL for consistent WIB formatting - HARD FILTER for broadcast only
   const items = await prisma.$queryRawUnsafe(
@@ -28,8 +22,8 @@ export async function GET(request: NextRequest) {
       DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at
     FROM notifications
     WHERE user_id IS NULL
-    ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY id DESC'}
-  `) as any[];
+    ORDER BY ${sortColumn} ${sortDirection}`
+  ) as any[];
 
   const totalCount = items.length;
 

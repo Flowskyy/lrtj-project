@@ -14,7 +14,7 @@ import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { getImageUrl } from "@/lib/utils";
-import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,

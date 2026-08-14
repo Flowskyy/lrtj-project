@@ -121,7 +121,8 @@ export async function POST(request: NextRequest) {
     }
     if (where.merchandise_id) {
       if (Array.isArray(where.merchandise_id.in)) {
-        conditions.push(`merchandise_id IN (${where.merchandise_id.in.join(',')})`);
+        conditions.push(`merchandise_id IN (${where.merchandise_id.in.map(() => '?').join(',')})`);
+        params.push(...where.merchandise_id.in);
       } else {
         conditions.push('merchandise_id = ?');
         params.push(where.merchandise_id);
@@ -131,19 +132,23 @@ export async function POST(request: NextRequest) {
       const orConditions = where.OR.map((cond: any) => {
         const [field, op] = Object.entries(cond)[0];
         const fieldValue = Object.values(cond)[0];
-        if (op === 'contains') return `${field} LIKE '%${fieldValue}%'`;
-        return `${field} = ${fieldValue}`;
+        if (op === 'contains') {
+          params.push(`%${fieldValue}%`);
+          return `${field} LIKE ?`;
+        }
+        params.push(fieldValue);
+        return `${field} = ?`;
       });
       conditions.push(`(${orConditions.join(' OR ')})`);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Build ORDER BY clause
-    let orderByClause = 'ORDER BY id DESC';
-    if (orderBy.id) orderByClause = `ORDER BY id ${orderBy.id.toUpperCase()}`;
-    else if (orderBy.createdAt) orderByClause = `ORDER BY created_at ${orderBy.createdAt.toUpperCase()}`;
-    else if (orderBy.updatedAt) orderByClause = `ORDER BY updated_at ${orderBy.updatedAt.toUpperCase()}`;
+    // Build ORDER BY clause with column whitelist to prevent SQL injection
+    const validSortColumns = ['id', 'created_at', 'updated_at'];
+    const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'id';
+    const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
+    const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
     // Get total count
     let total: number;

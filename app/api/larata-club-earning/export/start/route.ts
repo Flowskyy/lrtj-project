@@ -112,55 +112,64 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const orderBy: any = {};
-    if (sortBy === 'id') {
-      orderBy.id = order;
-    } else if (sortBy === 'created_at') {
-      orderBy.created_at = order;
-    } else if (sortBy === 'earning_point') {
-      orderBy.earning_point = order;
-    } else {
-      orderBy.created_at = 'desc';
-    }
+    // Validate sortBy against whitelist to prevent SQL injection
+    const validSortColumns = ['id', 'created_at', 'earning_point'];
+    const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'created_at';
+    const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
 
-    // Build WHERE clause for reuse
-    const whereClause = Object.keys(where).length > 0 ?
-      'WHERE ' + Object.entries(where).map(([key, value]) => {
-        if (key === 'OR') {
-          const orConditions = (value as any[]).map((cond: any) => {
-            const [field, op] = Object.entries(cond)[0];
-            const fieldValue = Object.values(cond)[0];
+    // Build WHERE clause for reuse with proper parameterization
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    const processCondition = (key: string, value: any) => {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const [op, val] = Object.entries(value)[0];
+        const sqlOp = {
+          gte: '>=',
+          lte: '<=',
+          gt: '>',
+          lt: '<',
+        }[op] || '=';
+        conditions.push(`${key} ${sqlOp} ?`);
+        params.push(val);
+      } else if (Array.isArray(value)) {
+        conditions.push(`${key} IN (${value.map(() => '?').join(',')})`);
+        params.push(...value);
+      } else {
+        conditions.push(`${key} = ?`);
+        params.push(value);
+      }
+    };
+
+    Object.entries(where).forEach(([key, value]) => {
+      if (key === 'OR') {
+        const orConditions: string[] = [];
+        (value as any[]).forEach((cond: any) => {
+          const [field, fieldCond] = Object.entries(cond)[0];
+          if (typeof fieldCond === 'object' && fieldCond !== null && !Array.isArray(fieldCond)) {
+            const [op, fieldValue] = Object.entries(fieldCond)[0];
+            const sqlOp = {
+              in: 'IN',
+            }[op] || '=';
             if (op === 'in') {
-              const quotedValues = (fieldValue as any[]).map((v: any) => typeof v === 'string' ? `'${v}'` : v);
-              return `${field} IN (${quotedValues.join(',')})`;
+              orConditions.push(`${field} IN (${fieldValue.map(() => '?').join(',')})`);
+              params.push(...fieldValue);
+            } else {
+              orConditions.push(`${field} ${sqlOp} ?`);
+              params.push(fieldValue);
             }
-            if (typeof fieldValue === 'string') {
-              return `${field} = '${fieldValue}'`;
-            }
-            return `${field} = ${fieldValue}`;
-          }).join(' OR ');
-          return `(${orConditions})`;
-        }
-        if (typeof value === 'object' && value !== null) {
-          const [op, val] = Object.entries(value)[0];
-          // Map Prisma operators to SQL operators
-          const sqlOp = {
-            gte: '>=',
-            lte: '<=',
-            gt: '>',
-            lt: '<',
-          }[op] || '=';
-          if (val instanceof Date) {
-            const formattedDate = val.toISOString().slice(0, 19).replace('T', ' ');
-            return `${key} ${sqlOp} '${formattedDate}'`;
+          } else {
+            orConditions.push(`${field} = ?`);
+            params.push(fieldCond);
           }
-          return `${key} ${sqlOp} ${val}`;
-        }
-        if (typeof value === 'string') {
-          return `${key} = '${value}'`;
-        }
-        return `${key} = ${value}`;
-      }).join(' AND ') : '';
+        });
+        conditions.push(`(${orConditions.join(' OR ')})`);
+      } else {
+        processCondition(key, value);
+      }
+    });
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     // Get total count
     let total: number;
@@ -168,7 +177,8 @@ export async function POST(request: NextRequest) {
     
     if (hasFilters) {
       const countResult = await prisma.$queryRawUnsafe(
-        `SELECT COUNT(*) as total FROM slc_earning_history ${whereClause}`
+        `SELECT COUNT(*) as total FROM slc_earning_history ${whereClause}`,
+        ...params
       ) as any[];
       total = Number(countResult[0]?.total || 0);
     } else {
@@ -183,7 +193,7 @@ export async function POST(request: NextRequest) {
     const jobId = exportJobManager.createJob(total);
 
     // Start the export process asynchronously (don't await)
-    runExportJob(jobId, whereClause, orderBy, total).catch(error => {
+    runExportJob(jobId, whereClause, params, sortColumn, sortDirection, total).catch(error => {
       console.error(`Export job ${jobId} failed:`, error);
       exportJobManager.failJob(jobId, error.message);
     });
@@ -201,7 +211,9 @@ export async function POST(request: NextRequest) {
 async function runExportJob(
   jobId: string,
   whereClause: string,
-  orderBy: any,
+  params: any[],
+  sortColumn: string,
+  sortDirection: string,
   total: number
 ) {
   const { batchSize } = calculateDynamicBatchSize(total);
@@ -233,8 +245,8 @@ async function runExportJob(
       }
 
       const cursorClause = whereClause
-        ? `${whereClause} AND id > ${lastId}`
-        : `WHERE id > ${lastId}`;
+        ? `${whereClause} AND id > ?`
+        : `WHERE id > ?`;
       
       const batch = await prisma.$queryRawUnsafe(
         `SELECT
@@ -243,7 +255,9 @@ async function runExportJob(
         FROM slc_earning_history
         ${cursorClause}
         ORDER BY id ASC
-        LIMIT ${batchSize}`
+        LIMIT ${batchSize}`,
+        ...params,
+        lastId
       ) as any[];
 
       earnings.push(...batch);

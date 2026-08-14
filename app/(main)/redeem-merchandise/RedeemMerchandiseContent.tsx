@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { formatWIBDate, formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { Skeleton } from "@/components/ui/skeleton";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import StatusBadge from "@/components/StatusBadge";
@@ -508,7 +508,7 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
                       )}
                       {visibleColumns.created_at && (
                         <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
-                          {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}
+                          {item.createdAt ? formatWIBDate(item.createdAt) : "-"}
                         </TableCell>
                       )}
                       {visibleColumns.updated_at && (
@@ -585,7 +585,7 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
                       </div>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-1">Created: {item.createdAt ? formatDisplayDate(item.createdAt) : "-"}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Created: {item.createdAt ? formatWIBDate(item.createdAt) : "-"}</p>
                   </div>
                 </div>
               ))

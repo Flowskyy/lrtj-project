@@ -147,65 +147,71 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const orderBy: any = {};
-  if (sortBy === 'id') {
-    orderBy.id = order;
-  } else if (sortBy === 'created_at') {
-    orderBy.created_at = order;
-  } else if (sortBy === 'earning_point') {
-    orderBy.earning_point = order;
-  } else {
-    orderBy.created_at = 'desc';
-  }
+  // Validate sortBy against whitelist to prevent SQL injection
+  const validSortColumns = ['id', 'created_at', 'earning_point'];
+  const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'created_at';
+  const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
 
-  // Build WHERE clause for reuse in both queries
-  const whereClause = Object.keys(where).length > 0 ?
-    'WHERE ' + Object.entries(where).map(([key, value]) => {
-      if (key === 'OR') {
-        const orConditions = (value as any[]).map((cond: any) => {
-          const [field, fieldCond] = Object.entries(cond)[0];
+  // Build WHERE clause for reuse in both queries with proper parameterization
+  const conditions: string[] = [];
+  const params: any[] = [];
 
-          if (typeof fieldCond === 'object' && fieldCond !== null) {
-            const [op, fieldValue] = Object.entries(fieldCond)[0];
+  const processCondition = (key: string, value: any) => {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const [op, val] = Object.entries(value)[0];
+      const operatorMap: Record<string, string> = {
+        gte: '>=',
+        lte: '<=',
+        gt: '>',
+        lt: '<',
+        equals: '=',
+      };
+      const sqlOp = operatorMap[op] || '>=';
+      conditions.push(`${key} ${sqlOp} ?`);
+      params.push(val);
+    } else if (Array.isArray(value)) {
+      conditions.push(`${key} IN (${value.map(() => '?').join(',')})`);
+      params.push(...value);
+    } else {
+      conditions.push(`${key} = ?`);
+      params.push(value);
+    }
+  };
 
-            if (op === 'in') {
-              // Handle IN clause with array of values
-              const quotedValues = (fieldValue as any[]).map((v: any) => typeof v === 'string' ? `'${v}'` : v);
-              return `${field} IN (${quotedValues.join(',')})`;
-            }
+  Object.entries(where).forEach(([key, value]) => {
+    if (key === 'OR') {
+      const orConditions: string[] = [];
+      (value as any[]).forEach((cond: any) => {
+        const [field, fieldCond] = Object.entries(cond)[0];
+        if (typeof fieldCond === 'object' && fieldCond !== null && !Array.isArray(fieldCond)) {
+          const [op, fieldValue] = Object.entries(fieldCond)[0];
+          if (op === 'in') {
+            orConditions.push(`${field} IN (${fieldValue.map(() => '?').join(',')})`);
+            params.push(...fieldValue);
+          } else {
+            const operatorMap: Record<string, string> = {
+              gte: '>=',
+              lte: '<=',
+              gt: '>',
+              lt: '<',
+              equals: '=',
+            };
+            const sqlOp = operatorMap[op] || '>=';
+            orConditions.push(`${field} ${sqlOp} ?`);
+            params.push(fieldValue);
           }
-          // Handle simple equality
-          if (typeof fieldCond === 'string') {
-            return `${field} = '${fieldCond}'`;
-          }
-          return `${field} = ${fieldCond}`;
-        }).join(' OR ');
-        return `(${orConditions})`;
-      }
-      if (typeof value === 'object' && value !== null) {
-        const [op, val] = Object.entries(value)[0];
-        // Map Prisma operators to SQL operators
-        const operatorMap: Record<string, string> = {
-          gte: '>=',
-          lte: '<=',
-          gt: '>',
-          lt: '<',
-          equals: '=',
-        };
-        const sqlOp = operatorMap[op] || '>=';
-        if (val instanceof Date) {
-          // Format date for MySQL
-          const formattedDate = val.toISOString().slice(0, 19).replace('T', ' ');
-          return `${key} ${sqlOp} '${formattedDate}'`;
+        } else {
+          orConditions.push(`${field} = ?`);
+          params.push(fieldCond);
         }
-        return `${key} ${sqlOp} ${val}`;
-      }
-      // Quote string values
-      if (typeof value === 'string') {
-        return `${key} = '${value}'`;
-      }
-      return `${key} = ${value}`;
-    }).join(' AND ') : '';
+      });
+      conditions.push(`(${orConditions.join(' OR ')})`);
+    } else {
+      processCondition(key, value);
+    }
+  });
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Get total count - use approximate count for unfiltered queries for performance
   let total: number;
@@ -214,7 +220,8 @@ export async function GET(request: NextRequest) {
   if (hasFilters) {
     // Use exact COUNT(*) when filters are applied (necessary and typically faster)
     const countResult = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*) as total FROM slc_earning_history ${whereClause}`
+      `SELECT COUNT(*) as total FROM slc_earning_history ${whereClause}`,
+      ...params
     ) as any[];
     total = Number(countResult[0]?.total || 0);
   } else {
@@ -246,8 +253,8 @@ export async function GET(request: NextRequest) {
 
     while (hasMore) {
       const cursorClause = whereClause
-        ? `${whereClause} AND id > ${lastId}`
-        : `WHERE id > ${lastId}`;
+        ? `${whereClause} AND id > ?`
+        : `WHERE id > ?`;
       const batch = await prisma.$queryRawUnsafe(
         `SELECT
           id, user_id, category, type, earning_point, info,
@@ -255,7 +262,9 @@ export async function GET(request: NextRequest) {
         FROM slc_earning_history
         ${cursorClause}
         ORDER BY id ASC
-        LIMIT ${batchSize}`
+        LIMIT ${batchSize}`,
+        ...params,
+        lastId
       ) as any[];
 
       earnings.push(...batch);
@@ -272,8 +281,9 @@ export async function GET(request: NextRequest) {
         DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at
       FROM slc_earning_history
       ${whereClause}
-      ${Object.keys(orderBy).length > 0 ? `ORDER BY ${Object.keys(orderBy)[0]} ${(Object.values(orderBy)[0] as string).toUpperCase()}` : 'ORDER BY created_at DESC'}
-      LIMIT ${(page - 1) * limit}, ${limit}`
+      ORDER BY ${sortColumn} ${sortDirection}
+      LIMIT ${(page - 1) * limit}, ${limit}`,
+      ...params
     ) as any[];
   }
 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getImageUrl } from "@/lib/utils";
-import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { ArrowLeft, Loader2, Edit, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -235,7 +235,7 @@ export default function NewsViewContent({ newsId }: NewsViewContentProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Publish Date</label>
                 <div className="text-sm text-gray-900">
-                  {item.publish_date ? formatDisplayDate(item.publish_date) : "-"}
+                  {item.publish_date ? formatWIBDate(item.publish_date) : "-"}
                 </div>
               </div>
               <div>
@@ -289,7 +289,7 @@ export default function NewsViewContent({ newsId }: NewsViewContentProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
                 <div className="text-sm text-gray-900">
-                  {item.created_at ? formatDisplayDate(item.created_at) : "-"}
+                  {item.created_at ? formatWIBDate(item.created_at) : "-"}
                 </div>
               </div>
               <div>
@@ -299,7 +299,7 @@ export default function NewsViewContent({ newsId }: NewsViewContentProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
                 <div className="text-sm text-gray-900">
-                  {item.updated_at ? formatDisplayDate(item.updated_at) : "-"}
+                  {item.updated_at ? formatWIBDate(item.updated_at) : "-"}
                 </div>
               </div>
             </div>

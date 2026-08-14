@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -314,7 +314,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">SLC Activation Date</label>
-                <div className="text-sm text-gray-900">{item.activation_slc_at ? formatDisplayDate(item.activation_slc_at) : "-"}</div>
+                <div className="text-sm text-gray-900">{item.activation_slc_at ? formatWIBDate(item.activation_slc_at) : "-"}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Pay Activation</label>
@@ -322,7 +322,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Pay Activation Date</label>
-                <div className="text-sm text-gray-900">{item.activation_lrtjpay_at ? formatDisplayDate(item.activation_lrtjpay_at) : "-"}</div>
+                <div className="text-sm text-gray-900">{item.activation_lrtjpay_at ? formatWIBDate(item.activation_lrtjpay_at) : "-"}</div>
               </div>
             </div>
           </div>
@@ -353,15 +353,15 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Verified At</label>
-                <div className="text-sm text-gray-900">{item.verified_at ? formatDisplayDate(item.verified_at) : "-"}</div>
+                <div className="text-sm text-gray-900">{item.verified_at ? formatWIBDate(item.verified_at) : "-"}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{item.created_at ? formatDisplayDate(item.created_at) : "-"}</div>
+                <div className="text-sm text-gray-900">{item.created_at ? formatWIBDate(item.created_at) : "-"}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
-                <div className="text-sm text-gray-900">{item.updated_at ? formatDisplayDate(item.updated_at) : "-"}</div>
+                <div className="text-sm text-gray-900">{item.updated_at ? formatWIBDate(item.updated_at) : "-"}</div>
               </div>
             </div>
           </div>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getImageUrl } from "@/lib/utils";
-import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { ArrowLeft, Loader2, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -255,13 +255,13 @@ export default function DailyBenefitViewContent({ dailyBenefitId }: DailyBenefit
               {item.start_date && (
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
-                  <div className="text-sm text-gray-900">{formatDisplayDate(item.start_date)}</div>
+                  <div className="text-sm text-gray-900">{formatWIBDate(item.start_date)}</div>
                 </div>
               )}
               {item.end_date && (
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
-                  <div className="text-sm text-gray-900">{formatDisplayDate(item.end_date)}</div>
+                  <div className="text-sm text-gray-900">{formatWIBDate(item.end_date)}</div>
                 </div>
               )}
             </div>
@@ -284,11 +284,11 @@ export default function DailyBenefitViewContent({ dailyBenefitId }: DailyBenefit
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{formatDisplayDate(item.created_at)}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(item.created_at)}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{formatDisplayDate(item.updated_at)}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(item.updated_at)}</div>
               </div>
             </div>
           </div>

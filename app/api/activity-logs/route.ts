@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // Validate sortBy field
-    const validSortFields = ['createdAt', 'action', 'tableName']
+    // Validate sortBy field against whitelist to prevent SQL injection
+    const validSortFields = ['createdAt', 'revertedAt', 'action', 'tableName']
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt'
     const sortDirection = order === 'asc' ? 'ASC' : 'DESC'
 
@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     const total = Number(totalResult[0]?.total || 0)
 
     // Get logs with pagination and sorting
+    // Note: sort by raw column for proper ordering, then format in SELECT
     const selectQuery = `
       SELECT
         id,
@@ -81,45 +82,25 @@ export async function GET(request: NextRequest) {
         beforeState,
         afterState,
         changedFields,
-        createdAt,
-        revertedAt,
+        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(revertedAt, '%Y-%m-%dT%H:%i:%s') as revertedAt,
         revertedByUserId
       FROM system_activity_logs
       ${whereClause}
       ORDER BY ${sortField} ${sortDirection}
       LIMIT ? OFFSET ?
     `
-    
+
     const allParams = [...params, limit, skip]
     const logs = await prisma.$queryRawUnsafe(selectQuery, ...allParams) as any[]
 
-    // Convert BigInt fields and format dates app-side (WIB convention)
+    // Convert BigInt fields (timestamps already formatted via DATE_FORMAT in SQL)
     const serializedLogs = logs.map(log => {
-      // Format DateTime objects to ISO string with T so parseWIBString can parse them correctly on client
-      const formatDate = (val: any) => {
-        if (!val) return null
-        const d = new Date(val)
-        if (isNaN(d.getTime())) return null
-        // Format as YYYY-MM-DDTHH:mm:ss in WIB
-        return d.toLocaleString('en-CA', {
-          timeZone: 'Asia/Jakarta',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }).replace(',', '').replace(/\//g, '-').replace(' ', 'T')
-      }
-
       return {
         ...log,
         id: log.id.toString(),
         actorRoleId: log.actorRoleId ?? null,
         actorRoleName: log.actorRoleName ?? null,
-        createdAt: formatDate(log.createdAt),
-        revertedAt: formatDate(log.revertedAt),
       }
     })
 

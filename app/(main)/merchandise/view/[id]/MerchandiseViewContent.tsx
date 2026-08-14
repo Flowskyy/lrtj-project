@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getImageUrl } from "@/lib/utils";
-import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { ArrowLeft, Loader2, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -259,11 +259,11 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Created</label>
-                <div className="text-sm text-gray-900">{formatDisplayDate(item.createdAt)}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(item.createdAt)}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Updated</label>
-                <div className="text-sm text-gray-900">{formatDisplayDate(item.updatedAt)}</div>
+                <div className="text-sm text-gray-900">{formatWIBDate(item.updatedAt)}</div>
               </div>
             </div>
           </div>

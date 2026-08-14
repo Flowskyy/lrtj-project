@@ -40,15 +40,11 @@ export async function GET(request: NextRequest) {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // Build ORDER BY clause
-  let orderByClause = 'ORDER BY id ASC';
-  if (sortBy === 'id') {
-    orderByClause = `ORDER BY id ${order.toUpperCase()}`;
-  } else if (sortBy === 'createdAt') {
-    orderByClause = `ORDER BY createdAt ${order.toUpperCase()}`;
-  } else if (sortBy === 'editedBy') {
-    orderByClause = `ORDER BY editedBy ${order.toUpperCase()}`;
-  }
+  // Build ORDER BY clause with column whitelist to prevent SQL injection
+  const validSortColumns = ['id', 'name', 'points', 'createdAt', 'editedBy'];
+  const sortColumn = (sortBy && validSortColumns.includes(sortBy)) ? sortBy : 'id';
+  const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
+  const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
   // Use raw SQL for consistent WIB formatting
   const items = await prisma.$queryRawUnsafe(

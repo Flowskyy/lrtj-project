@@ -10,7 +10,7 @@ import { Trash2, Circle as CircleIcon, Shield } from "lucide-react";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import ChangeRoleDialog from "@/components/ChangeRoleDialog";
 import GlassTable, { GlassTableColumn, GlassTableRow } from "@/components/GlassTable";
-import { formatWIBDate, formatDisplayDate, formatLastSeen, formatFullDateWithTime } from "@/lib/formatWIBDate";
+import { formatWIBDate, formatLastSeen } from "@/lib/formatWIBDate";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useUserListUpdates } from "@/hooks/use-user-list-updates";
 
@@ -240,7 +240,7 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
       );
     }
 
-    const lastSeenText = formatFullDateWithTime(lastSeen);
+    const lastSeenText = formatLastSeen(lastSeen);
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-1.5">

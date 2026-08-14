@@ -14,7 +14,7 @@ import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
-import { formatDisplayDate } from "@/lib/formatWIBDate";
+import { formatWIBDate } from "@/lib/formatWIBDate";
 import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
@@ -495,7 +495,7 @@ export default function NewsContent({ }: NewsContentProps) {
                       )}
                       {visibleColumns.publish_date && (
                         <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">
-                          {formatDisplayDate(item.publish_date)}
+                          {formatWIBDate(item.publish_date)}
                         </TableCell>
                       )}
                       {visibleColumns.views && (
