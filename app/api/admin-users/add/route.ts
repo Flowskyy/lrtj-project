@@ -4,6 +4,9 @@ import { getWIBDate, formatWIB } from '@/lib/utils';
 import { auth } from '@/lib/auth';
 import crypto from 'crypto';
 
+// Use auth_roles table (Better Auth roles), not admin_roles (admin panel roles)
+// The auth_users.roleId foreign key references auth_roles.id
+
 export async function POST(request: NextRequest) {
   try {
     // Verify the requester is an admin
@@ -18,7 +21,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: 'Invalid request body: expected JSON' },
+        { status: 400 }
+      );
+    }
+
     const { email, roleId } = body;
 
     if (!email || !roleId) {
@@ -48,8 +60,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate role exists
-    const role = await prisma.admin_roles.findUnique({
+    // Validate role exists (use auth_roles table, not admin_roles)
+    const role = await prisma.auth_roles.findUnique({
       where: { id: parseInt(roleId) },
     });
 
@@ -96,7 +108,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error adding admin:', error);
     return NextResponse.json(
-      { error: 'Failed to add admin' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

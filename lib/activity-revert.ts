@@ -1,4 +1,4 @@
-import { prisma, basePrismaClient } from './prisma'
+import { prisma, getBasePrismaClient } from './prisma'
 import { getWIBDate } from './utils'
 import { withActivityContext } from './activity-logger'
 import { Prisma } from './generated/prisma'
@@ -112,7 +112,7 @@ export async function revertActivityLog(
   actorRoleName?: string
 ) {
   // Fetch the log entry using base client to avoid circular dependency
-  const log = await basePrismaClient.system_activity_logs.findUnique({
+  const log = await getBasePrismaClient().system_activity_logs.findUnique({
     where: { id: logId },
   })
 
@@ -178,7 +178,7 @@ async function revertCreate(
     })
 
     // Mark the log as reverted using base client to avoid circular dependency
-    await basePrismaClient.system_activity_logs.update({
+    await getBasePrismaClient().system_activity_logs.update({
       where: { id: log.id },
       data: {
         revertedAt: getWIBDate(),
@@ -187,7 +187,7 @@ async function revertCreate(
     })
 
     // Log the revert action using base client to avoid circular dependency
-    await basePrismaClient.system_activity_logs.create({
+    await getBasePrismaClient().system_activity_logs.create({
       data: {
         actorUserId,
         actorName,
@@ -293,7 +293,7 @@ async function revertUpdate(
     })
 
     // Mark the log as reverted using base client to avoid circular dependency
-    await basePrismaClient.system_activity_logs.update({
+    await getBasePrismaClient().system_activity_logs.update({
       where: { id: log.id },
       data: {
         revertedAt: getWIBDate(),
@@ -302,7 +302,7 @@ async function revertUpdate(
     })
 
     // Log the revert action using base client to avoid circular dependency
-    await basePrismaClient.system_activity_logs.create({
+    await getBasePrismaClient().system_activity_logs.create({
       data: {
         actorUserId,
         actorName,
@@ -379,7 +379,7 @@ async function revertDelete(
     })
 
     // Mark the log as reverted using base client to avoid circular dependency
-    await basePrismaClient.system_activity_logs.update({
+    await getBasePrismaClient().system_activity_logs.update({
       where: { id: log.id },
       data: {
         revertedAt: getWIBDate(),
@@ -388,7 +388,7 @@ async function revertDelete(
     })
 
     // Log the revert action using base client to avoid circular dependency
-    await basePrismaClient.system_activity_logs.create({
+    await getBasePrismaClient().system_activity_logs.create({
       data: {
         actorUserId,
         actorName,

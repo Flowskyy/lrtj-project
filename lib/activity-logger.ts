@@ -342,7 +342,8 @@ export async function logActivity(data: {
 }) {
   try {
     // Use base client without extension to avoid circular dependency
-    const { basePrismaClient } = await import('./prisma')
+    const { getBasePrismaClient } = await import('./prisma')
+    const basePrismaClient = getBasePrismaClient()
     
     const result = await basePrismaClient.system_activity_logs.create({
       data: {

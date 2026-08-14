@@ -30,6 +30,7 @@ export default function AccessDeniedPage() {
               width={200}
               height={65}
               className="h-14 w-auto object-contain"
+              priority
             />
           </div>
 

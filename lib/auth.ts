@@ -5,23 +5,32 @@ import { prisma } from "../lib/prisma"
 import { headers } from "next/headers"
 import { getWIBDate } from "../lib/utils"
 
-// Azure AD App Role to local role mapping
-// TODO: Confirm actual Azure App Role names with Azure AD admin
-const AZURE_ROLE_MAPPING: Record<string, number> = {
-  // Example mapping (update with actual Azure App Role names):
-  // "CMS.SuperAdmin": 1,      // SUPER_ADMIN
-  // "CMS.Operations": 2,      // OPERATIONS  
-  // "CMS.Viewer": 3,          // VIEWER
-  // "CMS.SecurityAdmin": 4,   // SECURITY_ADMIN
-}
-
-// For testing purposes - temporary placeholder mapping
-const TEST_ROLE_MAPPING: Record<string, number> = {
-  "test_role": 1,  // Maps to SUPER_ADMIN for testing
-}
-
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  // Use dynamic baseURL to support multiple origins (localhost, LAN IPs)
+  // This builds OAuth redirect URIs from the current request base URL
+  // Azure Portal must have all possible redirect URIs registered
+  baseURL: {
+    allowedHosts: [
+      "localhost",
+      "100.89.130.113", // Tailscale LAN IP
+      "172.16.12.230", // Wi-Fi LAN IP
+    ],
+    protocol: "http",
+    fallback: "http://localhost:3000",
+  },
+  // Redirect Better Auth errors to custom access-denied page
+  onAPIError: {
+    errorURL: "/access-denied",
+  },
+  // Use database state storage for OAuth to avoid cross-origin cookie issues
+  // This fixes state_mismatch errors when accessing via different origins (localhost vs LAN IPs)
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production", // HTTPS in production, HTTP in development
+  },
+  // Store OAuth state in database to avoid cross-origin cookie issues
+  cookies: {
+    storeStateStrategy: "database",
+  },
   database: prismaAdapter(prisma, {
     provider: "mysql",
   }),
@@ -57,6 +66,14 @@ export const auth = betterAuth({
   },
   account: {
     modelName: "auth_accounts",
+    // Enable account linking for pre-provisioned users (Add Admin scenario)
+    // Only trust Microsoft provider for automatic linking to avoid security risks
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["microsoft"], // Only Microsoft is trusted for auto-linking
+      // Security defaults: requireLocalEmailVerified: true (prevents takeover attacks)
+      // disableImplicitLinking: false (allows automatic linking during sign-in)
+    },
   },
   verification: {
     modelName: "auth_verifications",
@@ -75,12 +92,11 @@ export const auth = betterAuth({
       enabled: true,
     },
   },
-  // Configure trusted origins to handle both localhost and LAN access
-  // This fixes INVALID_ORIGIN errors when accessing via LAN IP instead of localhost
+  // trustedOrigins for validation (complements dynamic baseURL)
   trustedOrigins: [
-    process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000",
     "http://localhost:3000",
-    "http://172.16.12.230:3000", // LAN IP from dev-with-lan.js - add your LAN IP here if different
+    "http://100.89.130.113:3000",
+    "http://172.16.12.230:3000",
   ],
   plugins: [nextCookies()],
   databaseHooks: {
@@ -88,6 +104,18 @@ export const auth = betterAuth({
       create: {
         before: async (user: any) => {
           const now = getWIBDate()
+          
+          // BLOCK Microsoft OAuth user creation unless pre-provisioned
+          // This must happen BEFORE any DB write to prevent partial data corruption
+          // Note: Better Auth's account linking flow does NOT call user.create.before for existing users
+          // It only calls account.create.before when linking to an existing user
+          const email = user.email?.toLowerCase?.() || user.email
+          if (email && email.endsWith('@lrtjakarta.co.id')) {
+            // This is NEW user creation via Microsoft OAuth
+            // BLOCK THIS: Microsoft OAuth users must be pre-provisioned via Add Admin
+            throw new Error("Microsoft OAuth users must be pre-provisioned by an administrator. Please contact your IT department to request access.")
+          }
+          
           return {
             data: {
               ...user,

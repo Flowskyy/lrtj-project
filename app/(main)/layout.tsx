@@ -1,5 +1,4 @@
 import { getSession } from "@/lib/auth"
-import { syncAzureRoles } from "@/lib/azure-sync"
 import { getUserPermissions } from "@/lib/permissions"
 import { DashboardLayoutClient } from "./DashboardLayoutClient"
 
@@ -9,12 +8,6 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const session = await getSession()
-
-  // Sync Azure AD roles for Microsoft SSO users once per page load
-  // (instead of on every middleware request)
-  if (session?.user?.id) {
-    await syncAzureRoles(session.user.id)
-  }
 
   // Fetch permissions server-side (reliable, doesn't depend on JWT caching)
   let initialPermissions: string[] = []
