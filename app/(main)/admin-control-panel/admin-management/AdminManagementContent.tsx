@@ -316,7 +316,7 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
                   id: user.id,
                   cells: [
                     <div key="email">
-                      <div className="text-gray-900 font-medium text-sm">{user.email}</div>
+                      <div className="text-gray-900 font-medium">{user.email}</div>
                     </div>,
                     getOnlineStatusBadge(user.isOnline || false, user.lastSeen || null, user.currentPage || null, user.currentAction || null),
                     user.roleName ? (
@@ -328,7 +328,7 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
                         {user.roleName}
                       </Badge>
                     ) : (
-                      <span key="role" className="text-sm text-gray-400">No role</span>
+                      <span key="role" className="text-gray-400">No role</span>
                     ),
                     <div key="actions" className="flex items-center justify-end gap-1">
                       <Button

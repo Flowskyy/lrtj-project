@@ -9,6 +9,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Plus, Pencil, Trash2, GripVertical, Image as ImageIcon } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import { formatWIBDate } from "@/lib/formatWIBDate";
+import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 import Link from "next/link";
 import {
   DndContext,
@@ -18,6 +19,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -27,6 +29,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis, restrictToWindowEdges } from "@dnd-kit/modifiers";
 
 interface Popup {
   id: number;
@@ -125,6 +128,40 @@ function SortablePopupCard({ popup, onDelete }: { popup: Popup; onDelete: (popup
   );
 }
 
+function PopupDragOverlay({ popup }: { popup: Popup }) {
+  return (
+    <Card className="bg-white/80 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] rounded-2xl rotate-3 scale-105">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-4">
+          {/* Drag Handle */}
+          <div className="cursor-grab active:cursor-grabbing flex-shrink-0 pt-1">
+            <GripVertical className="h-5 w-5 text-gray-400" />
+          </div>
+
+          {/* Image Thumbnail */}
+          <div className="w-32 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-100">
+            <img
+              src={getImageUrl(popup.image_url)}
+              alt={popup.description || "Popup"}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {popup.description || "No description"}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Sequence: {popup.sequence}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PopupsContent({ }: PopupsContentProps) {
   const [popups, setPopups] = useState<Popup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,10 +174,15 @@ export default function PopupsContent({ }: PopupsContentProps) {
   const [originalPopups, setOriginalPopups] = useState<Popup[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeId, setActiveId] = useState<number | null>(null);
 
-  // DnD sensors
+  // DnD sensors with modifiers for boundary constraints
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -168,21 +210,26 @@ export default function PopupsContent({ }: PopupsContentProps) {
     fetchPopups();
   }, []);
 
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id as number);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
 
     if (over && active.id !== over.id) {
       const oldIndex = popups.findIndex((p) => p.id === active.id);
       const newIndex = popups.findIndex((p) => p.id === over.id);
 
       const newPopups = arrayMove(popups, oldIndex, newIndex);
-      
+
       // Update sequence values locally
       const reorderedPopups = newPopups.map((popup, index) => ({
         ...popup,
         sequence: index + 1,
       }));
-      
+
       setPopups(reorderedPopups);
       setHasUnsavedChanges(true);
     }
@@ -254,6 +301,21 @@ export default function PopupsContent({ }: PopupsContentProps) {
     setHasUnsavedChanges(false);
   };
 
+  // Register unsaved changes with global context
+  const { registerUnsavedChanges, unregisterUnsavedChanges } = useUnsavedChanges();
+
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      registerUnsavedChanges({
+        hasUnsavedChanges: true,
+        onDiscard: handleCancelOrder,
+        description: "You have unsaved changes to the popup order. These changes will be lost if you continue.",
+      });
+    } else {
+      unregisterUnsavedChanges();
+    }
+  }, [hasUnsavedChanges, registerUnsavedChanges, unregisterUnsavedChanges]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -287,7 +349,9 @@ export default function PopupsContent({ }: PopupsContentProps) {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
         >
           <SortableContext
             items={popups.map((p) => p.id)}
@@ -303,6 +367,11 @@ export default function PopupsContent({ }: PopupsContentProps) {
               ))}
             </div>
           </SortableContext>
+          <DragOverlay>
+            {activeId ? (
+              <PopupDragOverlay popup={popups.find((p) => p.id === activeId)!} />
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
 

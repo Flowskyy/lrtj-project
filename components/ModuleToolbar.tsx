@@ -75,6 +75,21 @@ interface ModuleToolbarProps {
   tierOptions?: Array<{ value: string; label: string }>;
   showTierFilter?: boolean;
   
+  genderFilter?: string;
+  onGenderFilterChange?: (value: string) => void;
+  genderOptions?: Array<{ value: string; label: string }>;
+  showGenderFilter?: boolean;
+  
+  verifiedFilter?: string;
+  onVerifiedFilterChange?: (value: string) => void;
+  verifiedOptions?: Array<{ value: string; label: string }>;
+  showVerifiedFilter?: boolean;
+  
+  actorFilter?: string;
+  onActorFilterChange?: (value: string) => void;
+  actorOptions?: Array<{ value: string; label: string }>;
+  showActorFilter?: boolean;
+  
   dateFrom?: string;
   onDateFromChange?: (value: string) => void;
   dateTo?: string;
@@ -83,6 +98,7 @@ interface ModuleToolbarProps {
   
   onResetFilters?: () => void;
   activeFilterCount?: number;
+  onApplyFilters?: () => void;
   
   // Column visibility props
   visibleColumns: { [key: string]: boolean };
@@ -135,6 +151,21 @@ export default function ModuleToolbar({
   tierOptions,
   showTierFilter,
   
+  genderFilter,
+  onGenderFilterChange,
+  genderOptions,
+  showGenderFilter,
+  
+  verifiedFilter,
+  onVerifiedFilterChange,
+  verifiedOptions,
+  showVerifiedFilter,
+  
+  actorFilter,
+  onActorFilterChange,
+  actorOptions,
+  showActorFilter,
+  
   dateFrom,
   onDateFromChange,
   dateTo,
@@ -143,6 +174,7 @@ export default function ModuleToolbar({
   
   onResetFilters,
   activeFilterCount,
+  onApplyFilters,
   
   visibleColumns,
   onColumnVisibilityToggle,
@@ -203,12 +235,25 @@ export default function ModuleToolbar({
           onTierFilterChange={onTierFilterChange}
           tierOptions={tierOptions}
           showTierFilter={showTierFilter}
+          genderFilter={genderFilter}
+          onGenderFilterChange={onGenderFilterChange}
+          genderOptions={genderOptions}
+          showGenderFilter={showGenderFilter}
+          verifiedFilter={verifiedFilter}
+          onVerifiedFilterChange={onVerifiedFilterChange}
+          verifiedOptions={verifiedOptions}
+          showVerifiedFilter={showVerifiedFilter}
+          actorFilter={actorFilter}
+          onActorFilterChange={onActorFilterChange}
+          actorOptions={actorOptions}
+          showActorFilter={showActorFilter}
           dateFrom={dateFrom}
           onDateFromChange={onDateFromChange}
           dateTo={dateTo}
           onDateToChange={onDateToChange}
           showDateRange={showDateRange}
           onResetFilters={onResetFilters}
+          onApplyFilters={onApplyFilters}
           activeFilterCount={activeFilterCount}
         />
         

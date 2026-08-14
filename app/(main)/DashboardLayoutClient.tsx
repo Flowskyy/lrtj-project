@@ -45,6 +45,7 @@ import { getCurrentWIBTimeCompact } from "@/lib/formatWIBDate"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { SessionProvider, useSessionContext } from "@/contexts/SessionContext"
 import { ActionProvider, useAction } from "@/contexts/ActionContext"
+import { UnsavedChangesProvider } from "@/contexts/UnsavedChangesContext"
 
 // Shared icon props for ALL top-level sidebar navigation icons
 const SIDEBAR_ICON_PROPS = {
@@ -847,9 +848,11 @@ export function DashboardLayoutClient({ children, initialSession, initialPermiss
   return (
     <SessionProvider initialSession={initialSession}>
       <ActionProvider>
-        <SidebarProvider defaultOpen={true}>
-          <SidebarContentWrapper initialPermissions={initialPermissions}>{children}</SidebarContentWrapper>
-        </SidebarProvider>
+        <UnsavedChangesProvider>
+          <SidebarProvider defaultOpen={true}>
+            <SidebarContentWrapper initialPermissions={initialPermissions}>{children}</SidebarContentWrapper>
+          </SidebarProvider>
+        </UnsavedChangesProvider>
       </ActionProvider>
     </SessionProvider>
   )

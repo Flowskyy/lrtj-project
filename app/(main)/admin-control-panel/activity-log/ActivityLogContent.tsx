@@ -396,35 +396,35 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                       </div>
                     ),
                     cells: [
-                      <div key="activity" className="py-1.5">
+                      <div key="activity">
                         <div className="flex items-center gap-2 flex-wrap mb-1.5">
                           <button
                             onClick={() => {
                               if (log.actorUserId) handleShowUserTimeline(log.actorUserId);
                             }}
-                            className={`font-medium text-gray-900 text-sm ${log.actorUserId ? "hover:text-[#E5262C] hover:underline transition-colors cursor-pointer" : ""}`}
+                            className={`font-medium text-gray-900 ${log.actorUserId ? "hover:text-[#E5262C] hover:underline transition-colors cursor-pointer" : ""}`}
                             title={log.actorUserId ? `View ${log.actorName || 'System'}'s activity timeline` : undefined}
                           >
                             {log.actorName || 'System'}
                           </button>
                           {log.actorEmail && (
-                            <span className="text-xs text-gray-500">{log.actorEmail}</span>
+                            <span className="text-gray-500">{log.actorEmail}</span>
                           )}
-                          <Badge variant="outline" className={`${getActionBadge(log.action)} shrink-0 ml-auto text-xs`}>
+                          <Badge variant="outline" className={`${getActionBadge(log.action)} shrink-0 ml-auto text-[10px]`}>
                             {log.action}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-gray-700">
                             {formatTableForDisplay(log.tableName)}
                           </span>
-                          <span className="text-xs text-gray-400">&bull;</span>
+                          <span className="text-gray-400">&bull;</span>
                           <span className="text-gray-600">
                             {getChangedFieldsSummary(log)}
                           </span>
                         </div>
                       </div>,
-                      <div key="time" className="text-sm text-gray-500">
+                      <div key="time" className="text-gray-500">
                         {formatFullDateWithTime(log.createdAt)}
                       </div>,
                       <div key="status">

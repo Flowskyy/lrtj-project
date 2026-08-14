@@ -59,7 +59,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 
 function ActivityCell({ step, lastActivityAt }: { step: string | null; lastActivityAt: string | null }) {
   if (!step) {
-    return <span className="text-sm text-gray-400">Link not opened yet</span>;
+    return <span className="text-gray-400">Link not opened yet</span>;
   }
 
   // Coarse 60s freshness window (heartbeat fires every ~10s while page is open)
@@ -69,7 +69,7 @@ function ActivityCell({ step, lastActivityAt }: { step: string | null; lastActiv
   return (
     <div className="flex items-center gap-2">
       <span className={`h-2 w-2 rounded-full ${isActive ? "bg-green-500" : "bg-gray-300"}`} />
-      <span className={`text-sm ${isActive ? "text-gray-800 font-medium" : "text-gray-400"}`}>
+      <span className={`${isActive ? "text-gray-800 font-medium" : "text-gray-400"}`}>
         {isActive ? ACTIVITY_LABELS[step] || step : "Idle"}
       </span>
     </div>
@@ -147,13 +147,13 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
   const invitationRows = invitations.map(inv => ({
     id: inv.id,
     cells: [
-      <div key="email" className="text-gray-900 font-medium text-sm">{inv.email}</div>,
+      <div key="email" className="text-gray-900 font-medium">{inv.email}</div>,
       <ActivityCell key="activity" step={inv.activityStep} lastActivityAt={inv.lastActivityAt} />,
       <ValidityBadge key="status" state={inv.validityState} />,
       <Badge key="role" variant="secondary" className="bg-gray-100/80 border border-gray-200/80 text-gray-700 font-medium text-xs">
         {inv.roleName || "Unknown"}
       </Badge>,
-      <div key="created" className="text-sm text-gray-600">{formatWIBDate(inv.createdAt)}</div>,
+      <div key="created" className="text-gray-600">{formatWIBDate(inv.createdAt)}</div>,
       <div key="actions" className="flex items-center justify-end gap-1">
         <Button
           variant="ghost"

@@ -37,7 +37,7 @@ function TableHeadRow({ columns }: { columns: GlassTableColumn[] }) {
       {columns.map((column) => (
         <TableHead
           key={column.key}
-          className={`text-gray-700 font-semibold text-sm tracking-tight py-3 px-4 ${column.className || ''}`}
+          className={`text-gray-600 font-semibold text-[11px] uppercase tracking-wider px-2 py-1.5 ${column.className || ''}`}
           style={{ width: column.width }}
         >
           {column.header}
@@ -53,8 +53,8 @@ function SkeletonRow({ columns, skeletonCount }: { columns: GlassTableColumn[], 
       {[...Array(skeletonCount)].map((_, i) => (
         <TableRow key={i}>
           {columns.map((column) => (
-            <TableCell key={`${column.key}-${i}`} className="py-3 px-4">
-              <Skeleton className="h-11 w-full" />
+            <TableCell key={`${column.key}-${i}`} className="px-2 py-1.5">
+              <Skeleton className="h-3 w-full" />
             </TableCell>
           ))}
         </TableRow>
@@ -67,7 +67,7 @@ function EmptyRow({ columns, message }: { columns: GlassTableColumn[], message: 
   return (
     <TableBody>
       <TableRow>
-        <TableCell colSpan={columns.length} className="text-center text-gray-500 py-12 text-sm">
+        <TableCell colSpan={columns.length} className="text-center text-gray-500 px-4 py-12 text-xs">
           {message}
         </TableCell>
       </TableRow>
@@ -82,7 +82,7 @@ function DataRows({ columns, rows }: { columns: GlassTableColumn[], rows: GlassT
             <Fragment key={String(row.id)}>
           <TableRow className={`border-b border-gray-200/60 hover:bg-gray-50/50 transition-colors ${row.className || ''}`}>
             {row.cells.map((cell, index) => (
-              <TableCell key={`${row.id}-${index}`} className="py-3 px-4">
+              <TableCell key={`${row.id}-${index}`} className="px-2 py-1.5 text-[11px]">
                 {cell}
               </TableCell>
             ))}
@@ -120,7 +120,17 @@ export default function GlassTable({
         {loading ? (
           <SkeletonRow columns={columns} skeletonCount={skeletonCount} />
         ) : rows.length === 0 ? (
-          <EmptyRow columns={columns} message={emptyState || emptyMessage} />
+          emptyState ? (
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center px-4 py-12">
+                  {emptyState}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          ) : (
+            <EmptyRow columns={columns} message={emptyMessage} />
+          )
         ) : (
           <DataRows columns={columns} rows={rows} />
         )}

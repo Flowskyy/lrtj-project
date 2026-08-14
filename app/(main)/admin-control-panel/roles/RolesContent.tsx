@@ -135,36 +135,53 @@ export default function RolesContent({ }: RolesContentProps) {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
+                  <TableRow>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Name</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">Permissions</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-40">Updated At</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-200">
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-32" /></TableCell>
+                      <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-20" /></TableCell>
+                      <TableCell className="px-2 py-1.5"><Skeleton className="h-3 w-28" /></TableCell>
+                      <TableCell className="px-2 py-1.5"><Skeleton className="h-5 w-16" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-gray-50 sticky top-0 border-b border-gray-200 z-10">
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="w-32">Permissions</TableHead>
-                    <TableHead className="w-40">Updated At</TableHead>
-                    <TableHead className="w-32">Actions</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Name</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">Permissions</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-40">Updated At</TableHead>
+                    <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="divide-y divide-gray-200">
                   {roles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={4} className="text-center text-gray-500 px-4 py-12 text-xs">
                         No roles found
                       </TableCell>
                     </TableRow>
                   ) : (
                     roles.map((role) => (
-                      <TableRow key={role.id}>
-                        <TableCell className="font-medium">{role.name}</TableCell>
-                        <TableCell>{role._count.role_permissions} pages</TableCell>
-                        <TableCell>{formatWIBDate(role.updatedAt)}</TableCell>
-                        <TableCell>
+                      <TableRow key={role.id} className="hover:bg-gray-50 transition-colors">
+                        <TableCell className="px-2 py-1.5 text-[11px] font-medium text-gray-900">{role.name}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">{role._count.role_permissions} pages</TableCell>
+                        <TableCell className="px-2 py-1.5 text-[11px] text-gray-600">{formatWIBDate(role.updatedAt)}</TableCell>
+                        <TableCell className="px-2 py-1.5">
                           <div className="flex gap-2">
                             <Link href={`/admin-control-panel/roles/edit/${role.id}`}>
                               <Button
