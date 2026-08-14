@@ -17,11 +17,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Redirect old waiting-for-approval route to access-denied
-  if (pathname === "/waiting-for-approval") {
-    return NextResponse.redirect(new URL("/access-denied", request.url))
-  }
-
   // Protected routes under (main) group
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/users") ||
       pathname.startsWith("/news") || pathname.startsWith("/notifications") ||

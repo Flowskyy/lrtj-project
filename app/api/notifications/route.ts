@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     // If push was requested, send FCM notifications
     if (sendPush) {
       if (!messaging) {
-        console.warn('[FCM] Firebase Admin SDK not initialized. Skipping push notification.');
+        // Firebase Admin SDK not initialized - skip push notification silently
       } else {
         try {
           const usersWithPush = await prisma.users.findMany({
@@ -71,9 +71,8 @@ export async function POST(request: NextRequest) {
           const tokens = usersWithPush.map(u => u.device_token).filter((t): t is string => t !== null && t !== '');
 
           if (tokens.length === 0) {
-            console.log('[FCM] No valid device tokens found for push notification.');
+            // No valid device tokens found - skip push notification
           } else {
-            console.log(`[FCM] Sending push to ${tokens.length} users`);
 
             // FCM has a hard limit of 500 tokens per multicast call
             const BATCH_SIZE = 500;
@@ -81,8 +80,6 @@ export async function POST(request: NextRequest) {
             for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
               tokenChunks.push(tokens.slice(i, i + BATCH_SIZE));
             }
-
-            console.log(`[FCM] Split into ${tokenChunks.length} batches of max ${BATCH_SIZE} tokens each`);
 
             // Aggregate results across all batches
             let totalSuccessCount = 0;
@@ -99,13 +96,9 @@ export async function POST(request: NextRequest) {
               const batchNumber = Math.floor(i / CONCURRENCY_LIMIT) + 1;
               const totalBatches = Math.ceil(tokenChunks.length / CONCURRENCY_LIMIT);
 
-              console.log(`[FCM] Processing batch group ${batchNumber}/${totalBatches} (${batch.length} batches, ${batch.reduce((sum, chunk) => sum + chunk.length, 0)} tokens)`);
-
               const batchPromises = batch.map(async (chunkTokens, chunkIndex) => {
                 const chunkStartIndex = i * BATCH_SIZE + chunkIndex * BATCH_SIZE;
                 const currentBatchIndex = i + chunkIndex;
-
-                console.log(`[FCM] Starting batch ${currentBatchIndex + 1}/${tokenChunks.length} (${chunkTokens.length} tokens)`);
 
                 // Build FCM message for this chunk
                 const message: any = {
@@ -130,8 +123,6 @@ export async function POST(request: NextRequest) {
                   totalSuccessCount += response.successCount;
                   totalFailureCount += response.failureCount;
 
-                  console.log(`[FCM] Batch ${currentBatchIndex + 1} completed: ${response.successCount} success, ${response.failureCount} failures`);
-
                   // Handle failed tokens in this chunk
                   if (response.failureCount > 0) {
                     response.responses.forEach((resp: any, index: number) => {
@@ -145,11 +136,9 @@ export async function POST(request: NextRequest) {
                           if (error.code === 'messaging/registration-token-not-registered' ||
                               error.code === 'messaging/invalid-registration-token') {
                             allTokensToClear.push(token);
-                            console.log(`[FCM] Token ${chunkStartIndex + index}: Marked for deletion (${error.code})`);
                           } else {
                             const globalIndex = chunkStartIndex + index;
                             allErrors.push(`Token ${globalIndex}: ${error.message} (${error.code})`);
-                            console.log(`[FCM] Token ${globalIndex}: ${error.message} (${error.code}) - NOT deleting token`);
                           }
                         }
                       }
@@ -169,14 +158,10 @@ export async function POST(request: NextRequest) {
               });
 
               await Promise.all(batchPromises);
-              console.log(`[FCM] Batch group ${batchNumber}/${totalBatches} completed`);
             }
-
-            console.log(`[FCM] Total: Sent to ${totalSuccessCount} devices, failed for ${totalFailureCount}`);
 
             // Clear stale tokens from database
             if (allTokensToClear.length > 0) {
-              console.log(`[FCM] Clearing ${allTokensToClear.length} stale device tokens`);
               await prisma.users.updateMany({
                 where: {
                   device_token: {

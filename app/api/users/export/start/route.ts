@@ -194,7 +194,6 @@ async function runExportJob(
   total: number
 ) {
   const { batchSize } = calculateDynamicBatchSize(total);
-  console.log(`Export job ${jobId}: total=${total}, dynamic batch size=${batchSize}`);
   
   let users: any[] = [];
   let offset = 0;
@@ -207,8 +206,6 @@ async function runExportJob(
       // Check if job was cancelled - check both cancelled flag and status for robustness
       const currentJob = exportJobManager.getJob(jobId);
       if (currentJob?.status === 'cancelled' || exportJobManager.isCancelled(jobId)) {
-        console.log(`Export job ${jobId} cancelled, stopping batch loop`);
-        
         // Clean up partial file if it exists
         try {
           const date = new Date().toISOString().split('T')[0];
@@ -216,7 +213,6 @@ async function runExportJob(
           const filePath = path.join(process.cwd(), 'temp', filename);
           if (existsSync(filePath)) {
             await unlink(filePath);
-            console.log(`Cleaned up partial file on cancellation: ${filename}`);
           }
         } catch (cleanupError) {
           console.error(`Failed to clean up partial file on cancellation:`, cleanupError);
@@ -319,7 +315,6 @@ async function runExportJob(
     // Mark job as completed
     exportJobManager.completeJob(jobId, filename);
     
-    console.log(`Export job ${jobId} completed successfully`);
   } catch (error: any) {
     console.error(`Export job ${jobId} failed:`, error);
     exportJobManager.failJob(jobId, error.message);
@@ -331,7 +326,6 @@ async function runExportJob(
       const filePath = path.join(process.cwd(), 'temp', filename);
       if (existsSync(filePath)) {
         await unlink(filePath);
-        console.log(`Cleaned up partial file: ${filename}`);
       }
     } catch (cleanupError) {
       console.error(`Failed to clean up partial file:`, cleanupError);

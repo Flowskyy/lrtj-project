@@ -48,12 +48,9 @@ export default function RolesContent({ }: RolesContentProps) {
   const fetchRoles = async () => {
     setLoading(true);
     try {
-      console.log("Fetching roles...");
       const res = await fetch("/api/roles");
-      console.log("Roles response status:", res.status);
       if (res.ok) {
         const data = await res.json();
-        console.log("Roles data:", data);
         setRoles(data.roles || []);
       } else {
         console.error("Failed to fetch roles, status:", res.status);

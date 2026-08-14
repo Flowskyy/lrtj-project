@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
         ` as any[];
       } catch (error) {
         // If currentPage column doesn't exist, try without it
-        console.log('currentPage column might not exist, fetching without it');
         users = await prisma.$queryRaw`
           SELECT
             au.id,
@@ -70,7 +69,6 @@ export async function GET(request: NextRequest) {
         ` as any[];
       } catch (error) {
         // If currentPage column doesn't exist, try without it
-        console.log('currentPage column might not exist, fetching without it');
         users = await prisma.$queryRaw`
           SELECT
             au.id,

@@ -99,8 +99,8 @@ export async function PUT(
 
     // Calculate changed fields
     const changedFields = Object.keys(data).filter(key => {
-      const beforeVal = beforeState[key];
-      const afterVal = serialized[key];
+      const beforeVal = (beforeState as Record<string, any>)[key];
+      const afterVal = (serialized as Record<string, any>)[key];
       return JSON.stringify(beforeVal) !== JSON.stringify(afterVal);
     });
 

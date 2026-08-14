@@ -145,6 +145,13 @@ export async function DELETE(
         select: { sequence: true },
       });
 
+      if (!deletedPopup) {
+        return NextResponse.json(
+          { error: 'Popup not found' },
+          { status: 404 }
+        );
+      }
+
       // Delete the popup
       await prisma.popups.delete({
         where: { id: parseInt(id) },

@@ -145,6 +145,13 @@ export async function DELETE(
         select: { sequence: true },
       });
 
+      if (!deletedBanner) {
+        return NextResponse.json(
+          { error: 'Banner not found' },
+          { status: 404 }
+        );
+      }
+
       // Delete the banner
       await prisma.banners.delete({
         where: { id: parseInt(id) },

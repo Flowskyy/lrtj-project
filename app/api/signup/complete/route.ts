@@ -98,7 +98,6 @@ export async function POST(request: NextRequest) {
 
     // Create user using better-auth signUp method
     // Use email as the name since we're removing username concept
-    console.log('[SIGNUP DEBUG] Attempting to sign up user:', invitation.email);
     const signUpResult = await auth.api.signUpEmail({
       body: {
         email: invitation.email,
@@ -106,8 +105,6 @@ export async function POST(request: NextRequest) {
         name: invitation.email, // Use email as the name field
       },
     });
-
-    console.log('[SIGNUP DEBUG] Sign up result:', JSON.stringify(signUpResult, null, 2));
 
     if ('error' in signUpResult && signUpResult.error) {
       console.error('Sign up error:', signUpResult.error);
@@ -135,15 +132,12 @@ export async function POST(request: NextRequest) {
     `;
 
     // Create session for the user
-    console.log('[SIGNUP DEBUG] Attempting to sign in user after signup:', invitation.email);
     const sessionResult = await auth.api.signInEmail({
       body: {
         email: invitation.email,
         password,
       },
     });
-
-    console.log('[SIGNUP DEBUG] Sign in result:', JSON.stringify(sessionResult, null, 2));
 
     if ('error' in sessionResult && sessionResult.error) {
       console.error('Sign in error:', sessionResult.error);
