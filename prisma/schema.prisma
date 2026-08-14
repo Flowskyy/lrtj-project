@@ -1195,7 +1195,7 @@ model role_permissions {
 
 model system_activity_logs {
   id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  actorUserId      String?
+  actorUserId      String?   @db.VarChar(255)
   actorName        String?   @db.VarChar(255)
   actorEmail       String?   @db.VarChar(255)
   actorRoleId      Int?
@@ -1210,12 +1210,12 @@ model system_activity_logs {
   revertedAt       DateTime? @db.Timestamp(0)
   revertedByUserId String?   @db.VarChar(255)
 
-  @@index([tableName])
-  @@index([recordId])
-  @@index([action])
-  @@index([createdAt(sort: Desc)])
-  @@index([actorUserId])
-  @@index([actorRoleId])
+  @@index([action], map: "idx_action")
+  @@index([actorRoleId], map: "idx_actorRoleId")
+  @@index([actorUserId], map: "idx_actorUserId")
+  @@index([createdAt(sort: Desc)], map: "idx_createdAt")
+  @@index([recordId], map: "idx_recordId")
+  @@index([tableName], map: "idx_tableName")
   @@map("system_activity_logs")
 }
 

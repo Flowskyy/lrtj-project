@@ -1,2 +1,0 @@
--- Step 4: Grant all permissions to Super Admin role
--- This will be done via Prisma client instead (step4_permissions.ts)
