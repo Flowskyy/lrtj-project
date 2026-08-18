@@ -12,7 +12,6 @@ dist
 
 # Environment
 .env
-.env*.local
 .env.production
 
 # Testing
