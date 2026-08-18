@@ -20,6 +20,7 @@ import { Filter, Plus, MoreVertical, Pencil, Trash2, Search, Columns, ChevronDow
 import { getImageUrl } from "@/lib/utils";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
+import Pagination from "@/components/Pagination";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -55,6 +56,8 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Filter and Sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -89,6 +92,8 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
+      params.set("page", currentPage.toString());
+      params.set("limit", "50");
 
       const res = await fetch(`/api/daily-benefit?${params}`);
       if (res.ok) {
@@ -97,12 +102,17 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
         setTotalCount(response.meta?.total || 0);
         setActiveCount(response.meta?.active || 0);
         setInactiveCount(response.meta?.inactive || 0);
+        setTotalPages(response.meta?.totalPages || 1);
       }
     } catch (err) {
       console.error("Failed to fetch items", err);
     } finally {
       setLoading(false);
     }
+  }, [statusFilter, sortBy, sortOrder, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
   }, [statusFilter, sortBy, sortOrder]);
 
   useEffect(() => {
@@ -142,6 +152,7 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
     setStatusFilter("all");
     setSortBy("created_at");
     setSortOrder("desc");
+    setCurrentPage(1);
   };
 
   // Handle scope selection
@@ -734,6 +745,17 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
                 <p className="text-sm text-gray-500">No daily benefit items found.</p>
               </div>
             )}
+          </div>
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalCount={totalCount}
+              pageSize={50}
+            />
           </div>
         </CardContent>
       </Card>

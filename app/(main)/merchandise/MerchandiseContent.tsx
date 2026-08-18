@@ -16,6 +16,7 @@ import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSug
 import { getImageUrl } from "@/lib/utils";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
+import Pagination from "@/components/Pagination";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +61,8 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Filter and Sort states
   const [sortBy, setSortBy] = useState<string>("createdAt");
@@ -93,6 +96,8 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (categoryFilter !== "all") params.set("category_id", categoryFilter);
+      params.set("page", currentPage.toString());
+      params.set("limit", "50");
 
       const res = await fetch(`/api/merchandise?${params}`);
       if (res.ok) {
@@ -101,6 +106,7 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
         setTotalCount(response.meta?.total || 0);
         setActiveCount(response.meta?.active || 0);
         setInactiveCount(response.meta?.inactive || 0);
+        setTotalPages(response.meta?.totalPages || 1);
       }
     } catch (err) {
       console.error("Failed to fetch items", err);
@@ -110,8 +116,12 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
   };
 
   useEffect(() => {
-    fetchItems();
+    setCurrentPage(1);
   }, [sortBy, sortOrder, categoryFilter]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [sortBy, sortOrder, categoryFilter, currentPage]);
 
   // Search scopes for Merchandise
   const merchandiseSearchScopes: SearchScope[] = [
@@ -160,6 +170,7 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
     setCategoryFilter("all");
     setSortBy("createdAt");
     setSortOrder("desc");
+    setCurrentPage(1);
   };
 
   // Handle scope selection
@@ -637,6 +648,17 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
                 <p className="text-sm text-gray-500">No merchandise items found.</p>
               </div>
             )}
+          </div>
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalCount={totalCount}
+              pageSize={50}
+            />
           </div>
         </CardContent>
       </Card>

@@ -146,6 +146,34 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
     fetchLogs(filters);
   }, [page, selectedTable, selectedAction, selectedActor, activeTab, startDate, endDate, sortBy, sortOrder, userTimelineUserId]);
 
+  // Prefetch next page
+  useEffect(() => {
+    if (page < totalPages && page > 0) {
+      const nextPage = page + 1;
+      const params = new URLSearchParams({
+        page: String(nextPage),
+        limit: "50",
+      });
+      if (selectedTable) params.set("table", selectedTable);
+      if (selectedAction) params.set("action", selectedAction);
+      if (selectedActor) params.set("actor", selectedActor);
+      if (activeTab !== "all") params.set("role", activeTab);
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      if (sortBy) params.set("sortBy", sortBy);
+      if (sortOrder) params.set("order", sortOrder);
+
+      const url = userTimelineUserId
+        ? `/api/activity-logs?actor=${userTimelineUserId}&${params.toString()}`
+        : `/api/activity-logs?${params.toString()}`;
+
+      // Prefetch next page data
+      fetch(url).catch(err => {
+        // Silent fail - prefetch is optional
+      });
+    }
+  }, [page, totalPages, selectedTable, selectedAction, selectedActor, activeTab, startDate, endDate, sortBy, sortOrder, userTimelineUserId]);
+
   const handleRevert = async () => {
     if (!logToRevert) return;
 

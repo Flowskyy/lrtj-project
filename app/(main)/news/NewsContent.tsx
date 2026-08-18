@@ -16,6 +16,7 @@ import { getImageUrl } from "@/lib/utils";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
+import Pagination from "@/components/Pagination";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +53,8 @@ export default function NewsContent({ }: NewsContentProps) {
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Filter and Sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -87,6 +90,8 @@ export default function NewsContent({ }: NewsContentProps) {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
+      params.set("page", currentPage.toString());
+      params.set("limit", "50");
 
       const res = await fetch(`/api/news?${params}`);
       if (res.ok) {
@@ -95,6 +100,7 @@ export default function NewsContent({ }: NewsContentProps) {
         setTotalCount(response.meta?.total || 0);
         setActiveCount(response.meta?.active || 0);
         setInactiveCount(response.meta?.inactive || 0);
+        setTotalPages(response.meta?.totalPages || 1);
       }
     } catch (err) {
       console.error("Failed to fetch items", err);
@@ -104,8 +110,12 @@ export default function NewsContent({ }: NewsContentProps) {
   };
 
   useEffect(() => {
-    fetchItems();
+    setCurrentPage(1);
   }, [statusFilter, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [statusFilter, sortBy, sortOrder, currentPage]);
 
   // Search scopes for News
   const newsSearchScopes: SearchScope[] = [
@@ -127,6 +137,7 @@ export default function NewsContent({ }: NewsContentProps) {
     setTypeFilter("all");
     setSortBy("created_at");
     setSortOrder("desc");
+    setCurrentPage(1);
   };
 
   // Active filter count
@@ -656,6 +667,17 @@ export default function NewsContent({ }: NewsContentProps) {
                 <p className="text-xs text-gray-400">No news items found.</p>
               </div>
             )}
+          </div>
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalCount={totalCount}
+              pageSize={50}
+            />
           </div>
         </CardContent>
       </Card>

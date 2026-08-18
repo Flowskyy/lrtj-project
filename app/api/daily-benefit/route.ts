@@ -15,6 +15,9 @@ export async function GET(request: NextRequest) {
   const order = searchParams.get('order') || 'asc';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const skip = (page - 1) * limit;
 
   // Build WHERE clause for raw SQL
   const conditions: string[] = [];
@@ -43,6 +46,11 @@ export async function GET(request: NextRequest) {
   const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
   const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
+  // Get total count
+  const countQuery = `SELECT COUNT(*) as count FROM daily_benefit ${whereClause}`;
+  const totalCount = await prisma.$queryRawUnsafe(countQuery, ...params) as any[];
+  const total = Number(totalCount[0]?.count || 0);
+
   // Use raw SQL for consistent WIB formatting
   const items = await prisma.$queryRawUnsafe(
     `SELECT
@@ -51,7 +59,8 @@ export async function GET(request: NextRequest) {
       DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
     FROM daily_benefit
     ${whereClause}
-    ${orderByClause}`,
+    ${orderByClause}
+    LIMIT ${skip}, ${limit}`,
     ...params
   ) as any[];
 
@@ -86,9 +95,12 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     data: items,
     meta: {
-      total: Number(totalCount[0]?.count || 0),
+      total,
       active: activeCount,
       inactive: inactiveCount,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     },
   });
 }

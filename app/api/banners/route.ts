@@ -7,6 +7,15 @@ import { logManualActivity } from '@/lib/activity-logger';
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '100'); // Higher default for banners
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const countResult = await prisma.$queryRaw`SELECT COUNT(*) as total FROM banners` as any[];
+    const total = Number(countResult[0]?.total || 0);
+
     // Use raw SQL for consistent WIB formatting
     const banners = await prisma.$queryRaw`
       SELECT
@@ -15,9 +24,18 @@ export async function GET(request: Request) {
         DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
       FROM banners
       ORDER BY sequence ASC
+      LIMIT ${limit} OFFSET ${skip}
     ` as any[];
 
-    return NextResponse.json(banners);
+    return NextResponse.json({
+      banners,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Error fetching banners:', error);
     return NextResponse.json(

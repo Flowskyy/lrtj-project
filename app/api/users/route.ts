@@ -177,13 +177,12 @@ export async function GET(request: NextRequest) {
       hasMore = batch.length === batchSize;
     }
   } else {
-    // Normal paginated query
+    // Normal paginated query - exclude unused fields for list view performance
     users = await prisma.$queryRawUnsafe(
       `SELECT
-        id, email, password, no_telepon, jenis_kelamin, nik, alamat, tempat_lahir, name, image, status, device_token,
-        push_notification, email_notification, new_content_notification, google_id, otp, verified_at, activation_slc,
-        activation_slc_at, activation_lrtjpay, activation_lrtjpay_at, member_level_id, apple_id, lrtj_token, guid,
-        domain, lrtjpay_token, lrtjpay_pin, province_id, regency_id, ecard, ecard2, lrtj_saldo, slc_point, trip_count,
+        id, email, no_telepon, jenis_kelamin, nik, name, image, status,
+        activation_slc, activation_slc_at, member_level_id, province_id, regency_id,
+        lrtj_saldo, slc_point, trip_count,
         DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
         DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
       FROM users

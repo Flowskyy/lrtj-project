@@ -15,6 +15,9 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const categoryId = searchParams.get('category_id');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const skip = (page - 1) * limit;
 
   // Build WHERE clause for raw SQL
   const conditions: string[] = [];
@@ -46,6 +49,11 @@ export async function GET(request: NextRequest) {
   const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
   const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
+  // Get total count
+  const countQuery = `SELECT COUNT(*) as count FROM merchandise m ${whereClause}`;
+  const totalCount = await prisma.$queryRawUnsafe(countQuery, ...params) as any[];
+  const total = Number(totalCount[0]?.count || 0);
+
   // Use raw SQL for consistent WIB formatting
   const items = await prisma.$queryRawUnsafe(
     `SELECT
@@ -58,7 +66,8 @@ export async function GET(request: NextRequest) {
     LEFT JOIN merchandise_category c ON m.category_id = c.id
     LEFT JOIN auth_users u ON m.editedBy = u.name COLLATE utf8mb4_unicode_ci
     ${whereClause}
-    ${orderByClause}`,
+    ${orderByClause}
+    LIMIT ${skip}, ${limit}`,
     ...params
   ) as any[];
 
@@ -104,9 +113,12 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     data: itemsWithCategory,
     meta: {
-      total: Number(totalCount[0]?.count || 0),
+      total,
       active: activeCount,
       inactive: inactiveCount,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     },
   });
 }

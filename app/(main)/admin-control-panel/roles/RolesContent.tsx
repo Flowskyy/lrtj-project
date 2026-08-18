@@ -12,6 +12,7 @@ import { Pencil, Trash2, Shield, Plus } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import Link from "next/link";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import Pagination from "@/components/Pagination";
 
 interface Role {
   id: number;
@@ -39,6 +40,8 @@ interface RolesContentProps {
 export default function RolesContent({ }: RolesContentProps) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Delete dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -48,10 +51,11 @@ export default function RolesContent({ }: RolesContentProps) {
   const fetchRoles = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/roles");
+      const res = await fetch(`/api/roles?page=${page}&limit=100`);
       if (res.ok) {
         const data = await res.json();
         setRoles(data.roles || []);
+        setTotalPages(data.pagination?.totalPages || 1);
       } else {
         console.error("Failed to fetch roles, status:", res.status);
         toast.error("Failed to fetch roles");
@@ -67,6 +71,10 @@ export default function RolesContent({ }: RolesContentProps) {
   useEffect(() => {
     fetchRoles();
   }, []);
+
+  useEffect(() => {
+    fetchRoles();
+  }, [page]);
 
   const handleDelete = async () => {
     if (!selectedRole) return;
@@ -206,6 +214,17 @@ export default function RolesContent({ }: RolesContentProps) {
               </Table>
             </div>
           )}
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalCount={roles.length}
+              pageSize={100}
+            />
+          </div>
         </CardContent>
       </Card>
 

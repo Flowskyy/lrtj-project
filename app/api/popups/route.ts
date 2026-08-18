@@ -7,6 +7,15 @@ import { logManualActivity } from '@/lib/activity-logger';
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '100'); // Higher default for popups
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const countResult = await prisma.$queryRaw`SELECT COUNT(*) as total FROM popups` as any[];
+    const total = Number(countResult[0]?.total || 0);
+
     // Use raw SQL for consistent WIB formatting
     const popups = await prisma.$queryRaw`
       SELECT
@@ -15,9 +24,18 @@ export async function GET(request: Request) {
         DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
       FROM popups
       ORDER BY sequence ASC
+      LIMIT ${limit} OFFSET ${skip}
     ` as any[];
 
-    return NextResponse.json(popups);
+    return NextResponse.json({
+      popups,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Error fetching popups:', error);
     return NextResponse.json(

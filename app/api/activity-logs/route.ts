@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
 
     // Get logs with pagination and sorting
     // Note: sort by raw column for proper ordering, then format in SELECT
+    // Exclude beforeState/afterState from list view for performance
     const selectQuery = `
       SELECT
         id,
@@ -79,8 +80,6 @@ export async function GET(request: NextRequest) {
         tableName,
         recordId,
         action,
-        beforeState,
-        afterState,
         changedFields,
         DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
         DATE_FORMAT(revertedAt, '%Y-%m-%dT%H:%i:%s') as revertedAt,

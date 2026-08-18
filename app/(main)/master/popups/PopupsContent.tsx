@@ -191,11 +191,11 @@ export default function PopupsContent({ }: PopupsContentProps) {
   const fetchPopups = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/popups");
+      const res = await fetch("/api/popups?page=1&limit=100");
       if (res.ok) {
         const data = await res.json();
-        setPopups(data);
-        setOriginalPopups(data);
+        setPopups(data.popups || []);
+        setOriginalPopups(data.popups || []);
         setHasUnsavedChanges(false);
       }
     } catch (err) {

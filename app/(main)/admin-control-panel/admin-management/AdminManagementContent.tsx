@@ -13,6 +13,7 @@ import GlassTable, { GlassTableColumn, GlassTableRow } from "@/components/GlassT
 import { formatWIBDate, formatLastSeen } from "@/lib/formatWIBDate";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useUserListUpdates } from "@/hooks/use-user-list-updates";
+import Pagination from "@/components/Pagination";
 
 interface Role {
   id: number;
@@ -43,6 +44,8 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -70,11 +73,14 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
   const fetchUsers = async (roleId?: string) => {
     setLoading(true);
     try {
-      const url = roleId ? `/api/admin-users?roleId=${roleId}` : "/api/admin-users";
+      const url = roleId 
+        ? `/api/admin-users?roleId=${roleId}&page=${page}&limit=50` 
+        : `/api/admin-users?page=${page}&limit=50`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setUsers(data);
+        setUsers(data.users || []);
+        setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (err) {
       console.error("Failed to fetch admin users", err);
@@ -90,12 +96,21 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
   }, []);
 
   useEffect(() => {
+    setPage(1);
     if (activeTab === "all") {
       fetchUsers();
     } else {
       fetchUsers(activeTab);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "all") {
+      fetchUsers();
+    } else {
+      fetchUsers(activeTab);
+    }
+  }, [page]);
 
   // Update admin users with online status from realtime updates
   useEffect(() => {
@@ -359,6 +374,17 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
               />
             </TabsContent>
           </Tabs>
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalCount={users.length}
+              pageSize={50}
+            />
+          </div>
         </CardContent>
       </Card>
 

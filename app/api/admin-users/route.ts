@@ -6,6 +6,17 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const roleId = searchParams.get('roleId')
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const skip = (page - 1) * limit
+
+    // Build WHERE clause
+    const whereClause = roleId ? `WHERE au.roleId = ${parseInt(roleId)}` : ''
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) as total FROM auth_users au ${whereClause}`
+    const totalResult = await prisma.$queryRawUnsafe(countQuery) as any[]
+    const total = Number(totalResult[0]?.total || 0)
 
     let users: any[];
     
@@ -28,6 +39,7 @@ export async function GET(request: NextRequest) {
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
           ORDER BY au.createdAt DESC
+          LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       } catch (error) {
         // If currentPage column doesn't exist, try without it
@@ -46,6 +58,7 @@ export async function GET(request: NextRequest) {
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
           ORDER BY au.createdAt DESC
+          LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       }
     } else {
@@ -66,6 +79,7 @@ export async function GET(request: NextRequest) {
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
+          LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       } catch (error) {
         // If currentPage column doesn't exist, try without it
@@ -83,11 +97,20 @@ export async function GET(request: NextRequest) {
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
+          LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       }
     }
 
-    return NextResponse.json(users)
+    return NextResponse.json({
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    })
   } catch (error) {
     console.error("Error fetching admin users:", error)
     return NextResponse.json({ error: "Failed to fetch admin users" }, { status: 500 })

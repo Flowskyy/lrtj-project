@@ -107,8 +107,8 @@ export default function TableFilterSortMenu({
   ],
   activationSlcOptions = [
     { value: "all", label: "All" },
-    { value: "1", label: "Active SLC" },
-    { value: "0", label: "Inactive SLC" },
+    { value: "1", label: "Active LarataClub" },
+    { value: "0", label: "Inactive LarataClub" },
   ],
   tierOptions = [
     { value: "all", label: "All" },
@@ -267,7 +267,7 @@ export default function TableFilterSortMenu({
               {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter) && <DropdownMenuSeparator className="my-1.5" />}
               <div className="space-y-1.5">
                 <div className="px-2 py-0.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Activation SLC</label>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Activation LarataClub</label>
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={activationSlcFilter} onValueChange={(v) => onActivationSlcFilterChange(v || 'all')}>

@@ -13,8 +13,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
+    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '50');
+    const skip = (page - 1) * limit;
+
     // Use raw SQL to bypass Prisma's timezone conversion and include new tracking columns
     // PART C: only ongoing invitations (pending/otp_verified and not past expiry)
+    
+    // Get total count
+    const countResult = await prisma.$queryRaw`
+      SELECT COUNT(*) as total 
+      FROM admin_invitations ai
+      WHERE ai.status IN ('pending', 'otp_verified')
+        AND ai.inviteExpiresAt > NOW()
+    ` as any[];
+    const total = Number(countResult[0]?.total || 0);
+
     const invitations = await prisma.$queryRaw`
       SELECT
         ai.id,
@@ -36,6 +50,7 @@ export async function GET(request: NextRequest) {
       WHERE ai.status IN ('pending', 'otp_verified')
         AND ai.inviteExpiresAt > NOW()
       ORDER BY ai.createdAt DESC
+      LIMIT ${limit} OFFSET ${skip}
     ` as any[];
 
     const invitationsWithState = invitations.map(inv => {
@@ -67,7 +82,15 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ invitations: invitationsWithState });
+    return NextResponse.json({ 
+      invitations: invitationsWithState,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Error fetching invitations:', error);
     return NextResponse.json(

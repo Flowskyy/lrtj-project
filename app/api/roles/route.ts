@@ -6,6 +6,14 @@ import { logManualActivity } from '@/lib/activity-logger'
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '100') // Higher default for roles
+    const skip = (page - 1) * limit
+
+    // Get total count
+    const total = await prisma.auth_roles.count()
+
     const roles = await prisma.auth_roles.findMany({
       select: {
         id: true,
@@ -22,9 +30,19 @@ export async function GET(request: NextRequest) {
       orderBy: {
         name: 'asc',
       },
+      skip,
+      take: limit,
     })
 
-    return NextResponse.json({ roles })
+    return NextResponse.json({ 
+      roles,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    })
   } catch (error) {
     console.error("Error fetching roles:", error)
     return NextResponse.json({ error: "Failed to fetch roles" }, { status: 500 })

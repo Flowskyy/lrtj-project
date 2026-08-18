@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatWIBDate } from "@/lib/formatWIBDate";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
@@ -45,6 +47,13 @@ interface MemberItem {
   membership_name: string | null;
 }
 
+interface RelatedRecord {
+  table: string;
+  count: number;
+  originalTable: string;
+  preview: any[];
+}
+
 interface UserViewContentProps {
   userId: string;
 }
@@ -55,6 +64,13 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
   const [loading, setLoading] = useState(true);
   const [deleteItem, setDeleteItem] = useState<MemberItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deactivateSlcConfirm, setDeactivateSlcConfirm] = useState(false);
+  const [deactivateLrtjPayConfirm, setDeactivateLrtjPayConfirm] = useState(false);
+  const [isDeactivatingSlc, setIsDeactivatingSlc] = useState(false);
+  const [isDeactivatingLrtjPay, setIsDeactivatingLrtjPay] = useState(false);
+  const [relatedRecords, setRelatedRecords] = useState<RelatedRecord[] | null>(null);
+  const [showForceDeleteDialog, setShowForceDeleteDialog] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -80,16 +96,29 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
     fetchUser();
   }, [userId, router]);
 
-  const handleDelete = async () => {
+  const handleDelete = async (force: boolean = false) => {
     if (!deleteItem) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/users/${deleteItem.id}`, {
+      const url = force ? `/api/users/${deleteItem.id}?force=true` : `/api/users/${deleteItem.id}`;
+      const res = await fetch(url, {
         method: "DELETE",
       });
       if (res.ok) {
         const result = await res.json();
+        
+        // Check if user has related records
+        if (result.hasRelatedRecords) {
+          setRelatedRecords(result.relatedData);
+          setShowForceDeleteDialog(true);
+          setIsDeleting(false);
+          return;
+        }
+        
         toast.success(result.message || "User permanently deleted successfully");
+        setDeleteItem(null);
+        setRelatedRecords(null);
+        setExpandedRows(new Set());
         router.push("/users");
       } else {
         const errorData = await res.json();
@@ -103,6 +132,183 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
     }
   };
 
+  const handleForceDelete = async () => {
+    setShowForceDeleteDialog(false);
+    setRelatedRecords(null);
+    await handleDelete(true);
+  };
+
+  const toggleRowExpansion = (index: number) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const getPreviewFields = (record: RelatedRecord) => {
+    switch (record.originalTable) {
+      case 'merchandise redemption':
+        return (
+          <div className="space-y-2">
+            {record.preview.map((item: any) => (
+              <div key={item.id} className="text-xs text-gray-600 border-b border-gray-100 pb-2 last:border-0">
+                <div className="font-medium text-gray-700">Item #{item.merchandise_id}</div>
+                <div className="flex justify-between">
+                  <span>{item.receiver_name || 'No name'}</span>
+                  <span className="text-gray-500">{item.status}</span>
+                </div>
+                <div className="text-gray-400">{formatWIBDate(item.created_at)}</div>
+              </div>
+            ))}
+            {record.count > 3 && (
+              <div className="text-xs text-gray-500 italic">+{record.count - 3} more records</div>
+            )}
+          </div>
+        );
+        
+      case 'benefit redemption':
+        return (
+          <div className="space-y-2">
+            {record.preview.map((item: any) => (
+              <div key={item.id} className="text-xs text-gray-600 border-b border-gray-100 pb-2 last:border-0">
+                <div className="font-medium text-gray-700">Merchant #{item.merchant_id}</div>
+                <div className="flex justify-between">
+                  <span>{item.name || 'No name'}</span>
+                  <span className="text-gray-500">{item.status}</span>
+                </div>
+                <div className="text-gray-400">{formatWIBDate(item.created_at)}</div>
+              </div>
+            ))}
+            {record.count > 3 && (
+              <div className="text-xs text-gray-500 italic">+{record.count - 3} more records</div>
+            )}
+          </div>
+        );
+        
+      case 'SLC earning record':
+        return (
+          <div className="space-y-2">
+            {record.preview.map((item: any) => (
+              <div key={item.id} className="text-xs text-gray-600 border-b border-gray-100 pb-2 last:border-0">
+                <div className="font-medium text-gray-700">{item.category} {item.type ? `(${item.type})` : ''}</div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">{item.info || 'No info'}</span>
+                  <span className="font-medium text-green-600">+{item.earning_point} pts</span>
+                </div>
+                <div className="text-gray-400">{formatWIBDate(item.created_at)}</div>
+              </div>
+            ))}
+            {record.count > 3 && (
+              <div className="text-xs text-gray-500 italic">+{record.count - 3} more records</div>
+            )}
+          </div>
+        );
+        
+      case 'LRTJ earning record':
+        return (
+          <div className="space-y-2">
+            {record.preview.map((item: any) => (
+              <div key={item.id} className="text-xs text-gray-600 border-b border-gray-100 pb-2 last:border-0">
+                <div className="font-medium text-gray-700">{item.category}</div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">{item.info || 'No info'}</span>
+                  <span className="font-medium text-green-600">+{item.earning_point} pts</span>
+                </div>
+                <div className="text-gray-400">{formatWIBDate(item.created_at)}</div>
+              </div>
+            ))}
+            {record.count > 3 && (
+              <div className="text-xs text-gray-500 italic">+{record.count - 3} more records</div>
+            )}
+          </div>
+        );
+        
+      case 'trip history record':
+        return (
+          <div className="space-y-2">
+            {record.preview.map((item: any) => (
+              <div key={item.id} className="text-xs text-gray-600 border-b border-gray-100 pb-2 last:border-0">
+                <div className="font-medium text-gray-700">Trip #{item.id}</div>
+                <div className="flex justify-between">
+                  <span>{item.station_in || 'Unknown'} → {item.station_out || 'Unknown'}</span>
+                </div>
+                <div className="text-gray-400">{formatWIBDate(item.station_in_at || item.created_at)}</div>
+              </div>
+            ))}
+            {record.count > 3 && (
+              <div className="text-xs text-gray-500 italic">+{record.count - 3} more records</div>
+            )}
+          </div>
+        );
+        
+      default:
+        return <div className="text-xs text-gray-500">No preview available</div>;
+    }
+  };
+
+  const handleDeactivateSlc = async () => {
+    if (!item) return;
+    setIsDeactivatingSlc(true);
+    try {
+      const res = await fetch(`/api/users/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activation_slc: 0,
+          activation_slc_at: null,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setItem({ ...item, activation_slc: data.activation_slc, activation_slc_at: data.activation_slc_at });
+        toast.success("LarataClub deactivated successfully");
+        setDeactivateSlcConfirm(false);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to deactivate LarataClub");
+      }
+    } catch (err) {
+      console.error("Failed to deactivate LarataClub", err);
+      toast.error("Failed to deactivate LarataClub");
+    } finally {
+      setIsDeactivatingSlc(false);
+    }
+  };
+
+  const handleDeactivateLrtjPay = async () => {
+    if (!item) return;
+    setIsDeactivatingLrtjPay(true);
+    try {
+      const res = await fetch(`/api/users/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activation_lrtjpay: 0,
+          activation_lrtjpay_at: null,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setItem({ ...item, activation_lrtjpay: data.activation_lrtjpay, activation_lrtjpay_at: data.activation_lrtjpay_at });
+        toast.success("LarataPay deactivated successfully");
+        setDeactivateLrtjPayConfirm(false);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to deactivate LarataPay");
+      }
+    } catch (err) {
+      console.error("Failed to deactivate LarataPay", err);
+      toast.error("Failed to deactivate LarataPay");
+    } finally {
+      setIsDeactivatingLrtjPay(false);
+    }
+  };
+
   const maskNIK = (nik: string | null) => {
     if (!nik) return "-";
     if (nik.length <= 4) return nik;
@@ -113,7 +319,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
     if (item?.activation_slc === 1) {
       return (
         <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
-          SLC
+          LarataClub
         </Badge>
       );
     }
@@ -204,10 +410,10 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
         <div className="space-y-6">
           {/* Title & Status Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">{item.name || "Unknown User"}</h2>
-                <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-gray-900">{item.name || "Unknown User"}</h2>
+                <div className="flex items-center gap-3 pt-2">
                   {getSlcBadge()}
                   {getLrtjPayBadge()}
                 </div>
@@ -237,6 +443,14 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
                 <div className="text-sm text-gray-900">{item.no_telepon || "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Kartu Uang Elektronik 1</label>
+                <div className="text-sm text-gray-900">{item.ecard || "-"}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Kartu Uang Elektronik 2</label>
+                <div className="text-sm text-gray-900">{item.ecard2 || "-"}</div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Gender</label>
@@ -286,7 +500,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Account Statistics</h3>
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">SLC Points</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">LarataClub Points</label>
                 <div className="text-sm text-gray-900 font-semibold">{item.slc_point.toLocaleString()}</div>
               </div>
               <div>
@@ -307,23 +521,65 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
           {/* Activation Info Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Activation Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">SLC Activation</label>
-                <div className="text-sm text-gray-900">{item.activation_slc === 1 ? "Activated" : "Not Activated"}</div>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">LarataClub</label>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-gray-900">{item.activation_slc === 1 ? "Activated" : "Not Activated"}</div>
+                    {item.activation_slc === 1 && (
+                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {item.activation_slc === 1 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDeactivateSlcConfirm(true)}
+                    className="h-8 text-xs"
+                  >
+                    Deactivate
+                  </Button>
+                )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">SLC Activation Date</label>
-                <div className="text-sm text-gray-900">{item.activation_slc_at ? formatWIBDate(item.activation_slc_at) : "-"}</div>
+              {item.activation_slc_at && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">LarataClub Activation Date</label>
+                  <div className="text-sm text-gray-900">{formatWIBDate(item.activation_slc_at)}</div>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">LarataPay</label>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-gray-900">{item.activation_lrtjpay === 1 ? "Activated" : "Not Activated"}</div>
+                    {item.activation_lrtjpay === 1 && (
+                      <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {item.activation_lrtjpay === 1 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDeactivateLrtjPayConfirm(true)}
+                    className="h-8 text-xs"
+                  >
+                    Deactivate
+                  </Button>
+                )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Pay Activation</label>
-                <div className="text-sm text-gray-900">{item.activation_lrtjpay === 1 ? "Activated" : "Not Activated"}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">LRTJ Pay Activation Date</label>
-                <div className="text-sm text-gray-900">{item.activation_lrtjpay_at ? formatWIBDate(item.activation_lrtjpay_at) : "-"}</div>
-              </div>
+              {item.activation_lrtjpay_at && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">LarataPay Activation Date</label>
+                  <div className="text-sm text-gray-900">{formatWIBDate(item.activation_lrtjpay_at)}</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -369,16 +625,196 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      {deleteItem && (
+      {deleteItem && !showForceDeleteDialog && (
         <DeleteConfirmDialog
           open={!!deleteItem}
-          onOpenChange={() => setDeleteItem(null)}
+          onOpenChange={() => {
+            setDeleteItem(null);
+            setRelatedRecords(null);
+            setExpandedRows(new Set());
+          }}
           title="Permanently Delete User"
           description={`Are you sure you want to permanently delete "${deleteItem.name}"? This action cannot be undone and the user will be completely removed from the database.`}
-          onConfirm={handleDelete}
+          onConfirm={() => handleDelete(false)}
           isDeleting={isDeleting}
         />
       )}
+
+      {/* Force Delete Confirmation Dialog */}
+      <AlertDialog open={showForceDeleteDialog} onOpenChange={setShowForceDeleteDialog}>
+        <AlertDialogContent className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-4 border-b border-white/30">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
+                <AlertTriangle className="h-6 w-6 text-[#E5262C]" />
+              </div>
+              <div className="flex-1 pt-1">
+                <AlertDialogHeader className="p-0">
+                  <AlertDialogTitle className="text-xl font-semibold text-gray-900 mb-2">
+                    User Has Related Records
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm text-gray-600 leading-relaxed">
+                    This user has data in the following tables that will be permanently deleted:
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+              </div>
+            </div>
+          </div>
+
+          {/* Related Records List */}
+          <div className="px-6 py-4 bg-gray-50 border-y border-gray-100">
+            <ul className="space-y-2">
+              {relatedRecords?.map((record, index) => (
+                <li key={index}>
+                  <Collapsible open={expandedRows.has(index)} onOpenChange={() => toggleRowExpansion(index)}>
+                    <CollapsibleTrigger
+                      render={
+                        <div className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-100 rounded-md py-3 px-2 transition-colors" />
+                      }
+                      nativeButton={false}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        {expandedRows.has(index) ? (
+                          <ChevronDown className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-500" />
+                        )}
+                        <span className="text-gray-700 font-medium">{record.table}</span>
+                      </div>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700 border-red-200">
+                        {record.count} record{record.count > 1 ? 's' : ''}
+                      </Badge>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="pl-6 pr-2 py-2 mt-1 bg-white rounded-md border border-gray-200">
+                        {getPreviewFields(record)}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Warning Section */}
+          <div className="px-6 py-4 bg-red-50/50 border-y border-red-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-[#E5262C] flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-800 font-medium">
+                All related records will be permanently deleted. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <AlertDialogFooter className="-mx-4 -mb-2 flex-col-reverse rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end px-6 py-6 flex gap-3">
+            <AlertDialogCancel 
+              disabled={isDeleting}
+              onClick={() => {
+                setShowForceDeleteDialog(false);
+                setRelatedRecords(null);
+                setDeleteItem(null);
+                setExpandedRows(new Set());
+              }}
+              className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleForceDelete}
+              disabled={isDeleting}
+              className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41f24] text-white font-medium shadow-sm"
+            >
+              {isDeleting ? "Deleting..." : "Force Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* LarataClub Deactivation Confirmation Dialog */}
+      <AlertDialog open={deactivateSlcConfirm} onOpenChange={setDeactivateSlcConfirm}>
+        <AlertDialogContent className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-4 border-b border-white/30">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              </div>
+              <div className="flex-1 pt-1">
+                <AlertDialogHeader className="p-0">
+                  <AlertDialogTitle className="text-xl font-semibold text-gray-900 mb-2">
+                    Deactivate LarataClub
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm text-gray-600 leading-relaxed">
+                    This will deactivate LarataClub for this user. This cannot be undone from here - reactivation must be done via the mobile app.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+              </div>
+            </div>
+          </div>
+          <div className="px-6 py-4 bg-amber-50/50 border-y border-amber-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 font-medium">
+                The user will lose access to LarataClub features immediately.
+              </p>
+            </div>
+          </div>
+          <AlertDialogFooter className="-mx-4 -mb-2 flex-col-reverse rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end px-6 py-6 flex gap-3">
+            <AlertDialogCancel disabled={isDeactivatingSlc} className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivateSlc}
+              disabled={isDeactivatingSlc}
+              className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41f24] text-white font-medium shadow-sm"
+            >
+              {isDeactivatingSlc ? "Deactivating..." : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* LarataPay Deactivation Confirmation Dialog */}
+      <AlertDialog open={deactivateLrtjPayConfirm} onOpenChange={setDeactivateLrtjPayConfirm}>
+        <AlertDialogContent className="max-w-md bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-lg p-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-4 border-b border-white/30">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              </div>
+              <div className="flex-1 pt-1">
+                <AlertDialogHeader className="p-0">
+                  <AlertDialogTitle className="text-xl font-semibold text-gray-900 mb-2">
+                    Deactivate LarataPay
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm text-gray-600 leading-relaxed">
+                    This will deactivate LarataPay for this user. This cannot be undone from here - reactivation must be done via the mobile app.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+              </div>
+            </div>
+          </div>
+          <div className="px-6 py-4 bg-amber-50/50 border-y border-amber-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 font-medium">
+                The user will lose access to LarataPay features immediately.
+              </p>
+            </div>
+          </div>
+          <AlertDialogFooter className="-mx-4 -mb-2 flex-col-reverse rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end px-6 py-6 flex gap-3">
+            <AlertDialogCancel disabled={isDeactivatingLrtjPay} className="flex-1 h-11 bg-white/60 border-gray-200/50 hover:bg-white/80 text-gray-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivateLrtjPay}
+              disabled={isDeactivatingLrtjPay}
+              className="flex-1 h-11 bg-[#E5262C] hover:bg-[#c41f24] text-white font-medium shadow-sm"
+            >
+              {isDeactivatingLrtjPay ? "Deactivating..." : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

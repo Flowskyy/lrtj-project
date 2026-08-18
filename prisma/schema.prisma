@@ -192,6 +192,8 @@ model banners {
   created_by   String?   @db.VarChar(255)
   updated_by   String?   @db.VarChar(255)
   redirect_url String?   @db.VarChar(255)
+
+  @@index([sequence], map: "idx_banners_sequence")
 }
 
 model bayarind_binding_states {
@@ -273,6 +275,9 @@ model daily_benefit {
   start_date     DateTime? @db.DateTime(0)
   end_date       DateTime? @db.DateTime(0)
   is_active      Int?      @db.TinyInt
+
+  @@index([status], map: "idx_daily_benefit_status")
+  @@index([created_at(sort: Desc)], map: "idx_daily_benefit_created_at")
 }
 
 model daily_redem {
@@ -1063,6 +1068,7 @@ model users {
   @@index([slc_point], map: "slc_point")
   @@index([province_id], map: "users_province_id_foreign")
   @@index([regency_id], map: "users_regency_id_foreign")
+  @@index([status, activation_slc], map: "idx_status_activation_slc")
 }
 
 model users_admin {
@@ -1133,6 +1139,10 @@ model news {
   status        Int       @default(1)
   created_at    DateTime? @db.DateTime(0)
   updated_at    DateTime? @db.DateTime(0)
+
+  @@index([status], map: "idx_news_status")
+  @@index([publish_date], map: "idx_news_publish_date")
+  @@index([created_at(sort: Desc)], map: "idx_news_created_at")
 }
 
 model merchandise_category {
@@ -1165,6 +1175,8 @@ model popups {
   updated_at  DateTime? @db.DateTime(0)
   created_by  String?   @db.VarChar(255)
   updated_by  String?   @db.VarChar(255)
+
+  @@index([sequence], map: "idx_popups_sequence")
 }
 
 model auth_roles {

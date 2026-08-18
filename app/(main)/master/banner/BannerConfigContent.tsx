@@ -191,11 +191,11 @@ export default function BannerConfigContent({ }: BannerConfigContentProps) {
   const fetchBanners = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/banners");
+      const res = await fetch("/api/banners?page=1&limit=100");
       if (res.ok) {
         const data = await res.json();
-        setBanners(data);
-        setOriginalBanners(data);
+        setBanners(data.banners || []);
+        setOriginalBanners(data.banners || []);
         setHasUnsavedChanges(false);
       }
     } catch (err) {

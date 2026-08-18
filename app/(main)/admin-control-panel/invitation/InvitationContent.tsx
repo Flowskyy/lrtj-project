@@ -12,6 +12,7 @@ import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import { useInvitationUpdates } from "@/hooks/use-invitation-updates";
 import { Link as LinkIcon, Trash2 } from "lucide-react";
+import Pagination from "@/components/Pagination";
 
 // ─── Invite Link Types ───────────────────────────────────────────────────────
 interface Invitation {
@@ -80,6 +81,8 @@ function ActivityCell({ step, lastActivityAt }: { step: string | null; lastActiv
 export default function InvitationContent({ currentUserId }: { currentUserId: string }) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Delete invitation dialog state
   const [inviteToDelete, setInviteToDelete] = useState<Invitation | null>(null);
@@ -89,10 +92,11 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
   const fetchInvitations = useCallback(async (showLoading = true) => {
     if (showLoading) setLoadingInvitations(true);
     try {
-      const res = await fetch("/api/admin-invitations");
+      const res = await fetch(`/api/admin-invitations?page=${page}&limit=50`);
       if (res.ok) {
         const data = await res.json();
         setInvitations(data.invitations || []);
+        setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (err) {
       console.error("Failed to fetch invitations", err);
@@ -100,11 +104,15 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
     } finally {
       if (showLoading) setLoadingInvitations(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     fetchInvitations();
   }, [fetchInvitations]);
+
+  useEffect(() => {
+    fetchInvitations();
+  }, [page]);
 
   // Live updates via SSE (same mechanism as Admin Management).
   // The stream pushes full lists, so replacing state preserves the active tab.
@@ -202,6 +210,17 @@ export default function InvitationContent({ currentUserId }: { currentUserId: st
             loading={loadingInvitations}
             emptyMessage="No ongoing invitations. Click 'Invite Admin' to create one."
           />
+
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalCount={invitations.length}
+              pageSize={50}
+            />
+          </div>
         </CardContent>
       </Card>
 

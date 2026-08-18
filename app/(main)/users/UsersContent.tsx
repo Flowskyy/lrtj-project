@@ -72,6 +72,7 @@ export default function UsersContent({ }: UsersContentProps) {
   const [inactiveSlcCount, setInactiveSlcCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [nextPageData, setNextPageData] = useState<MemberItem[] | null>(null);
 
   // Filter and Sort states
   const [activationSlcFilter, setActivationSlcFilter] = useState<string>("all");
@@ -201,6 +202,31 @@ export default function UsersContent({ }: UsersContentProps) {
     fetchItems();
   }, [appliedFilters, currentPage]);
 
+  // Prefetch next page
+  useEffect(() => {
+    if (currentPage < totalPages && currentPage > 0) {
+      const nextPage = currentPage + 1;
+      const params = new URLSearchParams();
+      if (appliedFilters.activationSlcFilter !== "all") params.set("activation_slc", appliedFilters.activationSlcFilter);
+      if (appliedFilters.tierFilter !== "all") params.set("tier", appliedFilters.tierFilter);
+      if (appliedFilters.sortBy) params.set("sortBy", appliedFilters.sortBy);
+      if (appliedFilters.sortOrder) params.set("order", appliedFilters.sortOrder);
+      if (appliedFilters.searchQuery.trim()) {
+        params.set("search", appliedFilters.searchQuery.trim());
+        if (appliedFilters.searchScope) params.set("searchScope", appliedFilters.searchScope);
+      }
+      if (appliedFilters.dateFrom) params.set("dateFrom", appliedFilters.dateFrom);
+      if (appliedFilters.dateTo) params.set("dateTo", appliedFilters.dateTo);
+      params.set("page", nextPage.toString());
+      params.set("limit", "50");
+
+      // Prefetch next page data
+      fetch(`/api/users?${params.toString()}`).catch(err => {
+        // Silent fail - prefetch is optional
+      });
+    }
+  }, [currentPage, totalPages, appliedFilters]);
+
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setShowScopeSuggestions(value.length >= 2);
@@ -315,7 +341,7 @@ export default function UsersContent({ }: UsersContentProps) {
     return "bg-gray-100 text-gray-600";
   };
 
-  // Helper function to get activation SLC badge
+  // Helper function to get activation LarataClub badge
   const getActivationSlcBadge = (activationSlc: number) => {
     if (activationSlc === 1) {
       return (
@@ -363,7 +389,7 @@ export default function UsersContent({ }: UsersContentProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Active SLC
+                  Active LarataClub
                 </p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : activeSlc}
@@ -392,7 +418,7 @@ export default function UsersContent({ }: UsersContentProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Inactive SLC
+                  Inactive LarataClub
                 </p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
                   {loading ? "..." : inactiveSlc}
@@ -452,8 +478,8 @@ export default function UsersContent({ }: UsersContentProps) {
             onActivationSlcFilterChange={(value) => { setActivationSlcFilter(value); }}
             activationSlcOptions={[
               { value: "all", label: "All" },
-              { value: "1", label: "Active SLC" },
-              { value: "0", label: "Inactive SLC" },
+              { value: "1", label: "Active LarataClub" },
+              { value: "0", label: "Inactive LarataClub" },
             ]}
             showActivationSlcFilter={true}
             tierFilter={tierFilter}
@@ -473,7 +499,7 @@ export default function UsersContent({ }: UsersContentProps) {
             columnConfigs={[
               { key: "nama", label: "Name" },
               { key: "email", label: "Email" },
-              { key: "activation_slc", label: "Activation SLC" },
+              { key: "activation_slc", label: "Activation LarataClub" },
               { key: "tier", label: "Tier" },
               { key: "created_at", label: "Created At" },
               { key: "actions", label: "Actions" },
@@ -508,7 +534,7 @@ export default function UsersContent({ }: UsersContentProps) {
                   )}
                   {visibleColumns.activation_slc && (
                     <TableHead className="px-2 py-1.5 text-[11px] font-semibold text-gray-600 uppercase tracking-wider w-28">
-                      Activation SLC
+                      Activation LarataClub
                     </TableHead>
                   )}
                   {visibleColumns.tier && (
