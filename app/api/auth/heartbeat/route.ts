@@ -12,7 +12,16 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id;
-    const body = await request.json();
+    
+    // Parse request body with error handling for empty/malformed JSON
+    let body: { currentPage?: string | null; currentAction?: string | null } = {};
+    try {
+      body = await request.json();
+    } catch (e) {
+      // If body is empty or invalid, use empty object
+      body = {};
+    }
+    
     const currentPage = body.currentPage || null;
     const currentAction = body.currentAction || null;
 

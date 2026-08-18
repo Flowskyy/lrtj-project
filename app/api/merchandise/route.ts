@@ -4,10 +4,6 @@ import { formatWIB } from '@/lib/utils';
 import { withActivityContextFromSession } from '@/lib/activity-middleware';
 import { logManualActivity } from '@/lib/activity-logger';
 
-// Simple in-memory cache for unfiltered total count (30 second TTL)
-let cachedTotal: { count: number; timestamp: number } | null = null;
-const CACHE_TTL = 30000; // 30 seconds
-
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const sortBy = searchParams.get('sortBy');
@@ -82,29 +78,6 @@ export async function GET(request: NextRequest) {
     category_id: item.category_id
   }));
 
-  // Get counts - use approximate count for unfiltered queries for performance
-  const hasFilters = conditions.length > 0;
-  let totalCount: any[];
-  
-  if (hasFilters) {
-    // Use exact COUNT(*) when filters are applied
-    totalCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM merchandise ${whereClause}`, ...params) as any[];
-  } else {
-    // Use cached approximate count for unfiltered queries (instant)
-    const now = Date.now();
-    if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
-      totalCount = [{ count: cachedTotal.count }];
-    } else {
-      // Cache miss or expired - fetch fresh approximate count
-      const approxResult = await prisma.$queryRawUnsafe(
-        `SELECT table_rows as count FROM information_schema.tables 
-         WHERE table_schema = 'lrt_public_apps' AND table_name = 'merchandise'`
-      ) as any[];
-      totalCount = approxResult;
-      cachedTotal = { count: Number(approxResult[0]?.count || 0), timestamp: now };
-    }
-  }
-  
   const [activeCount, inactiveCount] = await Promise.all([
     prisma.merchandise.count({ where: { status: 1 } }),
     prisma.merchandise.count({ where: { status: 0 } }),

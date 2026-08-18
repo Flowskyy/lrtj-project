@@ -23,7 +23,7 @@ export async function POST(
       );
     }
 
-    exportJobManager.cancelJob(jobId);
+    await exportJobManager.cancelJob(jobId);
 
     return NextResponse.json({
       message: 'Job cancelled successfully',

@@ -349,6 +349,31 @@ model exports {
   updated_at      DateTime? @db.Timestamp(0)
 }
 
+model cms_export_jobs {
+  id                   BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  job_id               String                 @unique(map: "job_id") @db.VarChar(255)
+  job_type             String                 @db.VarChar(255)
+  status               cms_export_jobs_status @default(pending)
+  total_rows           Int                    @db.UnsignedInt
+  processed_rows       Int                    @default(0) @db.UnsignedInt
+  successful_rows      Int                    @default(0) @db.UnsignedInt
+  triggered_by_user_id Int?
+  filters              Json?
+  result_file_path     String?                @db.VarChar(255)
+  error_message        String?                @db.Text
+  created_at           DateTime?              @db.Timestamp(0)
+  started_at           DateTime?              @db.Timestamp(0)
+  completed_at         DateTime?              @db.Timestamp(0)
+  updated_at           DateTime?              @db.Timestamp(0)
+
+  @@index([job_id], map: "idx_job_id")
+  @@index([status], map: "idx_status")
+  @@index([job_type], map: "idx_job_type")
+  @@index([triggered_by_user_id], map: "idx_triggered_by_user_id")
+  @@index([created_at], map: "idx_created_at")
+  @@map("cms_export_jobs")
+}
+
 model failed_import_rows {
   id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
   data             Json
@@ -1240,4 +1265,12 @@ enum bayarind_binding_states_status {
 enum bayarind_customer_tokens_grant_type_used {
   authorization_code
   refresh_token
+}
+
+enum cms_export_jobs_status {
+  pending
+  processing
+  completed
+  failed
+  cancelled
 }

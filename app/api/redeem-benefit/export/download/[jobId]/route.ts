@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exportJobManager } from '@/lib/export-job-manager';
+import { getExportJobDB, deleteExportJobDB } from '@/lib/export-job-db';
 import path from 'path';
-import { readFile, unlink } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 
 export async function GET(
@@ -10,7 +11,31 @@ export async function GET(
 ) {
   try {
     const { jobId } = await params;
-    const job = exportJobManager.getJob(jobId);
+    
+    // First try in-memory job
+    let job = exportJobManager.getJob(jobId);
+    let filePath: string | null = null;
+
+    // If not in memory, fall back to DB
+    if (!job) {
+      const dbJob = await getExportJobDB(jobId);
+      if (dbJob) {
+        job = {
+          jobId: dbJob.job_id,
+          status: dbJob.status as 'running' | 'completed' | 'cancelled' | 'error',
+          processed: dbJob.processed_rows,
+          total: dbJob.total_rows,
+          filePath: dbJob.result_file_path,
+          error: dbJob.error_message,
+          cancelled: dbJob.status === 'cancelled',
+          createdAt: dbJob.created_at ? dbJob.created_at.getTime() : Date.now(),
+          completedAt: dbJob.completed_at ? dbJob.completed_at.getTime() : null,
+          jobType: dbJob.job_type,
+          triggeredByUserId: dbJob.triggered_by_user_id ?? undefined,
+          filters: dbJob.filters,
+        };
+      }
+    }
 
     if (!job) {
       return NextResponse.json(
@@ -26,7 +51,7 @@ export async function GET(
       );
     }
 
-    const filePath = path.join(process.cwd(), 'temp', job.filePath);
+    filePath = path.join(process.cwd(), 'temp', job.filePath);
 
     if (!existsSync(filePath)) {
       return NextResponse.json(
@@ -37,17 +62,14 @@ export async function GET(
 
     const fileBuffer = await readFile(filePath);
 
-    // Clean up the file and job after successful read
+    // Clean up job record from in-memory and DB after successful download
+    // File itself is cleaned up by periodic cleanup job (24h TTL)
     try {
-      if (existsSync(filePath)) {
-        await unlink(filePath);
-      }
       exportJobManager.deleteJob(jobId);
+      await deleteExportJobDB(jobId);
     } catch (cleanupError: any) {
-      // Only log if it's not ENOENT (file already deleted by another request)
-      if (cleanupError.code !== 'ENOENT') {
-        console.error('Failed to cleanup file/job:', cleanupError);
-      }
+      console.error('Failed to cleanup job record:', cleanupError);
+      // Don't fail the download if cleanup fails
     }
 
     // Return the file

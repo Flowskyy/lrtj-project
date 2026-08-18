@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { exportJobManager } from '@/lib/export-job-manager';
 import { calculateDynamicBatchSize } from '@/lib/export-batching';
+import { startExportJobDB } from '@/lib/export-job-db';
 import * as XLSX from 'xlsx';
 import path from 'path';
 import { writeFile, unlink } from 'fs/promises';
@@ -102,13 +103,18 @@ export async function POST(request: NextRequest) {
       total = Number(approxResult[0]?.total || 0);
     }
 
-    // Create job
-    const jobId = exportJobManager.createJob(total);
+    // Create job with DB persistence
+    const jobId = await exportJobManager.createJob(
+      total,
+      'NextJS.Export.RedeemBenefitExporter',
+      0, // TODO: Get actual user ID from session
+      { status, sortBy, order, dateFrom, dateTo }
+    );
 
     // Start the export process asynchronously (don't await)
-    runExportJob(jobId, whereClause, params, sortColumn, sortDirection, total).catch(error => {
+    runExportJob(jobId, whereClause, params, sortColumn, sortDirection, total).catch(async error => {
       console.error(`Export job ${jobId} failed:`, error);
-      exportJobManager.failJob(jobId, error.message);
+      await exportJobManager.failJob(jobId, error.message);
     });
 
     return NextResponse.json({ jobId });
@@ -130,6 +136,13 @@ async function runExportJob(
   total: number
 ) {
   const { batchSize } = calculateDynamicBatchSize(total);
+  
+  // Mark job as started in DB
+  try {
+    await startExportJobDB(jobId);
+  } catch (error) {
+    console.error(`Failed to mark job ${jobId} as started in DB:`, error);
+  }
   
   let redeemBenefits: any[] = [];
   let offset = 0;
@@ -172,8 +185,8 @@ async function runExportJob(
       redeemBenefits.push(...batch);
       processed += batch.length;
       
-      // Update progress
-      exportJobManager.updateProgress(jobId, processed);
+      // Update progress (both in-memory and DB)
+      await exportJobManager.updateProgress(jobId, processed, processed);
       console.log(`Export job ${jobId}: batch ${Math.ceil(processed / batchSize)} complete, processed ${processed}/${total} (${Math.round((processed / total) * 100)}%)`);
       
       offset += batchSize;
@@ -246,11 +259,11 @@ async function runExportJob(
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     fs.writeFileSync(filePath, buffer);
 
-    // Mark job as completed
-    exportJobManager.completeJob(jobId, filename);
+    // Mark job as completed (both in-memory and DB)
+    await exportJobManager.completeJob(jobId, filename, processed);
   } catch (error: any) {
     console.error(`Export job ${jobId} failed:`, error);
-    exportJobManager.failJob(jobId, error.message);
+    await exportJobManager.failJob(jobId, error.message);
     
     // Clean up partial file if it exists
     try {

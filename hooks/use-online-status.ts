@@ -203,12 +203,17 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
 
     // Cleanup function
     return () => {
-      eventSource.close();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
       }
       if (cleanupIntervalRef.current) {
         clearInterval(cleanupIntervalRef.current);
+        cleanupIntervalRef.current = null;
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);

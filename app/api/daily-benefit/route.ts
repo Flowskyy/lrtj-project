@@ -46,11 +46,6 @@ export async function GET(request: NextRequest) {
   const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
   const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
-  // Get total count
-  const countQuery = `SELECT COUNT(*) as count FROM daily_benefit ${whereClause}`;
-  const totalCount = await prisma.$queryRawUnsafe(countQuery, ...params) as any[];
-  const total = Number(totalCount[0]?.count || 0);
-
   // Use raw SQL for consistent WIB formatting
   const items = await prisma.$queryRawUnsafe(
     `SELECT
@@ -67,7 +62,7 @@ export async function GET(request: NextRequest) {
   // Get counts - use approximate count for unfiltered queries for performance
   const hasFilters = conditions.length > 0;
   let totalCount: any[];
-  
+
   if (hasFilters) {
     // Use exact COUNT(*) when filters are applied
     totalCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM daily_benefit ${whereClause}`, ...params) as any[];
@@ -79,14 +74,16 @@ export async function GET(request: NextRequest) {
     } else {
       // Cache miss or expired - fetch fresh approximate count
       const approxResult = await prisma.$queryRawUnsafe(
-        `SELECT table_rows as count FROM information_schema.tables 
+        `SELECT table_rows as count FROM information_schema.tables
          WHERE table_schema = 'lrt_public_apps' AND table_name = 'daily_benefit'`
       ) as any[];
       totalCount = approxResult;
       cachedTotal = { count: Number(approxResult[0]?.count || 0), timestamp: now };
     }
   }
-  
+
+  const total = Number(totalCount[0]?.count || 0);
+
   const [activeCount, inactiveCount] = await Promise.all([
     prisma.daily_benefit.count({ where: { status: 1 } }),
     prisma.daily_benefit.count({ where: { status: 0 } }),
