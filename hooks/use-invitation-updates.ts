@@ -16,7 +16,9 @@ export function useInvitationUpdates() {
       eventSourceRef.current.close();
     }
 
-    const eventSource = new EventSource('/api/admin-invitations/updates');
+    const eventSource = new EventSource('/api/admin-invitations/updates', {
+      withCredentials: true
+    });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

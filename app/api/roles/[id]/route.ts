@@ -18,6 +18,7 @@ export async function GET(
         id,
         name,
         isSuperAdmin,
+        showOnDashboard,
         DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
         DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
       FROM auth_roles
@@ -68,11 +69,11 @@ export async function PUT(
     try {
       const { id } = await params
       const body = await request.json()
-      const { name, isSuperAdmin, permissions } = body
+      const { name, isSuperAdmin, showOnDashboard, permissions } = body
 
       // Check if role exists and fetch before state
       const existing = await prisma.$queryRaw`
-        SELECT id, name, isSuperAdmin,
+        SELECT id, name, isSuperAdmin, showOnDashboard,
         DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
         DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
         FROM auth_roles
@@ -108,6 +109,11 @@ export async function PUT(
       if (isSuperAdmin !== undefined) {
         updateFields.push('isSuperAdmin = ?');
         updateValues.push(isSuperAdmin);
+      }
+      
+      if (showOnDashboard !== undefined) {
+        updateFields.push('showOnDashboard = ?');
+        updateValues.push(showOnDashboard);
       }
       
       // Always update updatedAt with WIB time

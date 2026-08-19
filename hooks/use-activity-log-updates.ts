@@ -21,7 +21,9 @@ export function useActivityLogUpdates() {
       eventSourceRef.current.close();
     }
 
-    const eventSource = new EventSource('/api/activity-logs/updates');
+    const eventSource = new EventSource('/api/activity-logs/updates', {
+      withCredentials: true
+    });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

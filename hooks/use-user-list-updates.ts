@@ -51,8 +51,10 @@ export function useUserListUpdates(options: UseUserListUpdatesOptions = {}) {
       eventSourceRef.current.close();
     }
 
-    // Set up SSE connection
-    const eventSource = new EventSource('/api/admin-users/updates');
+    // Set up SSE connection with credentials for cross-origin support
+    const eventSource = new EventSource('/api/admin-users/updates', {
+      withCredentials: true
+    });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
@@ -69,10 +71,10 @@ export function useUserListUpdates(options: UseUserListUpdatesOptions = {}) {
         const data = JSON.parse(event.data);
 
         if (data.type === 'connected') {
-          setLastUpdate(data.timestamp);
+          setLastUpdate(new Date().toISOString());
         } else if (data.type === 'initial') {
           // Initial data - typically handled by the component's own fetch
-          setLastUpdate(data.timestamp);
+          setLastUpdate(new Date().toISOString());
         } else if (data.type === 'users_added') {
           if (onUsersAddedRef.current) {
             onUsersAddedRef.current(data.users);
@@ -86,7 +88,7 @@ export function useUserListUpdates(options: UseUserListUpdatesOptions = {}) {
             onUsersUpdatedRef.current(data.users);
           }
         } else if (data.type === 'heartbeat') {
-          setLastUpdate(data.timestamp);
+          setLastUpdate(new Date().toISOString());
         }
       } catch (error) {
         console.error('Failed to parse user list SSE data:', error);

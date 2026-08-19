@@ -119,11 +119,16 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  // Get the origin from the request for CORS
+  const origin = request.headers.get('origin') || '*';
+  
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

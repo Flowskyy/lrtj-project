@@ -1210,6 +1210,7 @@ model auth_roles {
   isSuperAdmin      Boolean             @default(false)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
+  showOnDashboard   Boolean             @default(true)
   admin_invitations admin_invitations[]
   auth_users        auth_users[]
   role_permissions  role_permissions[]

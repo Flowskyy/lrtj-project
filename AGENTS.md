@@ -20,6 +20,56 @@ mengerjakan task apapun:
 4. Prioritas: instruksi di AGENTS.md ini > skill relevan di `.devin/` >
    asumsi/default milik agent sendiri.
 
+## ✅ Definition of Done — WAJIB SEBELUM LAPOR TASK SELESAI
+
+Section ini berlaku untuk **SEMUA task** di project ini. Setiap task
+dilaporkan selesai HANYA setelah kriteria ini terpenuhi:
+
+1. **BUKTI, BUKAN ASUMSI:** Jangan pernah laporkan fix sebagai working
+   berdasarkan code review atau "seharusnya jalan" saja. Setiap laporan
+   completion harus punya bukti aktual yang terobservasi: output command
+   nyata, response API nyata, hasil query database nyata, atau perilaku
+   browser/console nyata. Kalau sesuatu memang tidak bisa dites di
+   environment saat ini, sebutkan secara eksplisit daripada menyajikan
+   kode untested sebagai verified.
+
+2. **PERUBAHAN KOMPONEN SHARED:** Kalau task mengubah component, utility,
+   atau config yang dipakai lebih dari satu page/feature (misalnya Dialog
+   component, GlassTable, filter toolbar, lib/prisma.ts, lib/auth.ts),
+   sebutkan secara eksplisit semua consumer yang diketahui dan konfirmasi
+   masing-masing masih jalan benar setelah perubahan — bukan cuma page
+   yang jadi fokus task.
+
+3. **TANPA ARTEFAK SISA:** Hapus semua file test/debug/scratch, script
+   temporary, console.log temporary, dan API route temporary yang dibuat
+   selama task sebelum laporkan completion. Sebutkan apa yang dihapus di
+   laporan final. Tidak ada yang bersifat one-off boleh ditinggalkan di
+   repository.
+
+4. **TES DI ENVIRONMENT YANG BENAR:** Kalau perubahan bisa berbeda
+   perilakunya di environment berbeda (dev server vs production build vs
+   Docker build vs CI, atau dengan vs tanpa env var tertentu), tes di
+   environment di mana bug sebenarnya matters — bukan di environment yang
+   paling convenient. Fix yang diverifikasi hanya via `npm run dev` tidak
+   dianggap verified untuk bug yang spesifik Docker/production.
+
+5. **JANGAN REVERT FIX LAMA SILENTLY:** Sebelum ubah file yang pernah
+   difix sebelumnya di history project ini (cek git history/blame kalau
+   ragu), konfirmasi perubahan tidak meng-undo fix tersebut. Kalau
+   perubahan memang perlu dan mempengaruhi prior work, sebutkan secara
+   eksplisit daripada silently re-introduce bug lama.
+
+6. **SEBUTKAN ASUMSI DAN BATASAN:** Kalau fix bergantung pada sesuatu di
+   luar kontrol (misalnya konfigurasi manual Azure Portal, DB migration
+   yang harus direview user dulu, value yang harus disupply user), sebutkan
+   dengan jelas dan eksplisit daripada mendeskripsikan task sebagai fully
+   complete.
+
+7. **TYPECHECK BERSIH:** Sebelum laporkan completion, jalankan typecheck
+   project dan konfirmasi pass, atau laporkan error yang tersisa secara
+   eksplisit beserta status apakah error tersebut related dengan perubahan
+   task ini.
+
 ## 🚫 Aturan Database — WAJIB, TIDAK BOLEH DILANGGAR
 
 1. **JANGAN PERNAH** menjalankan perintah yang bisa menghapus data, termasuk:
@@ -85,6 +135,35 @@ mengerjakan task apapun:
 5. Convention ini strict karena ini sumber bug berulang di sesi sebelumnya:
    mencampur sumber timestamp DB-side dan app-side menyebabkan perbedaan ~7 jam
    di beberapa tabel.
+
+6. **JANGAN PERNAH** pakai raw SQL `DATE_FORMAT()` atau fungsi formatting SQL
+   lainnya untuk membaca/menampilkan timestamp. Confirmed via live testing: DB
+   server's actual SYSTEM timezone adalah Pacific Daylight Time, BUKAN UTC dan
+   BUKAN WIB. Setiap raw SQL `DATE_FORMAT()` pada kolom DateTime mengembalikan
+   Pacific time, bukan WIB, meskipun underlying stored value sudah ditulis benar
+   via `getWIBDate()`. Untuk READS/display, WAJIB gunakan helper app-side
+   WIB display-formatting: `formatWIBDate()` dari `lib/formatWIBDate.ts`
+   (atau fungsi display lain di file yang sama) — JANGAN PERNAH format dates
+   via raw SQL di project ini, mirroring rule terhadap raw SQL NOW() untuk writes.
+
+7. **Parameter `timezone=Asia/Jakarta` di DATABASE_URL TIDAK membuat MySQL
+   session-aware terhadap WIB.** Ini adalah misconception yang perlu dihindari:
+   parameter ini adalah opsi driver-side dari mysql2 (driver MySQL yang digunakan
+   secara internal oleh Prisma) yang hanya mempengaruhi client-side JS Date<->MySQL
+   DATETIME conversion selama Prisma's driver-level serialization — parameter ini
+   TIDAK mengeksekusi `SET time_zone = ...` pada MySQL session, dan TIDAK membuat
+   fungsi waktu SQL raw (NOW(), DATE_FORMAT(), dll) mengembalikan WIB. Confirmed
+   via live test `SELECT NOW(), @@session.time_zone`: session/global time_zone
+   tetap 'SYSTEM', dan NOW() mengembalikan Pacific Daylight Time (actual DB server
+   timezone), bukan WIB dan bukan UTC. Semua kebenaran WIB di project ini berasal
+   secara eksklusif dari app-side `getWIBDate()` (writes) dan helper
+   display-formatting app-side (reads), bukan dari konfigurasi DB/driver-level apapun.
+
+8. Catatan konteks: penemuan ini muncul ketika Admin Management menampilkan
+   timestamp salah (~14+ jam offset) meskipun write-path sudah benar menggunakan
+   getWIBDate() — bug-nya sepenuhnya di READ path yang menggunakan raw SQL
+   DATE_FORMAT(). Ini mengkonfirmasi bahwa BAIK write path DAN read path harus
+   menggunakan helper WIB app-side, bukan hanya write path saja.
 
 ## 🎨 Design System / UI Guidelines
 

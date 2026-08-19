@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { formatWIB } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 
@@ -30,25 +31,27 @@ export async function GET(request: NextRequest) {
       };
 
       // Send initial connection event
-      const initialTime = await prisma.$queryRaw`
-        SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
-      ` as any[];
-      sendEvent({ type: 'connected', timestamp: initialTime[0]?.currentTime });
+      sendEvent({ type: 'connected' });
 
-      // Fetch initial online users using raw SQL to bypass Prisma's timezone conversion
+      // Fetch initial online users - return raw DateTime values (stored as WIB via getWIBDate)
       try {
         const onlineUsers = await prisma.$queryRaw`
           SELECT
             id,
             name,
             email,
-            DATE_FORMAT(lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+            lastSeen,
             currentPage,
             currentAction
           FROM auth_users
           WHERE isOnline = true
         ` as any[];
-        sendEvent({ type: 'initial', users: onlineUsers });
+        // Format Date objects as WIB strings
+        const normalizedUsers = onlineUsers.map((user: any) => ({
+          ...user,
+          lastSeen: user.lastSeen ? formatWIB(user.lastSeen) : null
+        }));
+        sendEvent({ type: 'initial', users: normalizedUsers });
       } catch (error) {
         console.error('Error fetching initial users:', error);
       }
@@ -62,18 +65,18 @@ export async function GET(request: NextRequest) {
               id,
               name,
               email,
-              DATE_FORMAT(lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+              lastSeen,
               currentPage,
               currentAction
             FROM auth_users
             WHERE isOnline = true
           ` as any[];
-
-          const currentTime = await prisma.$queryRaw`
-            SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
-          ` as any[];
-
-          sendEvent({ type: 'update', users: onlineUsers, timestamp: currentTime[0]?.currentTime });
+          // Format Date objects as WIB strings
+          const normalizedUsers = onlineUsers.map((user: any) => ({
+            ...user,
+            lastSeen: user.lastSeen ? formatWIB(user.lastSeen) : null
+          }));
+          sendEvent({ type: 'update', users: normalizedUsers });
         } catch (error) {
           console.error('Error polling online users:', error);
           // If there's an error sending, mark as closed to prevent further attempts
@@ -95,11 +98,16 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  // Get the origin from the request for CORS
+  const origin = request.headers.get('origin') || '*';
+  
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

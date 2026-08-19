@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { formatWIB } from "@/lib/utils"
 
 // GET all admin users with roles and last online info
 export async function GET(request: NextRequest) {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     let users: any[];
     
     if (roleId) {
-      // Use raw SQL to bypass Prisma's timezone conversion with roleId filter
+      // Use raw SQL with roleId filter - return raw DateTime values (stored as WIB via getWIBDate)
       try {
         users = await prisma.$queryRaw`
           SELECT
@@ -30,10 +31,10 @@ export async function GET(request: NextRequest) {
             au.email,
             au.roleId,
             ar.name as roleName,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+            au.createdAt,
+            au.updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+            au.lastSeen,
             au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
@@ -50,10 +51,10 @@ export async function GET(request: NextRequest) {
             au.email,
             au.roleId,
             ar.name as roleName,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+            au.createdAt,
+            au.updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen
+            au.lastSeen
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
         ` as any[];
       }
     } else {
-      // Use raw SQL to bypass Prisma's timezone conversion without filter
+      // Use raw SQL without filter - return raw DateTime values (stored as WIB via getWIBDate)
       try {
         users = await prisma.$queryRaw`
           SELECT
@@ -71,10 +72,10 @@ export async function GET(request: NextRequest) {
             au.email,
             au.roleId,
             ar.name as roleName,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+            au.createdAt,
+            au.updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+            au.lastSeen,
             au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
@@ -90,10 +91,10 @@ export async function GET(request: NextRequest) {
             au.email,
             au.roleId,
             ar.name as roleName,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+            au.createdAt,
+            au.updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen
+            au.lastSeen
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
@@ -102,8 +103,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Format Date objects as WIB strings for proper frontend handling
+    const normalizedUsers = users.map((user: any) => ({
+      ...user,
+      createdAt: formatWIB(user.createdAt),
+      updatedAt: formatWIB(user.updatedAt),
+      lastSeen: user.lastSeen ? formatWIB(user.lastSeen) : null
+    }));
+
     return NextResponse.json({
-      users,
+      users: normalizedUsers,
       pagination: {
         page,
         limit,

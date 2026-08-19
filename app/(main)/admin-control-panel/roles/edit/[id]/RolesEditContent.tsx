@@ -18,6 +18,7 @@ interface RoleDetail {
   id: number;
   name: string;
   isSuperAdmin: boolean;
+  showOnDashboard: boolean;
   createdAt: string;
   updatedAt: string;
   role_permissions: Array<{ id: number; pageKey: string }>;
@@ -48,6 +49,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
   const [formData, setFormData] = useState({
     name: '',
     isSuperAdmin: false,
+    showOnDashboard: true,
     permissions: [] as string[]
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +71,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
         setFormData({
           name: roleDetail.name,
           isSuperAdmin: roleDetail.isSuperAdmin,
+          showOnDashboard: roleDetail.showOnDashboard,
           permissions: roleDetail.role_permissions.map(p => p.pageKey).filter(p => p !== 'daily-benefit')
         });
       } else {
@@ -253,6 +256,22 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
               id="isSuperAdmin"
               checked={formData.isSuperAdmin}
               onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isSuperAdmin: checked }))}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {/* Show on Dashboard Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <Label htmlFor="showOnDashboard" className="flex flex-col space-y-1">
+              <span>Show on Dashboard</span>
+              <span className="text-xs text-muted-foreground">
+                Show users with this role in the Dashboard's "who's online" widget
+              </span>
+            </Label>
+            <Switch
+              id="showOnDashboard"
+              checked={formData.showOnDashboard}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, showOnDashboard: checked }))}
               disabled={isSubmitting}
             />
           </div>

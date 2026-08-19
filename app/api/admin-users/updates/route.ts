@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { getWIBDate } from '@/lib/utils';
+import { getWIBDate, formatWIB } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 
@@ -31,10 +31,7 @@ export async function GET(request: NextRequest) {
       };
 
       // Send initial connection event
-      const initialTime = await prisma.$queryRaw`
-        SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
-      ` as any[];
-      sendEvent({ type: 'connected', timestamp: initialTime[0]?.currentTime });
+      sendEvent({ type: 'connected' });
 
       // Fetch initial user list to establish baseline
       try {
@@ -45,17 +42,24 @@ export async function GET(request: NextRequest) {
             au.email,
             au.roleId,
             ar.name as roleName,
-            DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-            DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+            au.createdAt,
+            au.updatedAt,
             au.isOnline,
-            DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+            au.lastSeen,
             au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           ORDER BY au.createdAt DESC
         ` as any[];
         lastUserIds = initialUsers.map((u: any) => u.id);
-        sendEvent({ type: 'initial', users: initialUsers });
+        // Format Date objects as WIB strings
+        const normalizedInitialUsers = initialUsers.map((user: any) => ({
+          ...user,
+          createdAt: formatWIB(user.createdAt),
+          updatedAt: formatWIB(user.updatedAt),
+          lastSeen: user.lastSeen ? formatWIB(user.lastSeen) : null
+        }));
+        sendEvent({ type: 'initial', users: normalizedInitialUsers });
 
         // Initialize lastPoll to the max updatedAt from initial fetch (or now)
         const maxUpdatedAt = initialUsers.length > 0
@@ -81,10 +85,10 @@ export async function GET(request: NextRequest) {
                 au.email,
                 au.roleId,
                 ar.name as roleName,
-                DATE_FORMAT(au.createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-                DATE_FORMAT(au.updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+                au.createdAt,
+                au.updatedAt,
                 au.isOnline,
-                DATE_FORMAT(au.lastSeen, '%Y-%m-%dT%H:%i:%s') as lastSeen,
+                au.lastSeen,
                 au.currentPage
               FROM auth_users au
               LEFT JOIN auth_roles ar ON au.roleId = ar.id
@@ -102,24 +106,32 @@ export async function GET(request: NextRequest) {
 
           // Detect new users (in changedUsers but not in lastUserIds)
           const newUsers = changedUsers.filter((u: any) => !lastUserIds.includes(u.id));
-          
+
           // Detect deleted users (in lastUserIds but not in currentUserIds)
           const deletedUserIds = lastUserIds.filter((id: string) => !currentUserIds.includes(id));
-          
+
           // Updated users are those in changedUsers that are NOT new (existing users with changes)
           const updatedUsers = changedUsers.filter((u: any) => lastUserIds.includes(u.id));
 
+          // Format Date objects as WIB strings
+          const normalizeUser = (user: any) => ({
+            ...user,
+            createdAt: formatWIB(user.createdAt),
+            updatedAt: formatWIB(user.updatedAt),
+            lastSeen: user.lastSeen ? formatWIB(user.lastSeen) : null
+          });
+
           // Send events if there are changes
           if (newUsers.length > 0) {
-            sendEvent({ type: 'users_added', users: newUsers });
+            sendEvent({ type: 'users_added', users: newUsers.map(normalizeUser) });
           }
-          
+
           if (deletedUserIds.length > 0) {
             sendEvent({ type: 'users_deleted', userIds: deletedUserIds });
           }
-          
+
           if (updatedUsers.length > 0) {
-            sendEvent({ type: 'users_updated', users: updatedUsers });
+            sendEvent({ type: 'users_updated', users: updatedUsers.map(normalizeUser) });
           }
 
           // Update baseline for next poll
@@ -130,10 +142,7 @@ export async function GET(request: NextRequest) {
             lastPoll = getWIBDate();
           }
 
-          const currentTime = await prisma.$queryRaw`
-            SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
-          ` as any[];
-          sendEvent({ type: 'heartbeat', timestamp: currentTime[0]?.currentTime });
+          sendEvent({ type: 'heartbeat' });
         } catch (error) {
           console.error('Error polling user list changes:', error);
           isClosed = true;
@@ -154,11 +163,16 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  // Get the origin from the request for CORS
+  const origin = request.headers.get('origin') || '*';
+  
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

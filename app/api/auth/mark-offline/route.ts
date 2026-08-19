@@ -21,12 +21,8 @@ export async function POST(request: NextRequest) {
       WHERE id = ${userId}
     `;
 
-    // Get the current WIB time for response
-    const wibTime = await prisma.$queryRaw`
-      SELECT DATE_FORMAT(NOW(), '%Y-%m-%dT%H:%i:%s') as currentTime
-    ` as any[];
-
-    return NextResponse.json({ success: true, offlineAt: wibTime[0]?.currentTime });
+    // Return the WIB time we just set
+    return NextResponse.json({ success: true, offlineAt: now.toISOString() });
   } catch (error) {
     console.error('Mark offline error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

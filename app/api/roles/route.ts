@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         isSuperAdmin: true,
+        showOnDashboard: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
   return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
     try {
       const body = await request.json()
-      const { name, isSuperAdmin, permissions } = body
+      const { name, isSuperAdmin, showOnDashboard, permissions } = body
 
       if (!name || !name.trim()) {
         return NextResponse.json({ error: "Role name is required" }, { status: 400 })
@@ -72,13 +73,13 @@ export async function POST(request: NextRequest) {
 
       // Create role using raw SQL
       const result = await prisma.$queryRaw`
-        INSERT INTO auth_roles (name, isSuperAdmin, createdAt, updatedAt)
-        VALUES (${name.trim()}, ${isSuperAdmin || false}, ${now}, ${now})
+        INSERT INTO auth_roles (name, isSuperAdmin, showOnDashboard, createdAt, updatedAt)
+        VALUES (${name.trim()}, ${isSuperAdmin || false}, ${showOnDashboard !== undefined ? showOnDashboard : true}, ${now}, ${now})
       ` as any[];
 
       // Get the inserted role ID
       const insertedRole = await prisma.$queryRaw`
-        SELECT id, name, isSuperAdmin,
+        SELECT id, name, isSuperAdmin, showOnDashboard,
         DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
         DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
         FROM auth_roles

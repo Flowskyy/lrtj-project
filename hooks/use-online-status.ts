@@ -144,8 +144,10 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
     // Set up cleanup interval
     cleanupIntervalRef.current = setInterval(triggerCleanup, cleanupInterval * 1000);
 
-    // Set up SSE connection
-    const eventSource = new EventSource('/api/auth/online-status');
+    // Set up SSE connection with credentials for cross-origin support
+    const eventSource = new EventSource('/api/auth/online-status', {
+      withCredentials: true
+    });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
