@@ -568,7 +568,7 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
   return (
     <>
-      <Sidebar collapsible="icon" className="border-r border-gray-200/60 group-data-[state=expanded]:min-w-64">
+      <Sidebar collapsible="icon" className="border-r border-gray-200/60 bg-white/70 backdrop-blur-xl group-data-[state=expanded]:min-w-64">
 
         <SidebarHeader className="pt-4 pb-2 flex items-center justify-center overflow-hidden">
 
@@ -633,15 +633,15 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-white/60 group-data-[state=collapsed]:hidden">
+        <SidebarFooter className="border-t border-white/40 group-data-[state=collapsed]:hidden">
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="mx-2 mb-2 w-[calc(100%-1rem)] cursor-pointer rounded-2xl border border-white/40 bg-white/20 px-4 py-3 shadow-[0_4px_24px_0_rgba(0,0,0,0.05)] backdrop-blur-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/30 hover:bg-white/30 transition-all duration-300">
+            <DropdownMenuTrigger className="mx-2 mb-2 w-[calc(100%-1rem)] cursor-pointer rounded-2xl border border-white/40 bg-white/60 px-4 py-3 shadow-sm backdrop-blur-xl outline-none focus-visible:ring-2 focus-visible:ring-[#E5262C]/30 hover:bg-white/80 hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-3">
 
                 <Avatar className="h-9 w-9 shrink-0 border border-white/60">
 
-                  <AvatarFallback className="bg-white/70 text-[#E5262C] font-semibold text-sm">
+                  <AvatarFallback className="bg-gradient-to-br from-[#E5262C]/10 to-[#E5262C]/5 text-[#E5262C] font-semibold text-sm border border-[#E5262C]/20">
 
                     {!displaySession ? (
                       <div className="h-2 w-2 animate-pulse rounded-full bg-[#E5262C]/50" />
@@ -654,7 +654,7 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
                 <div className="flex flex-col min-w-0 gap-1">
 
-                  <span className="text-sm font-medium text-gray-900 truncate text-left" title={displaySession?.user?.email || 'User'}>
+                  <span className="text-sm font-semibold text-gray-900 truncate text-left" title={displaySession?.user?.email || 'User'}>
 
                     {!displaySession ? (
                       <div className="h-3 w-20 animate-pulse rounded bg-gray-200/70" />
@@ -664,7 +664,7 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
                   </span>
 
-          <span className="inline-flex w-fit items-center rounded-full border border-white/20 bg-white/30 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-md">
+          <span className="inline-flex w-fit items-center rounded-full border border-[#E5262C]/20 bg-[#E5262C]/5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#E5262C] backdrop-blur-md">
 
                     {!displaySession || loadingRole ? (
                       <div className="h-2 w-16 animate-pulse rounded bg-gray-200/70" />
@@ -679,20 +679,20 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
               </div>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent side="top" align="center" className="w-56">
-              <div className="px-2 py-1.5 text-sm text-gray-900 font-medium border-b truncate" title={displaySession?.user?.email || 'User'}>
+            <DropdownMenuContent side="top" align="center" className="w-56 bg-white/90 backdrop-blur-xl border border-white/40 shadow-sm">
+              <div className="px-2 py-1.5 text-sm text-gray-900 font-semibold border-b border-white/40 truncate" title={displaySession?.user?.email || 'User'}>
                 {displaySession?.user?.email || 'User'}
               </div>
               {!loadingAuthProvider && !isMicrosoftUser && (
                 <>
-                  <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer">
-                    <Key className="mr-2 h-4 w-4" />
-                    <span>Change Password</span>
+                  <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)} className="cursor-pointer hover:bg-white/80">
+                    <Key className="mr-2 h-4 w-4 text-gray-600" />
+                    <span className="text-gray-700">Change Password</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:bg-red-50/80">
                 <Lock className="mr-2 h-4 w-4" />
                 <span>Logout</span>
               </DropdownMenuItem>
@@ -705,9 +705,9 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
       <SidebarInset>
 
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-white/20 bg-white/40 backdrop-blur-2xl px-6">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-white/40 bg-white/70 backdrop-blur-xl shadow-sm px-6">
 
-          <SidebarTrigger className="h-9 w-9 border-0" />
+          <SidebarTrigger className="h-9 w-9 border-0 hover:bg-white/50 transition-colors" />
 
           <Separator orientation="vertical" className="mr-2 h-full self-auto" />
 
@@ -734,7 +734,7 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
                     {index === pageMeta.breadcrumb.length - 1 ? (
 
-                      <BreadcrumbPage className="text-[#E5262C] font-semibold">{item}</BreadcrumbPage>
+                      <BreadcrumbPage className="text-[#E5262C] font-semibold text-sm">{item}</BreadcrumbPage>
 
                     ) : (
 
@@ -794,6 +794,7 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
                             ? "/admin-control-panel/activity-log"
                             : "/"
                         }
+                        className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                       >
                         {item}
                       </BreadcrumbLink>
@@ -810,9 +811,9 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
           <div className="ml-auto flex items-center gap-2">
 
-            <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
-              <Clock className="h-4 w-4" />
-              <span className="font-mono">{currentTime}</span>
+            <div className="hidden md:flex items-center gap-2 text-sm text-gray-600 bg-white/60 px-3 py-1.5 rounded-lg border border-white/40">
+              <Clock className="h-4 w-4 text-[#E5262C]" />
+              <span className="font-mono font-medium">{currentTime}</span>
             </div>
 
           </div>
@@ -827,8 +828,9 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
 
         {/* Background gradient blobs for glassmorphism effect - positioned outside SidebarInset to avoid CSS containing block clipping */}
         <div className="fixed inset-0 -z-10 pointer-events-none">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-300 opacity-10 blur-3xl rounded-full" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#E5262C] opacity-10 blur-3xl rounded-full" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#BD8226] opacity-8 blur-3xl rounded-full" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-gray-200/30 to-transparent opacity-50 blur-3xl rounded-full" />
         </div>
 
         {/* Change Password Dialog */}

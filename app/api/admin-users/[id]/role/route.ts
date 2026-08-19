@@ -61,6 +61,12 @@ export async function PATCH(
         UPDATE auth_users SET roleId = ${newRoleId}, updatedAt = ${now} WHERE id = ${userIdToUpdate}
       `;
 
+      // Delete all sessions for this user to force re-login with new role/permissions
+      // Middleware will detect missing sessions and redirect to login
+      await prisma.$queryRaw`
+        DELETE FROM auth_sessions WHERE userId = ${userIdToUpdate}
+      `;
+
       // Fetch updated user for after state
       const updatedUser = await prisma.$queryRaw`
         SELECT id, roleId, name, email,

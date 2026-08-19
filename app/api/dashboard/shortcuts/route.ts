@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { getUserPermissions } from '@/lib/permissions';
 
 // Complete list of all modules from sidebar navigation for Dashboard shortcuts
 // This includes all top-level items and sub-items as individual shortcut boxes
+// ORDERED TO MATCH SIDEBAR NAV_ITEMS EXACTLY
 const DASHBOARD_SHORTCUTS = [
   {
     id: 'users',
@@ -18,7 +20,7 @@ const DASHBOARD_SHORTCUTS = [
     description: 'Manage news and announcements',
     icon: 'newspaper',
     path: '/news',
-    category: 'content'
+    category: 'news'
   },
   {
     id: 'notifications',
@@ -26,7 +28,7 @@ const DASHBOARD_SHORTCUTS = [
     description: 'Manage push notifications',
     icon: 'bell',
     path: '/notifications',
-    category: 'content'
+    category: 'notifications'
   },
   {
     id: 'larata-club-history',
@@ -34,7 +36,7 @@ const DASHBOARD_SHORTCUTS = [
     description: 'View LarataClub earning history',
     icon: 'trophy',
     path: '/larata-club-earning',
-    category: 'content'
+    category: 'club'
   },
   {
     id: 'merchandise',
@@ -42,7 +44,7 @@ const DASHBOARD_SHORTCUTS = [
     description: 'Manage merchandise catalog',
     icon: 'shopping-bag',
     path: '/merchandise',
-    category: 'content'
+    category: 'merchandise'
   },
   {
     id: 'redeem-merchandise',
@@ -50,7 +52,7 @@ const DASHBOARD_SHORTCUTS = [
     description: 'Manage merchandise redemptions',
     icon: 'gift',
     path: '/redeem-merchandise',
-    category: 'content'
+    category: 'merchandise'
   },
   {
     id: 'merchandise-category',
@@ -126,6 +128,19 @@ const DASHBOARD_SHORTCUTS = [
   }
 ];
 
+// Helper function to get permission key from path (matches sidebar logic)
+const getPageKey = (href: string) => {
+  // Special handling for master routes
+  if (href.startsWith('/master/')) {
+    return 'master-' + href.replace('/master/', '').replace(/\//g, '-');
+  }
+  // Special handling for admin-control-panel routes
+  if (href.startsWith('/admin-control-panel/')) {
+    return 'master-' + href.replace('/admin-control-panel/', '').replace(/\//g, '-');
+  }
+  return href.replace(/^\//, '').replace(/\//g, '-');
+};
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -134,10 +149,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Return static shortcuts list
-    // In the future, this could be enhanced with user-specific shortcuts
-    // or usage-based ranking if needed
-    return NextResponse.json({ shortcuts: DASHBOARD_SHORTCUTS });
+    // Get user permissions
+    let permissions: string[] = [];
+    const roleId = (session.user as any).roleId;
+    if (roleId) {
+      permissions = await getUserPermissions(roleId);
+    } else {
+      const { prisma } = await import('@/lib/prisma');
+      const user = await prisma.auth_users.findUnique({
+        where: { id: session.user.id },
+        select: { roleId: true }
+      });
+      if (user?.roleId) {
+        permissions = await getUserPermissions(user.roleId);
+      }
+    }
+
+    // Filter shortcuts based on permissions (same logic as sidebar)
+    const filteredShortcuts = DASHBOARD_SHORTCUTS.filter(shortcut => {
+      const pageKey = getPageKey(shortcut.path);
+      return permissions.includes(pageKey);
+    });
+
+    return NextResponse.json({ shortcuts: filteredShortcuts });
   } catch (error) {
     console.error('Error fetching dashboard shortcuts:', error);
     return NextResponse.json({ error: 'Failed to fetch shortcuts' }, { status: 500 });

@@ -12,36 +12,50 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Get total count
-    const total = await prisma.auth_roles.count()
+    const total = await prisma.$queryRaw`SELECT COUNT(*) as count FROM auth_roles` as any[];
+    const count = Number(total[0]?.count || 0);
 
-    const roles = await prisma.auth_roles.findMany({
-      select: {
-        id: true,
-        name: true,
-        isSuperAdmin: true,
-        showOnDashboard: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            role_permissions: true,
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-      skip,
-      take: limit,
-    })
+    // Get roles using raw SQL to avoid Prisma client issues
+    const roles = await prisma.$queryRaw`
+      SELECT 
+        id,
+        name,
+        isSuperAdmin,
+        tier,
+        showOnDashboard,
+        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
+        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+      FROM auth_roles
+      ORDER BY tier ASC
+      LIMIT ${limit} OFFSET ${skip}
+    ` as any[];
 
-    return NextResponse.json({ 
-      roles,
+    // Get permission and user counts for each role
+    const rolesWithCounts = await Promise.all(
+      roles.map(async (role) => {
+        const permissionCount = await prisma.$queryRaw`
+          SELECT COUNT(*) as count FROM role_permissions WHERE roleId = ${role.id}
+        ` as any[];
+        const userCount = await prisma.$queryRaw`
+          SELECT COUNT(*) as count FROM auth_users WHERE roleId = ${role.id}
+        ` as any[];
+        return {
+          ...role,
+          _count: {
+            role_permissions: Number(permissionCount[0]?.count || 0),
+            auth_users: Number(userCount[0]?.count || 0)
+          }
+        };
+      })
+    );
+
+    return NextResponse.json({
+      roles: rolesWithCounts,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: count,
+        totalPages: Math.ceil(count / limit),
       },
     })
   } catch (error) {
@@ -94,13 +108,23 @@ export async function POST(request: NextRequest) {
 
       // Create permissions if not super admin
       if (!isSuperAdmin && permissions && permissions.length > 0) {
-        for (const pageKey of permissions) {
+        // Filter out disabled/unavailable permissions
+        const validPermissions = permissions.filter((p: string) => p !== 'daily-benefit');
+        
+        for (const pageKey of validPermissions) {
           await prisma.$queryRaw`
             INSERT INTO role_permissions (roleId, pageKey, createdAt, updatedAt)
             VALUES (${newRole.id}, ${pageKey}, ${now}, ${now})
           `;
         }
       }
+
+      // Delete all sessions for users with this role to force re-login
+      // This handles the case where a role is created and immediately assigned to users
+      await prisma.$queryRaw`
+        DELETE FROM auth_sessions 
+        WHERE userId IN (SELECT id FROM auth_users WHERE roleId = ${newRole.id})
+      `;
 
       // Log the activity manually since we're using raw SQL
       await logManualActivity({

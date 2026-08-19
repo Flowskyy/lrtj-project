@@ -61,6 +61,7 @@ export const auth = betterAuth({
         "user.updatedAt",
         "user.roleId",
         "user.permissions",
+        "session.id",
       ],
     },
   },
@@ -327,7 +328,7 @@ export async function getSessionOptimistic(cookieHeader: string | null) {
     // Return session data from JWT payload
     return {
       user: payload.user,
-      session: payload.session,
+      session: payload.session || { id: null },
     }
   } catch (error) {
     console.error("Error decoding session JWT:", error)

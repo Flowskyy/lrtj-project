@@ -28,8 +28,32 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url))
     }
 
-    // Check if user has a role assigned
+    // Validate that the session exists in database (JWT may be stale if session was deleted)
     const userId = session.user?.id
+    const sessionId = session.session?.id
+
+    if (userId && sessionId) {
+      try {
+        const dbSession = await prisma.auth_sessions.findUnique({
+          where: { id: sessionId },
+          select: { id: true }
+        })
+
+        // If session doesn't exist in DB but JWT is still valid, force logout
+        // This happens when role changes invalidate sessions
+        if (!dbSession) {
+          const response = NextResponse.redirect(new URL("/login", request.url))
+          // Clear the session cookie
+          response.cookies.delete("better-auth.session_token")
+          response.cookies.delete("better-auth.session_data")
+          return response
+        }
+      } catch (error) {
+        console.error("Middleware session validation failed:", error)
+      }
+    }
+
+    // Check if user has a role assigned
     const cachedRoleId = session.user?.roleId
 
     if (!cachedRoleId && userId) {

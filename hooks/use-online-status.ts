@@ -12,6 +12,12 @@ interface OnlineUser {
   currentAction?: string | null;
 }
 
+interface OnlineAdmin {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface UseOnlineStatusOptions {
   heartbeatInterval?: number; // seconds
   cleanupInterval?: number; // seconds
@@ -24,6 +30,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
   } = options;
 
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [onlineAdmins, setOnlineAdmins] = useState<OnlineAdmin[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const lastKnownPageRef = useRef<string | null>(null);
@@ -165,6 +172,8 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
 
         if (data.type === 'initial' || data.type === 'update') {
           setOnlineUsers(data.users);
+        } else if (data.type === 'online-admins') {
+          setOnlineAdmins(data.users);
         }
       } catch (error) {
         console.error('Failed to parse SSE data:', error);
@@ -230,6 +239,7 @@ export function useOnlineStatus(options: UseOnlineStatusOptions = {}) {
 
   return {
     onlineUsers,
+    onlineAdmins,
     isConnected,
     sendHeartbeat,
     sessionExpired,

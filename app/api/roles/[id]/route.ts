@@ -139,14 +139,24 @@ export async function PUT(
         `;
 
         if (permissions.length > 0) {
+          // Filter out disabled/unavailable permissions
+          const validPermissions = permissions.filter((p: string) => p !== 'daily-benefit');
           const now = formatWIB(new Date());
-          for (const pageKey of permissions) {
+          
+          for (const pageKey of validPermissions) {
             await prisma.$queryRaw`
               INSERT INTO role_permissions (roleId, pageKey, createdAt, updatedAt)
               VALUES (${parseInt(id)}, ${pageKey}, ${now}, ${now})
             `;
           }
         }
+
+        // Delete all sessions for users with this role to force re-login
+        // Middleware will detect missing sessions and redirect to login
+        await prisma.$queryRaw`
+          DELETE FROM auth_sessions 
+          WHERE userId IN (SELECT id FROM auth_users WHERE roleId = ${parseInt(id)})
+        `;
       }
 
       // Fetch updated role

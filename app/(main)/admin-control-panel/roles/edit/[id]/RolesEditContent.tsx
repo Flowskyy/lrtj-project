@@ -72,7 +72,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
           name: roleDetail.name,
           isSuperAdmin: roleDetail.isSuperAdmin,
           showOnDashboard: roleDetail.showOnDashboard,
-          permissions: roleDetail.role_permissions.map(p => p.pageKey).filter(p => p !== 'daily-benefit')
+          permissions: roleDetail.role_permissions.map(p => p.pageKey)
         });
       } else {
         toast.error("Failed to fetch role details");
@@ -281,7 +281,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-sm text-yellow-800">
                 <strong>{role._count.auth_users}</strong> user(s) are currently assigned to this role. 
-                Changes will affect their access immediately.
+                Changing permissions will automatically log out these users - they will need to log back in to access with the new permissions.
               </p>
             </div>
           )}

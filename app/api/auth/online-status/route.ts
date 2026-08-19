@@ -56,7 +56,25 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching initial users:', error);
       }
 
-      // Poll for changes every 15 seconds
+      // Fetch initial online admins (filtered by showOnDashboard) for Dashboard
+      try {
+        const onlineAdmins = await prisma.$queryRaw`
+          SELECT
+            u.id,
+            u.name,
+            r.name as role
+          FROM auth_users u
+          INNER JOIN auth_roles r ON u.roleId = r.id
+          WHERE u.isOnline = true
+            AND r.showOnDashboard = true
+          ORDER BY u.name ASC
+        ` as any[];
+        sendEvent({ type: 'online-admins', users: onlineAdmins });
+      } catch (error) {
+        console.error('Error fetching initial online admins:', error);
+      }
+
+      // Poll for changes every 5 seconds
       const interval = setInterval(async () => {
         if (isClosed) return;
         try {
@@ -82,6 +100,24 @@ export async function GET(request: NextRequest) {
           // If there's an error sending, mark as closed to prevent further attempts
           isClosed = true;
           clearInterval(interval);
+        }
+
+        // Also poll for online admins updates (filtered by showOnDashboard)
+        try {
+          const onlineAdmins = await prisma.$queryRaw`
+            SELECT
+              u.id,
+              u.name,
+              r.name as role
+            FROM auth_users u
+            INNER JOIN auth_roles r ON u.roleId = r.id
+            WHERE u.isOnline = true
+              AND r.showOnDashboard = true
+            ORDER BY u.name ASC
+          ` as any[];
+          sendEvent({ type: 'online-admins', users: onlineAdmins });
+        } catch (error) {
+          console.error('Error polling online admins:', error);
         }
       }, 5000);
 
