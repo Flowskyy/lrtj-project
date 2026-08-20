@@ -56,6 +56,14 @@ export async function PATCH(request: Request) {
           );
         }
 
+        // Ensure role has a valid tier before allowing movement
+        if (role.tier === null) {
+          return NextResponse.json(
+            { error: `Role "${role.name}" has no tier assigned. Please assign a tier first.` },
+            { status: 400 }
+          );
+        }
+
         // Prevent any role from being moved to tier 1 (Super Admin's position)
         if (item.tier === 1 && !role.isSuperAdmin) {
           return NextResponse.json(
@@ -67,7 +75,12 @@ export async function PATCH(request: Request) {
         // Authorization check: user can only move roles at higher tiers (higher tier numbers = less authority)
         // Current user's tier must be numerically LOWER than the role's tier to move it
         // Example: Tier 2 user can move Tier 3 roles, but not Tier 1 or Tier 2 roles
-        if (role.tier <= currentUserTier && !isCurrentUserSuperAdmin) {
+        if (
+          currentUserTier !== null &&
+          role.tier !== null &&
+          role.tier <= currentUserTier &&
+          !isCurrentUserSuperAdmin
+        ) {
           return NextResponse.json(
             { error: `You do not have authority to move the role "${role.name}" (tier ${role.tier}). Your role tier (${currentUserTier}) is not senior enough.` },
             { status: 403 }
@@ -91,9 +104,6 @@ export async function PATCH(request: Request) {
         recordId: 'bulk',
         action: 'UPDATE',
         afterState: { reorderedItems: items },
-        userId,
-        userName,
-        userEmail,
       });
 
       return NextResponse.json({ success: true });

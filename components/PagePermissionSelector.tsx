@@ -14,10 +14,10 @@ interface PageKey {
 
 // Permission list derived from DashboardLayoutClient NAV_ITEMS structure
 // Groups match sidebar exactly: Merchandise, Master, Security
-// Flat items (Dashboard, Users, News, Notifications, LarataClub History) are grouped as "Main Navigation"
+// Flat items (Users, News, Notifications, LarataClub History) are grouped as "Main Navigation"
+// Dashboard is excluded as it's accessible to all roles by default
 const ALL_PAGE_KEYS: PageKey[] = [
-  // Main Navigation (flat items from sidebar)
-  { key: 'dashboard', label: 'Dashboard', group: 'Main Navigation' },
+  // Main Navigation (flat items from sidebar, excluding Dashboard)
   { key: 'users', label: 'Users', group: 'Main Navigation' },
   { key: 'news', label: 'News', group: 'Main Navigation' },
   { key: 'notifications', label: 'Notifications', group: 'Main Navigation' },

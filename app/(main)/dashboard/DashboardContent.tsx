@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { useRouter } from "next/navigation";
 import { useOnlineStatus } from "@/hooks/use-online-status";
@@ -65,9 +66,8 @@ export default function DashboardContent() {
   const { onlineAdmins } = useOnlineStatus();
   
   // Welcome banner state
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
   const [isFirstTimeLogin, setIsFirstTimeLogin] = useState(false);
-  const [welcomeAnimating, setWelcomeAnimating] = useState(false);
   
   // Data states
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
@@ -98,22 +98,6 @@ export default function DashboardContent() {
             const isFirstTime = isRecentCreation && !userLastSeen;
             
             setIsFirstTimeLogin(isFirstTime);
-            
-            // Check sessionStorage to only show welcome once per login session
-            const hasShownWelcome = sessionStorage.getItem('welcome_shown');
-            if (!hasShownWelcome) {
-              setShowWelcome(true);
-              setWelcomeAnimating(true);
-              sessionStorage.setItem('welcome_shown', 'true');
-              
-              // Auto-fade after 5 minutes
-              const timer = setTimeout(() => {
-                setWelcomeAnimating(false);
-                setTimeout(() => setShowWelcome(false), 500); // Wait for exit animation
-              }, 300000);
-              
-              return () => clearTimeout(timer);
-            }
           }
         } catch (error) {
           console.error('Failed to fetch user details:', error);
@@ -217,11 +201,9 @@ export default function DashboardContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome Banner - 5 minute auto-fade with animation */}
+      {/* Welcome Banner - always visible */}
       {showWelcome && (
-        <div 
-          className={`overflow-hidden rounded-2xl transition-all duration-500 ease-in-out ${welcomeAnimating ? 'opacity-100 max-h-48 mb-6' : 'opacity-0 max-h-0 mb-0'}`}
-        >
+        <div className="mb-6">
           <Card className="bg-gradient-to-br from-[#E5262C]/8 via-white/60 to-white/40 border border-white/40 shadow-lg backdrop-blur-xl rounded-2xl relative overflow-hidden">
             {/* Decorative gradient blob */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-[#E5262C]/15 to-[#E5262C]/5 blur-3xl rounded-full" />
@@ -267,6 +249,14 @@ export default function DashboardContent() {
                         : <>Ready to continue, <span className="font-semibold text-[#E5262C]">{displayName}</span>!</>
                       }
                     </p>
+                  </div>
+                  {/* LRTJ Logo */}
+                  <div className="hidden sm:block flex-shrink-0 pr-8">
+                    <img 
+                      src="/logo-lrtj.png" 
+                      alt="LRTJ Logo" 
+                      className="h-16 w-auto object-contain"
+                    />
                   </div>
                 </div>
               )}

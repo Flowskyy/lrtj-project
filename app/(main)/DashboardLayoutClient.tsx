@@ -324,6 +324,10 @@ function SidebarContentWrapper({ children, initialPermissions }: { children: Rea
       if (!item.subItems || item.subItems.length === 0) {
         // Single item - check if user has permission
         if (!item.href) return null
+        
+        // Dashboard is always accessible to all authenticated users
+        if (item.href === '/dashboard') return item
+        
         const pageKey = getPageKey(item.href)
         if (userPermissions.includes(pageKey)) {
           return item

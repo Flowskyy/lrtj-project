@@ -32,17 +32,35 @@ const EditorInstance = ({
       }
       
       try {
+        // Pre-process HTML to strip non-content tags and extract body content
+        // This handles legacy full HTML documents with <style>, <script>, <head>, etc.
+        let cleanHtml = value;
+        
+        // Use DOMParser to safely extract and clean HTML
         const parser = new DOMParser();
         const doc = parser.parseFromString(value, 'text/html');
-        const element = doc.body.firstChild as HTMLElement;
         
-        // Ensure we have a valid element to deserialize
-        if (!element) {
-          return [{ type: 'p', children: [{ text: '' }] }] as Value;
+        // If the HTML contains a body tag, extract only body content
+        // This handles full HTML documents stored in the database
+        if (value.includes('<body>') || value.includes('<html>')) {
+          cleanHtml = doc.body.innerHTML;
+        } else {
+          // For fragment HTML, still strip style/script tags from the parsed document
+          cleanHtml = doc.body.innerHTML;
         }
         
+        // Remove <style> and <script> tags and their content
+        cleanHtml = cleanHtml.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+        cleanHtml = cleanHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        
+        // Remove <head>, <meta>, <link> tags (self-closing and with content)
+        cleanHtml = cleanHtml.replace(/<head\b[^>]*>.*?<\/head>/gi, '');
+        cleanHtml = cleanHtml.replace(/<meta\b[^>]*>/gi, '');
+        cleanHtml = cleanHtml.replace(/<link\b[^>]*>/gi, '');
+        
+        // Pass cleaned HTML string to Plate.js deserializer
         const deserializedValue = editor.api.html.deserialize({
-          element: element,
+          element: cleanHtml,
           collapseWhiteSpace: false,
         }) as Value;
 

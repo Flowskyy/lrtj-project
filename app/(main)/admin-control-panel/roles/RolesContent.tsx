@@ -43,6 +43,12 @@ interface Role {
   };
 }
 
+// Helper to check if role is Security Admin
+const isSecurityAdmin = (role: Role) => {
+  return role.name.toLowerCase().includes('security admin') || 
+         role.name.toLowerCase() === 'security_admin';
+};
+
 interface RoleDetail extends Role {
   role_permissions: Array<{ id: number; pageKey: string }>;
   _count: {
@@ -56,60 +62,68 @@ interface RolesContentProps {
 }
 
 function StaticRoleCard({ role, onDelete }: { role: Role; onDelete: (role: Role) => void }) {
+  const securityAdmin = isSecurityAdmin(role);
   return (
     <div className="relative">
-      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow ${role.isSuperAdmin ? 'border-amber-200 bg-amber-50/30' : ''}`}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
+      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-shadow ${role.isSuperAdmin ? 'border-amber-200 bg-amber-50/30' : securityAdmin ? 'border-rose-200 bg-rose-50/30' : ''}`}>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
             {/* Static Icon */}
-            <div className="flex-shrink-0 pt-1 w-5">
-              {role.isSuperAdmin && <Crown className="h-5 w-5 text-amber-500" />}
+            <div className="flex-shrink-0 w-4">
+              {role.isSuperAdmin && <Crown className="h-4 w-4 text-amber-500" />}
+              {securityAdmin && <Shield className="h-4 w-4 text-rose-500" />}
             </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-xs font-medium text-gray-900 truncate">
                   {role.name}
                 </p>
                 {role.isSuperAdmin && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                    <Crown className="h-3 w-3 mr-1" />
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
+                    <Crown className="h-2.5 w-2.5 mr-0.5" />
                     Super Admin
                   </span>
                 )}
+                {securityAdmin && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800">
+                    <Shield className="h-2.5 w-2.5 mr-0.5" />
+                    Security Admin
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tier: {role.tier}{role.isSuperAdmin && ' (Locked)'}
-              </p>
-              <div className="mt-2 space-y-1">
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Permissions:</span> {role._count.role_permissions} pages
-                </div>
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Users:</span> {role._count.auth_users || 0}
-                </div>
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Updated:</span> {formatWIBDate(role.updatedAt)}
-                </div>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-[10px] text-gray-500">
+                  Tier: {role.tier}{role.isSuperAdmin && ' (Locked)'}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Permissions: {role._count.role_permissions}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Users: {role._count.auth_users || 0}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Updated: {formatWIBDate(role.updatedAt)}
+                </p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Link href={`/admin-control-panel/roles/edit/${role.id}`}>
-                <Button variant="ghost" size="sm">
-                  <Pencil className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </Link>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(role)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
                 disabled={role.isSuperAdmin}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -131,67 +145,76 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : 'transform 150ms cubic-bezier(0.2, 0, 0, 1)',
+    transition,
     opacity: isDragging ? 0.5 : 1,
+    scale: isDragging ? 1.02 : 1,
   };
+
+  const securityAdmin = isSecurityAdmin(role);
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
-      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow`}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
+      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-shadow ${securityAdmin ? 'border-rose-200 bg-rose-50/30' : ''} ${isDragging ? 'shadow-xl' : ''}`}>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
             {/* Drag Handle */}
             {canDrag ? (
               <div
                 {...attributes}
                 {...listeners}
-                className="cursor-grab active:cursor-grabbing flex-shrink-0 pt-1"
+                className="cursor-grab active:cursor-grabbing flex-shrink-0"
               >
-                <GripVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </div>
             ) : (
-              <div className="flex-shrink-0 pt-1 w-5">
-                <GripVertical className="h-5 w-5 text-gray-300" />
+              <div className="flex-shrink-0 w-4">
+                <GripVertical className="h-4 w-4 text-gray-300" />
               </div>
             )}
 
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-xs font-medium text-gray-900 truncate">
                   {role.name}
                 </p>
+                {securityAdmin && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800">
+                    <Shield className="h-2.5 w-2.5 mr-0.5" />
+                    Security Admin
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tier: {role.tier}
-              </p>
-              <div className="mt-2 space-y-1">
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Permissions:</span> {role._count.role_permissions} pages
-                </div>
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Users:</span> {role._count.auth_users || 0}
-                </div>
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Updated:</span> {formatWIBDate(role.updatedAt)}
-                </div>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-[10px] text-gray-500">
+                  Tier: {role.tier}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Permissions: {role._count.role_permissions}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Users: {role._count.auth_users || 0}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Updated: {formatWIBDate(role.updatedAt)}
+                </p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Link href={`/admin-control-panel/roles/edit/${role.id}`}>
-                <Button variant="ghost" size="sm">
-                  <Pencil className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </Link>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(role)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -202,38 +225,45 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 }
 
 function RoleDragOverlay({ role }: { role: Role }) {
+  const securityAdmin = isSecurityAdmin(role);
   return (
-    <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-2xl rotate-1 scale-105`}>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
+    <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl rotate-1 scale-105`}>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3">
           {/* Drag Handle */}
-          <div className="cursor-grab active:cursor-grabbing flex-shrink-0 pt-1">
-            <GripVertical className="h-5 w-5 text-gray-400" />
+          <div className="cursor-grab active:cursor-grabbing flex-shrink-0">
+            <GripVertical className="h-4 w-4 text-gray-400" />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-xs font-medium text-gray-900 truncate">
                 {role.name}
               </p>
               {role.isSuperAdmin && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                  <Crown className="h-3 w-3 mr-1" />
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
+                  <Crown className="h-2.5 w-2.5 mr-0.5" />
                   Super Admin
                 </span>
               )}
+              {securityAdmin && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800">
+                  <Shield className="h-2.5 w-2.5 mr-0.5" />
+                  Security Admin
+                </span>
+              )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Tier: {role.tier}
-            </p>
-            <div className="mt-2 space-y-1">
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">Permissions:</span> {role._count.role_permissions} pages
-              </div>
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">Users:</span> {role._count.auth_users || 0}
-              </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-[10px] text-gray-500">
+                Tier: {role.tier}
+              </p>
+              <p className="text-[10px] text-gray-500">
+                Permissions: {role._count.role_permissions}
+              </p>
+              <p className="text-[10px] text-gray-500">
+                Users: {role._count.auth_users || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -464,9 +494,9 @@ export default function RolesContent({ }: RolesContentProps) {
 
       {/* Roles List */}
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
+            <Skeleton key={i} className="h-16 w-full" />
           ))}
         </div>
       ) : roles.length === 0 ? (
@@ -479,11 +509,13 @@ export default function RolesContent({ }: RolesContentProps) {
         <>
           {/* Super Admin - Fixed at top, not in sortable context */}
           {roles.find(r => r.isSuperAdmin) && (
-            <StaticRoleCard
-              key={roles.find(r => r.isSuperAdmin)!.id}
-              role={roles.find(r => r.isSuperAdmin)!}
-              onDelete={openDeleteDialog}
-            />
+            <div className="mb-2">
+              <StaticRoleCard
+                key={roles.find(r => r.isSuperAdmin)!.id}
+                role={roles.find(r => r.isSuperAdmin)!}
+                onDelete={openDeleteDialog}
+              />
+            </div>
           )}
 
           {/* Other roles - Sortable */}
@@ -498,7 +530,7 @@ export default function RolesContent({ }: RolesContentProps) {
               items={roles.filter(r => !r.isSuperAdmin).map((r) => r.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {roles.filter(r => !r.isSuperAdmin).map((role) => (
                   <SortableRoleCard
                     key={role.id}
