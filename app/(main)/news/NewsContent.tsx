@@ -14,7 +14,7 @@ import ImagePreviewDialog from "@/components/ImagePreviewDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { getImageUrl } from "@/lib/utils";
 import SearchScopeSuggestions, { SearchScope } from "@/components/SearchScopeSuggestions";
-import { formatWIBDate } from "@/lib/formatWIBDate";
+import { formatWIBDate, parseWIBString, getCurrentWIBTimeISO } from "@/lib/formatWIBDate";
 import { MoreVertical, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import {
@@ -46,6 +46,21 @@ interface NewsItem {
 interface NewsContentProps {
   // No props needed anymore
 }
+
+// Helper to determine if a news item should show "Incoming" status
+// Returns true if status is Active (1) AND publish_date is in the future (WIB)
+const shouldShowIncoming = (item: NewsItem): boolean => {
+  if (item.status !== 1) return false; // Only apply to Active items
+  if (!item.publish_date) return false; // No publish date set
+
+  const publishDate = parseWIBString(item.publish_date);
+  if (!publishDate) return false;
+
+  const currentWIB = parseWIBString(getCurrentWIBTimeISO());
+  if (!currentWIB) return false;
+
+  return publishDate > currentWIB;
+};
 
 export default function NewsContent({ }: NewsContentProps) {
   const [items, setItems] = useState<NewsItem[]>([]);
@@ -222,21 +237,21 @@ export default function NewsContent({ }: NewsContentProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total News
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : totalNews}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-6 w-6 text-gray-600"
+                  className="h-5 w-5 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -253,19 +268,19 @@ export default function NewsContent({ }: NewsContentProps) {
           </CardContent>
         </Card>
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Active
                 </p>
-                <p className="text-3xl font-bold text-green-700 mt-2">
+                <p className="text-2xl font-bold text-green-700 mt-1">
                   {loading ? "..." : active}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center">
                 <svg
-                  className="h-6 w-6 text-green-700"
+                  className="h-5 w-5 text-green-700"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -282,19 +297,19 @@ export default function NewsContent({ }: NewsContentProps) {
           </CardContent>
         </Card>
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Inactive
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : inactive}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-6 w-6 text-gray-600"
+                  className="h-5 w-5 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -493,7 +508,11 @@ export default function NewsContent({ }: NewsContentProps) {
                       )}
                       {visibleColumns.status && (
                         <TableCell className="px-2 py-1.5">
-                          {item.status === 1 ? (
+                          {shouldShowIncoming(item) ? (
+                            <Badge variant="default" className="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[10px] px-1.5 py-0.5">
+                              Incoming
+                            </Badge>
+                          ) : item.status === 1 ? (
                             <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-[10px] px-1.5 py-0.5">
                               Active
                             </Badge>
@@ -616,7 +635,11 @@ export default function NewsContent({ }: NewsContentProps) {
                           <h3 className="text-[11px] font-semibold text-gray-900 truncate">{item.title || item.title_en || "-"}</h3>
                           <p className="text-[11px] text-gray-500 mt-0.5">{item.views.toString()} views</p>
                         </div>
-                        {item.status === 1 ? (
+                        {shouldShowIncoming(item) ? (
+                          <Badge variant="default" className="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[10px] px-1.5 py-0.5 shrink-0">
+                            Incoming
+                          </Badge>
+                        ) : item.status === 1 ? (
                           <Badge variant="default" className="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 text-[10px] px-1.5 py-0.5 shrink-0">
                             Active
                           </Badge>

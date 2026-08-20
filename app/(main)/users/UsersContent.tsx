@@ -366,38 +366,38 @@ export default function UsersContent({ }: UsersContentProps) {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Total Users
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : totalUsers}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
-                <Users className="h-6 w-6 text-gray-600" />
+              <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
+                <Users className="h-5 w-5 text-gray-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Active LarataClub
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : activeSlc}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-6 w-6 text-gray-600"
+                  className="h-5 w-5 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -414,19 +414,19 @@ export default function UsersContent({ }: UsersContentProps) {
           </CardContent>
         </Card>
         <Card className="bg-white border border-gray-200 shadow-sm rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Inactive LarataClub
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900 mt-1">
                   {loading ? "..." : inactiveSlc}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-gray-50 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center">
                 <svg
-                  className="h-6 w-6 text-gray-600"
+                  className="h-5 w-5 text-gray-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

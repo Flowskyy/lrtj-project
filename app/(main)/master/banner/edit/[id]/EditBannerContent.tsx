@@ -157,9 +157,11 @@ export default function EditBannerContent({ bannerId }: EditBannerContentProps) 
               value={formData.image_url}
               onChange={(value) => setFormData({ ...formData, image_url: value })}
               label="Banner Image"
-              recommendation="Ratio: 2.37:1 (Ultrawide Landscape)
-Recommended Resolution: 2370 × 1000 px
-Format: JPG / PNG / WebP"
+              recommendation="Banner Utama (Homepage Carousel Banner)
+Aspect Ratio: 2.35:1 (Wide Landscape / mendekati 21:9)
+Rekomendasi Resolusi Upload CMS:
+Minimum: 1200 x 510 piksel
+Optimal: 1920 x 816 piksel"
             />
           </div>
         </section>

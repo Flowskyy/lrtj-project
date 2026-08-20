@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import TypeDropdown from "@/components/TypeDropdown";
 import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import Link from "next/link";
 import { ArrowLeft, Eye } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
@@ -55,7 +55,7 @@ export default function NewsEditContent({ newsId }: NewsEditContentProps) {
   const [formContentEn, setFormContentEn] = useState("");
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formCaptionImage, setFormCaptionImage] = useState("");
-  const [formType, setFormType] = useState("general");
+  const [formType, setFormType] = useState("news");
   const [formStatus, setFormStatus] = useState<boolean>(true);
   const [formPublishDate, setFormPublishDate] = useState("");
   const [hasUnsavedRichTextChanges, setHasUnsavedRichTextChanges] = useState(false);
@@ -86,9 +86,9 @@ export default function NewsEditContent({ newsId }: NewsEditContentProps) {
           setFormTitleEn(data.title_en || "");
           setFormImageUrl(data.img_url || "");
           setFormCaptionImage(data.caption_image || "");
-          setFormType(data.type || "general");
+          setFormType(data.type || "news");
           setFormStatus(data.status === 1);
-          setFormPublishDate(data.publish_date ? data.publish_date.split('T')[0] : "");
+          setFormPublishDate(data.publish_date || "");
           
           setFormContent(data.content || '<p>-</p>');
           setFormContentEn(data.content_en || '<p>-</p>');
@@ -256,37 +256,11 @@ export default function NewsEditContent({ newsId }: NewsEditContentProps) {
                 placeholder="Enter news title in English"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Type
-                </label>
-                <TypeDropdown value={formType} onChange={setFormType} placeholder="Select type" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={formStatus}
-                    onCheckedChange={setFormStatus}
-                  />
-                  <span className="text-sm text-gray-600">
-                    {formStatus ? "Published" : "Draft"}
-                  </span>
-                </div>
-              </div>
-            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Publish Date
+                Type
               </label>
-              <DatePicker
-                value={formPublishDate}
-                onChange={setFormPublishDate}
-                placeholder="Select publish date"
-              />
+              <TypeDropdown value={formType} onChange={setFormType} placeholder="Select type" />
             </div>
           </div>
         </section>
@@ -342,6 +316,39 @@ Format: JPG / PNG / WebP"
               disableTable={true}
               onDirtyChange={setHasUnsavedRichTextChanges}
             />
+          </div>
+        </section>
+
+        {/* Publishing Options Section */}
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Publishing Options</h2>
+          <p className="text-sm text-gray-500 mb-6">Configure when and how this news article is published</p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={formStatus}
+                  onCheckedChange={setFormStatus}
+                />
+                <span className="text-sm text-gray-600">
+                  {formStatus ? "Published" : "Draft"}
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Publish Date
+              </label>
+              <DateTimePicker
+                value={formPublishDate}
+                onChange={setFormPublishDate}
+                placeholder="Select publish date and time"
+              />
+            </div>
           </div>
         </section>
 

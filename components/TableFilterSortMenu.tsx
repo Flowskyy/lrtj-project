@@ -150,7 +150,7 @@ export default function TableFilterSortMenu({
     <div className="flex items-center gap-2">
       {/* Filter Dropdown */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] relative shadow-sm">
+        <DropdownMenuTrigger className="h-9 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[40px] relative shadow-sm">
           <Filter className="h-4 w-4 mr-2 text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Filter</span>
           {activeFilterCount > 0 && (
@@ -167,7 +167,7 @@ export default function TableFilterSortMenu({
               </div>
               <div className="px-2 pb-1.5">
                 <Select value={statusFilter} onValueChange={(v) => onStatusFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                  <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                     <SelectValue placeholder="Select status">
                       {statusOptions.find(opt => opt.value === statusFilter)?.label || "Select status"}
                     </SelectValue>
@@ -191,7 +191,7 @@ export default function TableFilterSortMenu({
               </div>
               <div className="px-2 pb-1.5">
                 <Select value={typeFilter} onValueChange={(v) => onTypeFilterChange(v || 'all')}>
-                  <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                  <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                     <SelectValue placeholder="Select type">
                       {typeOptions.find(opt => opt.value === typeFilter)?.label || "Select type"}
                     </SelectValue>
@@ -217,7 +217,7 @@ export default function TableFilterSortMenu({
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={genderFilter} onValueChange={(v) => onGenderFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                       <SelectValue placeholder="Select gender">
                         {genderOptions.find(opt => opt.value === genderFilter)?.label || "Select gender"}
                       </SelectValue>
@@ -244,7 +244,7 @@ export default function TableFilterSortMenu({
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={verifiedFilter} onValueChange={(v) => onVerifiedFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                       <SelectValue placeholder="Select verification">
                         {verifiedOptions.find(opt => opt.value === verifiedFilter)?.label || "Select verification"}
                       </SelectValue>
@@ -271,7 +271,7 @@ export default function TableFilterSortMenu({
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={activationSlcFilter} onValueChange={(v) => onActivationSlcFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                       <SelectValue placeholder="Select activation">
                         {activationSlcOptions.find(opt => opt.value === activationSlcFilter)?.label || "Select activation"}
                       </SelectValue>
@@ -298,7 +298,7 @@ export default function TableFilterSortMenu({
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={tierFilter} onValueChange={(v) => onTierFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                       <SelectValue placeholder="Select tier">
                         {tierOptions.find(opt => opt.value === tierFilter)?.label || "Select tier"}
                       </SelectValue>
@@ -325,7 +325,7 @@ export default function TableFilterSortMenu({
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={categoryFilter} onValueChange={(v) => onCategoryFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                       <SelectValue placeholder="Select category">
                         {categoryOptions.find(opt => opt.value === categoryFilter)?.label || "Select category"}
                       </SelectValue>
@@ -352,7 +352,7 @@ export default function TableFilterSortMenu({
                 </div>
                 <div className="px-2 pb-1.5">
                   <Select value={actorFilter} onValueChange={(v) => onActorFilterChange(v || 'all')}>
-                    <SelectTrigger className="h-9 rounded-lg border-gray-200 bg-white">
+                    <SelectTrigger className="h-8 rounded-lg border-gray-200 bg-white">
                       <SelectValue placeholder="Select actor">
                         {actorOptions.find(opt => opt.value === actorFilter)?.label || "Select actor"}
                       </SelectValue>
@@ -406,7 +406,7 @@ export default function TableFilterSortMenu({
               <div className="px-2 pb-1.5">
                 <button
                   onClick={onApplyFilters}
-                  className="w-full h-9 px-3 inline-flex items-center justify-center rounded-lg bg-[#E5262C] text-white text-sm font-medium hover:bg-[#c91e24] transition-colors"
+                  className="w-full h-8 px-3 inline-flex items-center justify-center rounded-lg bg-[#E5262C] text-white text-sm font-medium hover:bg-[#c91e24] transition-colors"
                 >
                   Apply Filter
                 </button>
@@ -420,7 +420,7 @@ export default function TableFilterSortMenu({
               <div className="px-2 pb-1.5">
                 <button
                   onClick={onResetFilters}
-                  className="w-full h-9 px-3 inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+                  className="w-full h-8 px-3 inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
                 >
                   Reset Filters
                 </button>
@@ -432,7 +432,7 @@ export default function TableFilterSortMenu({
 
       {/* Sort Dropdown */}
       <DropdownMenu>
-        <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
+        <DropdownMenuTrigger className="h-9 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[40px] shadow-sm">
           <ArrowUpDown className="h-4 w-4 mr-2 text-gray-600" />
           <span className="text-sm font-medium text-gray-700">Sort</span>
         </DropdownMenuTrigger>

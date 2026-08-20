@@ -58,6 +58,10 @@ const EditorInstance = ({
         cleanHtml = cleanHtml.replace(/<meta\b[^>]*>/gi, '');
         cleanHtml = cleanHtml.replace(/<link\b[^>]*>/gi, '');
         
+        // Remove Word/Office-specific attributes (simple approach)
+        cleanHtml = cleanHtml.replace(/data-ccp-props="[^"]*"/gi, '');
+        cleanHtml = cleanHtml.replace(/data-contrast="[^"]*"/gi, '');
+        
         // Pass cleaned HTML string to Plate.js deserializer
         const deserializedValue = editor.api.html.deserialize({
           element: cleanHtml,
@@ -146,9 +150,45 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
         stripClassNames: true,
         stripDataAttributes: true,
         preserveClassNames: [],
+        elementProps: {
+          p: { className: undefined },
+        },
       });
 
-      const finalHtml = html || '<p>-</p>';
+      // Post-process to clean up Slate-specific markup and ensure proper HTML structure
+      let cleanHtml = html;
+      
+      // Remove Slate-specific data attributes
+      cleanHtml = cleanHtml.replace(/data-slate-[^=]*="[^"]*"/g, '');
+      
+      // Remove the outer Slate editor container div
+      cleanHtml = cleanHtml.replace(/<div[^>]*data-slate-editor[^>]*>/g, '');
+      cleanHtml = cleanHtml.replace(/<\/div>\s*<div[^>]*data-slate-editor[^>]*>/g, '');
+      cleanHtml = cleanHtml.replace(/<\/div>\s*$/g, '');
+      
+      // Convert nested spans to plain text (Slate wraps text in spans)
+      cleanHtml = cleanHtml.replace(/<span[^>]*>(.*?)<\/span>/g, '$1');
+      
+      // Convert Slate div blocks to proper p tags
+      cleanHtml = cleanHtml.replace(/<div[^>]*>(.*?)<\/div>/g, (match, content) => {
+        const trimmedContent = content.trim();
+        if (trimmedContent === '') {
+          return '<p><br></p>'; // Empty paragraph for visual spacing
+        }
+        return `<p>${trimmedContent}</p>`;
+      });
+      
+      // Clean up any remaining empty divs
+      cleanHtml = cleanHtml.replace(/<div><\/div>/g, '<p><br></p>');
+      
+      // Remove any double p tags that might have been created
+      cleanHtml = cleanHtml.replace(/<p>\s*<p>/g, '<p>');
+      cleanHtml = cleanHtml.replace(/<\/p>\s*<\/p>/g, '</p>');
+      
+      // Remove any empty style attributes
+      cleanHtml = cleanHtml.replace(/style=""/g, '');
+
+      const finalHtml = cleanHtml || '<p>-</p>';
       onChange(finalHtml);
       setHasUnsavedChanges(false);
       setIsEditing(false);

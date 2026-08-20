@@ -11,6 +11,7 @@ import { TableToolbarButton } from '@/components/ui/table-toolbar-button';
 import { EmojiToolbarButton } from '@/components/ui/emoji-toolbar-button';
 import { FontColorToolbarButton } from '@/components/ui/font-color-toolbar-button';
 import { FontSizeToolbarButton } from '@/components/ui/font-size-toolbar-button';
+import { LineHeightToolbarButton } from '@/components/ui/line-height-toolbar-button';
 import { ToolbarGroup } from '@/components/ui/toolbar';
 import { UndoToolbarButton, RedoToolbarButton } from '@/components/ui/history-toolbar-button';
 
@@ -53,6 +54,11 @@ export function RichTextEditorToolbar({ disableTable = false }: RichTextEditorTo
       {/* Font Size */}
       <ToolbarGroup>
         <FontSizeToolbarButton />
+      </ToolbarGroup>
+
+      {/* Line Height */}
+      <ToolbarGroup>
+        <LineHeightToolbarButton />
       </ToolbarGroup>
 
       {/* Text Color & Highlight */}

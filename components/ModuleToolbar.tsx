@@ -192,7 +192,7 @@ export default function ModuleToolbar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="pl-10 h-10 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
+            className="pl-10 h-9 border border-gray-200 shadow-sm rounded-lg focus:border-gray-300"
             onFocus={() => {
               if (searchQuery.length >= 2 && onSearchFocus) {
                 onSearchFocus();
@@ -207,7 +207,7 @@ export default function ModuleToolbar({
             onClose={onScopeSuggestionsClose}
           />
         </div>
-        
+
         {/* Filter/Sort Menu */}
         <TableFilterSortMenu
           sortBy={sortBy}
@@ -256,10 +256,10 @@ export default function ModuleToolbar({
           onApplyFilters={onApplyFilters}
           activeFilterCount={activeFilterCount}
         />
-        
+
         {/* Column Visibility Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="h-10 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px] shadow-sm">
+          <DropdownMenuTrigger className="h-9 px-4 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[40px] shadow-sm">
             <Columns className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48" side="bottom" collisionAvoidance={{ side: 'shift' }}>
@@ -277,7 +277,7 @@ export default function ModuleToolbar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      
+
       {/* Primary Action Button */}
       {primaryAction && (
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -285,7 +285,7 @@ export default function ModuleToolbar({
             <Link href={primaryAction.href}>
               <Button
                 disabled={primaryAction.disabled}
-                className={`min-h-[44px] ${primaryAction.className || 'bg-[#E5262C] hover:bg-[#c91e24] text-white'}`}
+                className={`min-h-[40px] ${primaryAction.className || 'bg-[#E5262C] hover:bg-[#c91e24] text-white'}`}
                 variant={primaryAction.variant || "default"}
               >
                 {primaryAction.icon && <span className="mr-2">{primaryAction.icon}</span>}
@@ -296,7 +296,7 @@ export default function ModuleToolbar({
             <Button
               onClick={primaryAction.onClick}
               disabled={primaryAction.disabled || primaryAction.loading}
-              className={`min-h-[44px] ${primaryAction.className || 'bg-[#E5262C] hover:bg-[#c91e24] text-white'}`}
+              className={`min-h-[40px] ${primaryAction.className || 'bg-[#E5262C] hover:bg-[#c91e24] text-white'}`}
               variant={primaryAction.variant || "default"}
             >
               {primaryAction.icon && <span className="mr-2">{primaryAction.icon}</span>}
