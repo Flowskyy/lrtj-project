@@ -14,26 +14,25 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const LINE_HEIGHT_VALUES = [1, 1.2, 1.5, 2, 3];
+const LINE_HEIGHT_VALUES = ["1", "1.2", "1.5", "2", "3"];
 
 export function LineHeightToolbarButton() {
   const editor = useEditorRef();
 
   const lineHeight = useSelectionFragmentProp({
-    defaultValue: 1.5,
+    defaultValue: "1.5",
     getProp: (node) => (node as any).lineHeight,
   });
 
   const currentLineHeight = React.useMemo(() => {
-    return lineHeight ?? 1.5;
+    return lineHeight ?? "1.5";
   }, [lineHeight]);
 
   const handleLineHeightChange = React.useCallback(
-    (value: string) => {
-      const numValue = parseFloat(value);
-      if (editor.selection) {
+    (value: string | null) => {
+      if (value && editor.selection) {
         editor.tf.select(editor.selection);
-        editor.tf.setNodes({ lineHeight: numValue });
+        editor.tf.setNodes({ lineHeight: value });
         editor.tf.focus();
       }
     },
@@ -45,13 +44,13 @@ export function LineHeightToolbarButton() {
       <ToolbarButton tooltip="Line Height">
         <ChevronDown className="size-4" />
       </ToolbarButton>
-      <Select value={String(currentLineHeight)} onValueChange={handleLineHeightChange}>
+      <Select value={currentLineHeight} onValueChange={handleLineHeightChange}>
         <SelectTrigger className="h-8 w-16 text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {LINE_HEIGHT_VALUES.map((value) => (
-            <SelectItem key={value} value={String(value)}>
+            <SelectItem key={value} value={value}>
               {value}
             </SelectItem>
           ))}

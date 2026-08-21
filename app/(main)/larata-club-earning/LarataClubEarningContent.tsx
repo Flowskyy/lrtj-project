@@ -57,17 +57,6 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
-  
-  // Applied filters state (for explicit apply)
-  const [appliedFilters, setAppliedFilters] = useState({
-    categoryFilter: "all",
-    sortBy: "created_at",
-    sortOrder: "desc",
-    searchQuery: "",
-    searchScope: "",
-    dateFrom: "",
-    dateTo: "",
-  });
 
   // Prefetching state
   const pageCacheRef = useRef<Map<string, { data: EarningItem[]; total: number }>>(new Map());
@@ -84,15 +73,15 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
   // Export job hook
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (appliedFilters.categoryFilter !== "all") params.category = appliedFilters.categoryFilter;
-    if (appliedFilters.searchQuery.trim()) params.search = appliedFilters.searchQuery.trim();
-    if (appliedFilters.searchScope) params.searchScope = appliedFilters.searchScope;
-    if (appliedFilters.dateFrom) params.dateFrom = appliedFilters.dateFrom;
-    if (appliedFilters.dateTo) params.dateTo = appliedFilters.dateTo;
-    if (appliedFilters.sortBy) params.sortBy = appliedFilters.sortBy;
-    if (appliedFilters.sortOrder) params.order = appliedFilters.sortOrder;
+    if (categoryFilter !== "all") params.category = categoryFilter;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (searchScope) params.searchScope = searchScope;
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.order = sortOrder;
     return params;
-  }, [appliedFilters]);
+  }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
   const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/larata-club-earning',
@@ -147,35 +136,11 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
     setSearchScope("");
     setDateFrom("");
     setDateTo("");
-    // Reset applied filters immediately
-    setAppliedFilters({
-      categoryFilter: "all",
-      sortBy: "created_at",
-      sortOrder: "desc",
-      searchQuery: "",
-      searchScope: "",
-      dateFrom: "",
-      dateTo: "",
-    });
-    setPage(1);
-  };
-
-  // Apply filters handler
-  const handleApplyFilters = () => {
-    setAppliedFilters({
-      categoryFilter,
-      sortBy,
-      sortOrder,
-      searchQuery,
-      searchScope,
-      dateFrom,
-      dateTo,
-    });
     setPage(1);
   };
 
   // Active filter count
-  const activeFilterCount = (appliedFilters.categoryFilter !== "all" ? 1 : 0) + (appliedFilters.searchQuery ? 1 : 0) + (appliedFilters.dateFrom ? 1 : 0) + (appliedFilters.dateTo ? 1 : 0);
+  const activeFilterCount = (categoryFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
   // Handle column visibility toggle
   const handleColumnVisibilityToggle = (key: string) => {
@@ -186,28 +151,28 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
   const getCacheKey = useCallback((pageNum: number) => {
     return JSON.stringify({
       page: pageNum,
-      category: appliedFilters.categoryFilter,
-      search: appliedFilters.searchQuery.trim(),
-      searchScope: appliedFilters.searchScope,
-      dateFrom: appliedFilters.dateFrom,
-      dateTo: appliedFilters.dateTo,
-      sortBy: appliedFilters.sortBy,
-      sortOrder: appliedFilters.sortOrder,
+      category: categoryFilter,
+      search: searchQuery.trim(),
+      searchScope: searchScope,
+      dateFrom: dateFrom,
+      dateTo: dateTo,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
     });
-  }, [appliedFilters]);
+  }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
   // Fetch items (main function used for both active and prefetch)
   const fetchItems = async (pageNum: number, signal?: AbortSignal) => {
     const params = new URLSearchParams();
-    if (appliedFilters.categoryFilter !== "all") params.set("category", appliedFilters.categoryFilter);
-    if (appliedFilters.searchQuery.trim()) {
-      params.set("search", appliedFilters.searchQuery.trim());
-      if (appliedFilters.searchScope) params.set("searchScope", appliedFilters.searchScope);
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
+    if (searchQuery.trim()) {
+      params.set("search", searchQuery.trim());
+      if (searchScope) params.set("searchScope", searchScope);
     }
-    if (appliedFilters.dateFrom) params.set("dateFrom", appliedFilters.dateFrom);
-    if (appliedFilters.dateTo) params.set("dateTo", appliedFilters.dateTo);
-    if (appliedFilters.sortBy) params.set("sortBy", appliedFilters.sortBy);
-    if (appliedFilters.sortOrder) params.set("order", appliedFilters.sortOrder);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (sortBy) params.set("sortBy", sortBy);
+    if (sortOrder) params.set("order", sortOrder);
     params.set("page", pageNum.toString());
     params.set("limit", limit.toString());
 
@@ -318,8 +283,7 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
   // Clear cache when filters change (to avoid showing stale data)
   useEffect(() => {
     pageCacheRef.current.clear();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedFilters]);
+  }, [categoryFilter, searchQuery, searchScope, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => {
     loadCurrentPage();
@@ -331,7 +295,6 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
   // Handle scope selection
   const handleScopeSelect = (scope: SearchScope) => {
     setSearchScope(scope.field);
-    // Don't auto-apply or reset page - user must click Apply Filter
   };
 
   // Handle search input change
@@ -341,7 +304,6 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
     if (!value.trim()) {
       setSearchScope("");
     }
-    // Don't auto-apply or reset page - user must click Apply Filter
   };
 
   // Handle search focus
@@ -359,7 +321,6 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
     }
 
     handleSearchInputChange(value);
-    // Don't auto-apply or reset page - user must click Apply Filter
     debouncedSearchChange(() => {
       // Search is handled by the useEffect
     });
@@ -457,7 +418,6 @@ export default function LarataClubEarningContent({ }: LarataClubEarningContentPr
             onDateToChange={(value) => { setDateTo(value); }}
             showDateRange={true}
             onResetFilters={handleResetFilters}
-            onApplyFilters={handleApplyFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
             onColumnVisibilityToggle={handleColumnVisibilityToggle}

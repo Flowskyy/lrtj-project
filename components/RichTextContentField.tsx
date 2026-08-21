@@ -150,9 +150,6 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
         stripClassNames: true,
         stripDataAttributes: true,
         preserveClassNames: [],
-        elementProps: {
-          p: { className: undefined },
-        },
       });
 
       // Post-process to clean up Slate-specific markup and ensure proper HTML structure
