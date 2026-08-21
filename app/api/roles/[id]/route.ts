@@ -185,7 +185,7 @@ export async function PUT(
         action: 'UPDATE',
         beforeState: role,
         afterState: updatedRoles[0],
-        changedFields,
+        changedFields: changedFields.length > 0 ? changedFields : undefined,
       });
 
       return NextResponse.json(updatedRoles[0])

@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const categoryId = searchParams.get('category_id');
-  const searchScope = searchParams.get('searchScope') || searchParams.get('searchMode') || 'receiver_name';
+  const searchScope = searchParams.get('searchScope') || searchParams.get('searchMode') || '';
 
   if (dateFrom || dateTo) {
     where.createdAt = {};
@@ -132,10 +132,6 @@ export async function GET(request: NextRequest) {
     const searchNum = parseInt(search.trim());
     const searchConditions: any[] = [];
 
-    if (!isNaN(searchNum)) {
-      searchConditions.push({ id: searchNum });
-    }
-
     // Search based on selected scope
     if (searchScope === 'receiver_name') {
       searchConditions.push({ receiver_name: { contains: search.trim() } });
@@ -161,6 +157,36 @@ export async function GET(request: NextRequest) {
             in: matchingMerchandise.map(m => m.id),
           },
         });
+      }
+    } else {
+      // Default: search all fields when no scope specified
+      searchConditions.push({ receiver_name: { contains: search.trim() } });
+      searchConditions.push({ receiver_email: { contains: search.trim() } });
+
+      // For merchandise name search in default scope
+      const matchingMerchandise = await prisma.merchandise.findMany({
+        where: {
+          name: {
+            contains: search.trim(),
+          },
+        },
+        select: {
+          id: true,
+        },
+        take: 100,
+      });
+
+      if (matchingMerchandise.length > 0) {
+        searchConditions.push({
+          merchandise_id: {
+            in: matchingMerchandise.map(m => m.id),
+          },
+        });
+      }
+
+      // Only add ID search if it's a valid number
+      if (!isNaN(searchNum)) {
+        searchConditions.push({ id: searchNum });
       }
     }
 

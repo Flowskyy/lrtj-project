@@ -100,7 +100,7 @@ export async function PUT(
         action: 'UPDATE',
         beforeState: beforePopup[0],
         afterState: afterPopup[0],
-        changedFields,
+        changedFields: changedFields.length > 0 ? changedFields : undefined,
       });
 
       return NextResponse.json(popup);

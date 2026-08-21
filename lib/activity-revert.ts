@@ -302,6 +302,7 @@ async function revertUpdate(
     })
 
     // Log the revert action using base client to avoid circular dependency
+    const revertFieldKeys = Object.keys(revertData);
     await getBasePrismaClient().system_activity_logs.create({
       data: {
         actorUserId,
@@ -314,7 +315,7 @@ async function revertUpdate(
         action: 'UPDATE',
         beforeState: current, // Current state before revert
         afterState: log.beforeState, // Reverted state
-        changedFields: Object.keys(revertData) as Prisma.InputJsonValue,
+        changedFields: revertFieldKeys.length > 0 ? revertFieldKeys as Prisma.InputJsonValue : Prisma.JsonNull,
         createdAt: getWIBDate(),
       },
     })

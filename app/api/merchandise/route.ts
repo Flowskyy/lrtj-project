@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const categoryId = searchParams.get('category_id');
+  const search = searchParams.get('search');
+  const searchScope = searchParams.get('searchScope');
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const skip = (page - 1) * limit;
@@ -35,6 +37,26 @@ export async function GET(request: NextRequest) {
       conditions.push('category_id = ?');
       params.push(parseInt(categoryId));
     }
+  }
+
+  // Add search conditions
+  if (search && search.trim()) {
+    const searchConditions: string[] = [];
+    const searchTerm = search.trim();
+
+    if (searchScope === 'editedBy') {
+      searchConditions.push('m.editedBy LIKE ?');
+      params.push(`%${searchTerm}%`);
+    } else if (searchScope === 'name') {
+      searchConditions.push('m.name LIKE ?');
+      params.push(`%${searchTerm}%`);
+    } else {
+      // Default: search both name and editedBy
+      searchConditions.push('(m.name LIKE ? OR m.editedBy LIKE ?)');
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    }
+
+    conditions.push(`(${searchConditions.join(' OR ')})`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

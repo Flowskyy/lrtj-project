@@ -68,18 +68,6 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
   const [dateTo, setDateTo] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [categories, setCategories] = useState<Category[]>([]);
-  
-  // Applied filters state (for explicit apply)
-  const [appliedFilters, setAppliedFilters] = useState({
-    sortBy: "created_at",
-    sortOrder: "desc",
-    searchQuery: "",
-    searchScope: "",
-    dateFrom: "",
-    dateTo: "",
-    categoryFilter: "all",
-  });
-  
 
   // Modal and CRUD states
   const [deleteItem, setDeleteItem] = useState<RedeemItem | null>(null);
@@ -101,14 +89,14 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
   // Export job hook
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (appliedFilters.sortBy) params.sortBy = appliedFilters.sortBy;
-    if (appliedFilters.sortOrder) params.order = appliedFilters.sortOrder;
-    if (appliedFilters.searchQuery.trim()) params.search = appliedFilters.searchQuery.trim();
-    if (appliedFilters.dateFrom) params.dateFrom = appliedFilters.dateFrom;
-    if (appliedFilters.dateTo) params.dateTo = appliedFilters.dateTo;
-    if (appliedFilters.categoryFilter !== "all") params.category_id = appliedFilters.categoryFilter;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.order = sortOrder;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    if (categoryFilter !== "all") params.category_id = categoryFilter;
     return params;
-  }, [appliedFilters]);
+  }, [sortBy, sortOrder, searchQuery, dateFrom, dateTo, categoryFilter]);
 
   const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/redeem',
@@ -127,15 +115,15 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (appliedFilters.sortBy) params.set("sortBy", appliedFilters.sortBy);
-      if (appliedFilters.sortOrder) params.set("order", appliedFilters.sortOrder);
-      if (appliedFilters.searchQuery.trim()) {
-        params.set("search", appliedFilters.searchQuery.trim());
-        if (appliedFilters.searchScope) params.set("searchScope", appliedFilters.searchScope);
+      if (sortBy) params.set("sortBy", sortBy);
+      if (sortOrder) params.set("order", sortOrder);
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+        if (searchScope) params.set("searchScope", searchScope);
       }
-      if (appliedFilters.dateFrom) params.set("dateFrom", appliedFilters.dateFrom);
-      if (appliedFilters.dateTo) params.set("dateTo", appliedFilters.dateTo);
-      if (appliedFilters.categoryFilter !== "all") params.set("category_id", appliedFilters.categoryFilter);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      if (categoryFilter !== "all") params.set("category_id", categoryFilter);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -155,8 +143,12 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
   };
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, sortOrder, searchQuery, searchScope, dateFrom, dateTo, categoryFilter]);
+
+  useEffect(() => {
     fetchItems();
-  }, [appliedFilters, currentPage]);
+  }, [sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo, categoryFilter]);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -180,7 +172,6 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
   // Handle scope selection
   const handleScopeSelect = (scope: SearchScope) => {
     setSearchScope(scope.field);
-    // Don't auto-apply or reset page - user must click Apply Filter
   };
 
   // Handle search input change
@@ -190,7 +181,6 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
     if (!value.trim()) {
       setSearchScope("");
     }
-    // Don't auto-apply or reset page - user must click Apply Filter
   };
 
   // Handle search focus
@@ -198,19 +188,6 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
     if (searchQuery.length >= 2) {
       setShowScopeSuggestions(true);
     }
-  };
-
-  const handleApplyFilters = () => {
-    setAppliedFilters({
-      sortBy,
-      sortOrder,
-      searchQuery,
-      searchScope,
-      dateFrom,
-      dateTo,
-      categoryFilter,
-    });
-    setCurrentPage(1);
   };
 
   const handleResetFilters = () => {
@@ -221,16 +198,6 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
     setSortBy("created_at");
     setSortOrder("desc");
     setCategoryFilter("all");
-    // Reset applied filters immediately
-    setAppliedFilters({
-      sortBy: "created_at",
-      sortOrder: "desc",
-      searchQuery: "",
-      searchScope: "",
-      dateFrom: "",
-      dateTo: "",
-      categoryFilter: "all",
-    });
     setCurrentPage(1);
   };
 
@@ -349,7 +316,6 @@ export default function RedeemMerchandiseContent({ }: RedeemMerchandiseContentPr
             onDateToChange={(value) => { setDateTo(value); }}
             showDateRange={true}
             onResetFilters={handleResetFilters}
-            onApplyFilters={handleApplyFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
             onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}

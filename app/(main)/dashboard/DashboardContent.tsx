@@ -185,18 +185,32 @@ export default function DashboardContent() {
       .join(' ');
   };
 
-  // Color palette for shortcuts - purposeful accent colors per category
-  const getShortcutAccentColor = (category: string) => {
-    const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+  // Color palette for shortcuts - purposeful accent colors per module
+  // Grouping logic: Content-related (teal/cyan), Master/Config (indigo/violet), Security (rose/amber)
+  const getShortcutAccentColor = (id: string) => {
+    const moduleColors: Record<string, { bg: string; text: string; border: string }> = {
+      // Row 1 - Existing colors preserved
       'users': { bg: 'bg-blue-50/80', text: 'text-blue-600', border: 'border-blue-200/60' },
       'news': { bg: 'bg-amber-50/80', text: 'text-amber-600', border: 'border-amber-200/60' },
       'notifications': { bg: 'bg-purple-50/80', text: 'text-purple-600', border: 'border-purple-200/60' },
-      'club': { bg: 'bg-yellow-50/80', text: 'text-yellow-600', border: 'border-yellow-200/60' },
+      'larata-club-history': { bg: 'bg-yellow-50/80', text: 'text-yellow-600', border: 'border-yellow-200/60' },
       'merchandise': { bg: 'bg-emerald-50/80', text: 'text-emerald-600', border: 'border-emerald-200/60' },
-      'master': { bg: 'bg-slate-50/80', text: 'text-slate-600', border: 'border-slate-200/60' },
-      'security': { bg: 'bg-rose-50/80', text: 'text-rose-600', border: 'border-rose-200/60' },
+      'redeem-merchandise': { bg: 'bg-emerald-50/80', text: 'text-emerald-600', border: 'border-emerald-200/60' },
+      
+      // Row 2 - Content/Master modules (teal/cyan/indigo tones - content & configuration)
+      'merchandise-category': { bg: 'bg-teal-50/80', text: 'text-teal-600', border: 'border-teal-200/60' },
+      'welcome-point': { bg: 'bg-cyan-50/80', text: 'text-cyan-600', border: 'border-cyan-200/60' },
+      'banner': { bg: 'bg-sky-50/80', text: 'text-sky-600', border: 'border-sky-200/60' },
+      'popups': { bg: 'bg-indigo-50/80', text: 'text-indigo-600', border: 'border-indigo-200/60' },
+      'membership': { bg: 'bg-violet-50/80', text: 'text-violet-600', border: 'border-violet-200/60' },
+      'roles': { bg: 'bg-fuchsia-50/80', text: 'text-fuchsia-600', border: 'border-fuchsia-200/60' },
+      
+      // Row 3 - Security/Admin modules (rose/amber/orange tones - security & admin)
+      'admin-management': { bg: 'bg-rose-50/80', text: 'text-rose-600', border: 'border-rose-200/60' },
+      'invitation': { bg: 'bg-orange-50/80', text: 'text-orange-600', border: 'border-orange-200/60' },
+      'activity-log': { bg: 'bg-amber-50/80', text: 'text-amber-600', border: 'border-amber-200/60' },
     };
-    return categoryColors[category] || { bg: 'bg-gray-50/80', text: 'text-gray-600', border: 'border-gray-200/60' };
+    return moduleColors[id] || { bg: 'bg-gray-50/80', text: 'text-gray-600', border: 'border-gray-200/60' };
   };
 
   return (
@@ -283,7 +297,7 @@ export default function DashboardContent() {
             ) : (
               shortcuts.map((shortcut) => {
                 const IconComponent = iconMap[shortcut.icon];
-                const accentColors = getShortcutAccentColor(shortcut.category);
+                const accentColors = getShortcutAccentColor(shortcut.id);
                 return (
                   <div
                     key={shortcut.id}

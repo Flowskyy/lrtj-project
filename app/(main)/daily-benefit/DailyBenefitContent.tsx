@@ -92,6 +92,8 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (searchScope) params.set("searchScope", searchScope);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -109,11 +111,11 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, sortBy, sortOrder, currentPage]);
+  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, searchScope]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, sortBy, sortOrder]);
+  }, [statusFilter, sortBy, sortOrder, searchQuery, searchScope]);
 
   useEffect(() => {
     fetchItems();
@@ -125,23 +127,9 @@ export default function DailyBenefitContent({ }: DailyBenefitContentProps) {
     { field: "name", label: "Daily Benefit Name" },
   ];
 
-  // Filter items based on search query and scope (memoized for performance)
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      if (!searchQuery.trim()) return true;
-      
-      const query = searchQuery.toLowerCase();
-      if (searchScope === 'editedBy') {
-        return item.editedBy?.toLowerCase().includes(query);
-      } else if (searchScope === 'name') {
-        return item.name.toLowerCase().includes(query);
-      } else {
-        // Default: search both name and editedBy
-        return item.name.toLowerCase().includes(query) ||
-               item.editedBy?.toLowerCase().includes(query);
-      }
-    });
-  }, [items, searchQuery, searchScope]);
+  // Use items directly since search is now server-side
+  const filteredItems = items;
+
   const activeFilterCount = useMemo(() => {
     return (searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
   }, [searchQuery, statusFilter]);

@@ -84,18 +84,6 @@ export default function UsersContent({ }: UsersContentProps) {
   const [showScopeSuggestions, setShowScopeSuggestions] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
-  
-  // Applied filters state (for explicit apply)
-  const [appliedFilters, setAppliedFilters] = useState({
-    activationSlcFilter: "all",
-    tierFilter: "all",
-    sortBy: "created_at",
-    sortOrder: "desc",
-    searchQuery: "",
-    searchScope: "",
-    dateFrom: "",
-    dateTo: "",
-  });
 
   // Modal and CRUD states
   const [deleteItem, setDeleteItem] = useState<MemberItem | null>(null);
@@ -114,15 +102,15 @@ export default function UsersContent({ }: UsersContentProps) {
   // Export job hook
   const exportParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (appliedFilters.activationSlcFilter !== "all") params.activation_slc = appliedFilters.activationSlcFilter;
-    if (appliedFilters.tierFilter !== "all") params.tier = appliedFilters.tierFilter;
-    if (appliedFilters.sortBy) params.sortBy = appliedFilters.sortBy;
-    if (appliedFilters.sortOrder) params.order = appliedFilters.sortOrder;
-    if (appliedFilters.searchQuery.trim()) params.search = appliedFilters.searchQuery.trim();
-    if (appliedFilters.dateFrom) params.dateFrom = appliedFilters.dateFrom;
-    if (appliedFilters.dateTo) params.dateTo = appliedFilters.dateTo;
+    if (activationSlcFilter !== "all") params.activation_slc = activationSlcFilter;
+    if (tierFilter !== "all") params.tier = tierFilter;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.order = sortOrder;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
     return params;
-  }, [appliedFilters]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, searchQuery, dateFrom, dateTo]);
 
   const { isExporting, isCancelling, processed, total, percentage, status, startExport, cancelExport } = useExportJob({
     moduleEndpoint: '/api/users',
@@ -146,16 +134,16 @@ export default function UsersContent({ }: UsersContentProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (appliedFilters.activationSlcFilter !== "all") params.set("activation_slc", appliedFilters.activationSlcFilter);
-      if (appliedFilters.tierFilter !== "all") params.set("tier", appliedFilters.tierFilter);
-      if (appliedFilters.sortBy) params.set("sortBy", appliedFilters.sortBy);
-      if (appliedFilters.sortOrder) params.set("order", appliedFilters.sortOrder);
-      if (appliedFilters.searchQuery.trim()) {
-        params.set("search", appliedFilters.searchQuery.trim());
-        if (appliedFilters.searchScope) params.set("searchScope", appliedFilters.searchScope);
+      if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
+      if (tierFilter !== "all") params.set("tier", tierFilter);
+      if (sortBy) params.set("sortBy", sortBy);
+      if (sortOrder) params.set("order", sortOrder);
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+        if (searchScope) params.set("searchScope", searchScope);
       }
-      if (appliedFilters.dateFrom) params.set("dateFrom", appliedFilters.dateFrom);
-      if (appliedFilters.dateTo) params.set("dateTo", appliedFilters.dateTo);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -199,24 +187,28 @@ export default function UsersContent({ }: UsersContentProps) {
   }, []);
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, searchQuery, searchScope, dateFrom, dateTo]);
+
+  useEffect(() => {
     fetchItems();
-  }, [appliedFilters, currentPage]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo]);
 
   // Prefetch next page
   useEffect(() => {
     if (currentPage < totalPages && currentPage > 0) {
       const nextPage = currentPage + 1;
       const params = new URLSearchParams();
-      if (appliedFilters.activationSlcFilter !== "all") params.set("activation_slc", appliedFilters.activationSlcFilter);
-      if (appliedFilters.tierFilter !== "all") params.set("tier", appliedFilters.tierFilter);
-      if (appliedFilters.sortBy) params.set("sortBy", appliedFilters.sortBy);
-      if (appliedFilters.sortOrder) params.set("order", appliedFilters.sortOrder);
-      if (appliedFilters.searchQuery.trim()) {
-        params.set("search", appliedFilters.searchQuery.trim());
-        if (appliedFilters.searchScope) params.set("searchScope", appliedFilters.searchScope);
+      if (activationSlcFilter !== "all") params.set("activation_slc", activationSlcFilter);
+      if (tierFilter !== "all") params.set("tier", tierFilter);
+      if (sortBy) params.set("sortBy", sortBy);
+      if (sortOrder) params.set("order", sortOrder);
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+        if (searchScope) params.set("searchScope", searchScope);
       }
-      if (appliedFilters.dateFrom) params.set("dateFrom", appliedFilters.dateFrom);
-      if (appliedFilters.dateTo) params.set("dateTo", appliedFilters.dateTo);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
       params.set("page", nextPage.toString());
       params.set("limit", "50");
 
@@ -225,7 +217,7 @@ export default function UsersContent({ }: UsersContentProps) {
         // Silent fail - prefetch is optional
       });
     }
-  }, [currentPage, totalPages, appliedFilters]);
+  }, [currentPage, totalPages, activationSlcFilter, tierFilter, sortBy, sortOrder, searchQuery, searchScope, dateFrom, dateTo]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -233,13 +225,11 @@ export default function UsersContent({ }: UsersContentProps) {
     if (!value.trim()) {
       setSearchScope("");
     }
-    // Don't auto-apply or reset page - user must click Apply Filter
   }, []);
 
   // Handle scope selection
   const handleScopeSelect = (scope: SearchScope) => {
     setSearchScope(scope.field);
-    // Don't auto-apply or reset page - user must click Apply Filter
   };
 
   // Handle search focus
@@ -251,20 +241,6 @@ export default function UsersContent({ }: UsersContentProps) {
 
   const activeFilterCount = (activationSlcFilter !== "all" ? 1 : 0) + (tierFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
-  const handleApplyFilters = () => {
-    setAppliedFilters({
-      activationSlcFilter,
-      tierFilter,
-      sortBy,
-      sortOrder,
-      searchQuery,
-      searchScope,
-      dateFrom,
-      dateTo,
-    });
-    setCurrentPage(1);
-  };
-
   const handleResetFilters = () => {
     setActivationSlcFilter("all");
     setTierFilter("all");
@@ -274,17 +250,6 @@ export default function UsersContent({ }: UsersContentProps) {
     setSortOrder("desc");
     setSearchQuery("");
     setSearchScope("");
-    // Reset applied filters immediately
-    setAppliedFilters({
-      activationSlcFilter: "all",
-      tierFilter: "all",
-      sortBy: "created_at",
-      sortOrder: "desc",
-      searchQuery: "",
-      searchScope: "",
-      dateFrom: "",
-      dateTo: "",
-    });
     setCurrentPage(1);
   };
 
@@ -492,7 +457,6 @@ export default function UsersContent({ }: UsersContentProps) {
             onDateToChange={(value) => { setDateTo(value); }}
             showDateRange={true}
             onResetFilters={handleResetFilters}
-            onApplyFilters={handleApplyFilters}
             activeFilterCount={activeFilterCount}
             visibleColumns={visibleColumns}
             onColumnVisibilityToggle={(key) => setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))}

@@ -193,7 +193,7 @@ export async function PATCH(
         action: 'UPDATE',
         beforeState: beforeItem[0],
         afterState: afterItem[0],
-        changedFields,
+        changedFields: changedFields.length > 0 ? changedFields : undefined,
       });
 
       return NextResponse.json(afterItem[0]);

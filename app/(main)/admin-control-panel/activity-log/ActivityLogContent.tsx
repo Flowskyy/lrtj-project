@@ -237,12 +237,16 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
   const getChangedFieldsSummary = (log: ActivityLog) => {
     if (log.action === 'CREATE') return 'New record created';
     if (log.action === 'DELETE') return 'Record deleted';
-    if (!log.changedFields || log.changedFields.length === 0) return 'No changes';
+    
+    // Handle various shapes of changedFields: array, empty object, null, undefined
+    const fieldsArray = Array.isArray(log.changedFields) ? log.changedFields : [];
+    
+    if (fieldsArray.length === 0) return 'No changes';
 
-    if (log.changedFields.length <= 3) {
-      return `Changed: ${log.changedFields.join(', ')}`;
+    if (fieldsArray.length <= 3) {
+      return `Changed: ${fieldsArray.join(', ')}`;
     }
-    return `Changed: ${log.changedFields.slice(0, 3).join(', ')} +${log.changedFields.length - 3} more`;
+    return `Changed: ${fieldsArray.slice(0, 3).join(', ')} +${fieldsArray.length - 3} more`;
   };
 
   const tableOptions = Array.from(new Set(logs.map(log => log.tableName))).sort().map((table) => ({
@@ -566,7 +570,7 @@ export default function ActivityLogContent({ currentUserId }: ActivityLogContent
                 </div>
               </div>
 
-              {logToRevert.changedFields && logToRevert.changedFields.length > 0 && (
+              {Array.isArray(logToRevert.changedFields) && logToRevert.changedFields.length > 0 && (
                 <div className="rounded-xl border border-gray-200/80 p-4">
                   <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Changed Fields</span>
                   <div className="flex flex-wrap gap-1.5">

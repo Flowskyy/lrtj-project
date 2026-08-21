@@ -64,9 +64,6 @@ interface TableFilterSortMenuProps {
   // Reset
   onResetFilters?: () => void;
   activeFilterCount?: number;
-  
-  // Apply
-  onApplyFilters?: () => void;
 }
 
 export default function TableFilterSortMenu({
@@ -144,7 +141,6 @@ export default function TableFilterSortMenu({
   showDateRange = false,
   onResetFilters,
   activeFilterCount = 0,
-  onApplyFilters,
 }: TableFilterSortMenuProps) {
   return (
     <div className="flex items-center gap-2">
@@ -399,21 +395,7 @@ export default function TableFilterSortMenu({
               </div>
             </>
           )}
-          
-          {onApplyFilters && (
-            <>
-              {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showActorFilter || showDateRange) && <DropdownMenuSeparator className="my-1.5" />}
-              <div className="px-2 pb-1.5">
-                <button
-                  onClick={onApplyFilters}
-                  className="w-full h-8 px-3 inline-flex items-center justify-center rounded-lg bg-[#E5262C] text-white text-sm font-medium hover:bg-[#c91e24] transition-colors"
-                >
-                  Apply Filter
-                </button>
-              </div>
-            </>
-          )}
-          
+
           {onResetFilters && activeFilterCount > 0 && (
             <>
               {(showStatusFilter || showTypeFilter || showGenderFilter || showVerifiedFilter || showActivationSlcFilter || showTierFilter || showCategoryFilter || showActorFilter || showDateRange) && <DropdownMenuSeparator className="my-1.5" />}

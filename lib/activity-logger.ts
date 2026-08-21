@@ -66,10 +66,10 @@ function redactSensitiveFields(obj: any): any {
 /**
  * Extract changed fields between two objects
  */
-function getChangedFields(before: any, after: any): string[] {
+function getChangedFields(before: any, after: any): string[] | null {
   const changed: string[] = []
   
-  if (!before || !after) return changed
+  if (!before || !after) return null
   
   const allKeys = new Set([...Object.keys(before), ...Object.keys(after)])
   
@@ -79,7 +79,8 @@ function getChangedFields(before: any, after: any): string[] {
     }
   }
   
-  return changed
+  // Return null instead of empty array for consistency
+  return changed.length > 0 ? changed : null
 }
 
 /**

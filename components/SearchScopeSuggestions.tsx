@@ -83,12 +83,14 @@ export default function SearchScopeSuggestions({
         <div
           key={scope.field}
           className={cn(
-            "px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors",
-            selectedIndex === index && "bg-gray-100"
+            "px-4 py-3 cursor-pointer hover:bg-red-50 hover:text-red-700 transition-colors duration-150",
+            selectedIndex === index && "bg-red-100 text-red-700"
           )}
           onClick={() => handleSelect(scope)}
+          onMouseEnter={() => setSelectedIndex(index)}
+          onMouseLeave={() => setSelectedIndex(-1)}
         >
-          <div className="text-sm font-medium text-gray-900">
+          <div className="text-sm font-medium">
             Search "{searchQuery}" by {scope.label}
           </div>
         </div>

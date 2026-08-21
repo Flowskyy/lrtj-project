@@ -96,6 +96,8 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
       if (categoryFilter !== "all") params.set("category_id", categoryFilter);
+      if (searchQuery.trim()) params.set("search", searchQuery);
+      if (searchScope) params.set("searchScope", searchScope);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -117,11 +119,11 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy, sortOrder, categoryFilter]);
+  }, [sortBy, sortOrder, categoryFilter, searchQuery, searchScope || '']);
 
   useEffect(() => {
     fetchItems();
-  }, [sortBy, sortOrder, categoryFilter, currentPage]);
+  }, [sortBy, sortOrder, categoryFilter, currentPage, searchQuery, searchScope || '']);
 
   // Search scopes for Merchandise
   const merchandiseSearchScopes: SearchScope[] = [
@@ -145,22 +147,8 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
     fetchCategories();
   }, []);
 
-  // Filter items based on search query and scope (client-side for now, can be moved to server)
-  const filteredItems = items.filter(item => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    if (searchScope === 'editedBy') {
-      return item.editedBy?.toLowerCase().includes(query) || item.display_email?.toLowerCase().includes(query);
-    } else if (searchScope === 'name') {
-      return item.name.toLowerCase().includes(query);
-    } else {
-      // Default: search both name and editedBy
-      return item.name.toLowerCase().includes(query) ||
-             item.editedBy?.toLowerCase().includes(query) ||
-             item.display_email?.toLowerCase().includes(query);
-    }
-  });
+  // Use items directly since search is now server-side
+  const filteredItems = items;
 
   const activeFilterCount = (searchQuery ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
 

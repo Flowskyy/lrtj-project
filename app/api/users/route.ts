@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const search = searchParams.get('search');
+  const searchScope = searchParams.get('searchScope');
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const exportMode = searchParams.get('export') === 'true';
@@ -64,13 +65,21 @@ export async function GET(request: NextRequest) {
     const searchNum = parseInt(search.trim());
     const searchConditions: any[] = [];
 
-    if (!isNaN(searchNum)) {
-      searchConditions.push({ id: searchNum });
+    // If searchScope is specified, only search that field
+    if (searchScope === 'name') {
+      searchConditions.push({ name: { contains: search.trim() } });
+    } else if (searchScope === 'email') {
+      searchConditions.push({ email: { contains: search.trim() } });
+    } else {
+      // Default: search all fields when no scope specified
+      searchConditions.push({ name: { contains: search.trim() } });
+      searchConditions.push({ email: { contains: search.trim() } });
+      searchConditions.push({ no_telepon: { contains: search.trim() } });
+      // Only add ID search if it's a valid number and not already matching in other fields
+      if (!isNaN(searchNum)) {
+        searchConditions.push({ id: searchNum });
+      }
     }
-
-    searchConditions.push({ name: { contains: search.trim() } });
-    searchConditions.push({ email: { contains: search.trim() } });
-    searchConditions.push({ no_telepon: { contains: search.trim() } });
 
     where.OR = searchConditions;
   }
@@ -126,13 +135,15 @@ export async function GET(request: NextRequest) {
   }
   if (where.OR) {
     const orConditions = where.OR.map((cond: any) => {
-      const [field, op] = Object.entries(cond)[0];
-      const fieldValue = Object.values(cond)[0];
-      if (op === 'contains') {
-        params.push(`%${fieldValue}%`);
+      const [field, opObj] = Object.entries(cond)[0];
+      // opObj is either { contains: value } or just a direct value for equality
+      if (typeof opObj === 'object' && opObj !== null && 'contains' in opObj) {
+        const searchValue = opObj.contains;
+        params.push(`%${searchValue}%`);
         return `${field} LIKE ?`;
       }
-      params.push(fieldValue);
+      // Direct equality check (e.g., for id search)
+      params.push(opObj);
       return `${field} = ?`;
     });
     conditions.push(`(${orConditions.join(' OR ')})`);

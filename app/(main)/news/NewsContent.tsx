@@ -105,6 +105,8 @@ export default function NewsContent({ }: NewsContentProps) {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sortBy) params.set("sortBy", sortBy);
       if (sortOrder) params.set("order", sortOrder);
+      if (searchQuery.trim()) params.set("search", searchQuery);
+      if (searchScope) params.set("searchScope", searchScope);
       params.set("page", currentPage.toString());
       params.set("limit", "50");
 
@@ -126,11 +128,11 @@ export default function NewsContent({ }: NewsContentProps) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, sortBy, sortOrder]);
+  }, [statusFilter, sortBy, sortOrder, searchQuery, searchScope || '']);
 
   useEffect(() => {
     fetchItems();
-  }, [statusFilter, sortBy, sortOrder, currentPage]);
+  }, [statusFilter, sortBy, sortOrder, currentPage, searchQuery, searchScope || '']);
 
   // Search scopes for News
   const newsSearchScopes: SearchScope[] = [
@@ -163,23 +165,8 @@ export default function NewsContent({ }: NewsContentProps) {
     setVisibleColumns(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
 
-  // Filter items based on search query and scope (client-side for now, can be moved to server)
-  const filteredItems = items.filter(item => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    if (searchScope === 'createdBy') {
-      return item.createdBy?.toLowerCase().includes(query) || item.creatorEmail?.toLowerCase().includes(query);
-    } else if (searchScope === 'title') {
-      return item.title?.toLowerCase().includes(query) || item.title_en?.toLowerCase().includes(query);
-    } else {
-      // Default: search both title and createdBy
-      return item.title?.toLowerCase().includes(query) ||
-             item.title_en?.toLowerCase().includes(query) ||
-             item.createdBy?.toLowerCase().includes(query) ||
-             item.creatorEmail?.toLowerCase().includes(query);
-    }
-  });
+  // Use items directly since search is now server-side
+  const filteredItems = items;
 
   // Handle search input change
   const handleSearchChange = (value: string) => {

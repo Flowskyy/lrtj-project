@@ -134,6 +134,10 @@ export default function RedeemBenefitContent({ }: RedeemBenefitContentProps) {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, sortOrder, searchQuery, searchScope, dateFrom, dateTo, statusFilter]);
+
+  useEffect(() => {
     fetchItems();
   }, [sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo, statusFilter]);
 

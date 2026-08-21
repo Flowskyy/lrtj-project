@@ -658,7 +658,7 @@ model merchandise {
   updatedAt   DateTime?             @map("updated_at") @db.DateTime(0)
   status      Int                   @default(1) @db.TinyInt
   category_id Int?
-  category    merchandise_category? @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "merchandise_merchandise_category_FK")
+  category    merchandise_category? @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "merchandise_merchandise_category_FK")
 
   @@index([category_id], map: "merchandise_merchandise_category_FK")
 }
@@ -901,7 +901,7 @@ model regencies {
   id          Int       @id @db.UnsignedInt
   province_id Int       @db.UnsignedInt
   name        String    @db.VarChar(255)
-  provinces   provinces @relation(fields: [province_id], references: [id], onUpdate: Restrict, map: "regencies_province_id_foreign")
+  provinces   provinces @relation(fields: [province_id], references: [id], onDelete: NoAction, onUpdate: Restrict, map: "regencies_province_id_foreign")
   users       users[]
 
   @@index([province_id], map: "regencies_province_id_index")
@@ -1160,10 +1160,14 @@ model news {
   type          String?   @db.VarChar(50)
   content       String?   @db.Text
   content_en    String?   @db.Text
-  created_at    DateTime? @db.DateTime(0)
-  updated_at    DateTime? @db.DateTime(0)
   publish_date  DateTime? @db.DateTime(0)
   status        Int       @default(1)
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
+
+  @@index([status], map: "idx_news_status")
+  @@index([publish_date], map: "idx_news_publish_date")
+  @@index([created_at(sort: Desc)], map: "idx_news_created_at")
 }
 
 model merchandise_category {
@@ -1204,6 +1208,7 @@ model auth_roles {
   id                Int                 @id @default(autoincrement())
   name              String              @unique
   isSuperAdmin      Boolean             @default(false)
+  tier              Int?                @default(0)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
   showOnDashboard   Boolean             @default(true)
@@ -1251,59 +1256,6 @@ model system_activity_logs {
   @@index([recordId], map: "idx_recordId")
   @@index([tableName], map: "idx_tableName")
   @@map("system_activity_logs")
-}
-
-model csr_items {
-  id           BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
-  section_id   BigInt       @db.UnsignedBigInt
-  seq          Int          @default(0) @db.UnsignedInt
-  title        String?      @db.VarChar(255)
-  title_en     String?      @db.VarChar(255)
-  content      String?      @db.LongText
-  content_en   String?      @db.LongText
-  image_url    String?      @db.VarChar(255)
-  is_active    Boolean      @default(true)
-  modifiedBy   String?      @db.VarChar(255)
-  created_at   DateTime?    @db.Timestamp(0)
-  updated_at   DateTime?    @db.Timestamp(0)
-  csr_sections csr_sections @relation(fields: [section_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "csr_items_section_id_foreign")
-
-  @@index([section_id], map: "csr_items_section_id_index")
-}
-
-model csr_pages {
-  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  page_title       String?   @db.VarChar(255)
-  page_title_en    String?   @db.VarChar(255)
-  hero_title       String?   @db.VarChar(255)
-  hero_title_en    String?   @db.VarChar(255)
-  hero_subtitle    String?   @db.Text
-  hero_subtitle_en String?   @db.Text
-  hero_image_url   String?   @db.VarChar(255)
-  intro_title      String?   @db.VarChar(255)
-  intro_title_en   String?   @db.VarChar(255)
-  intro_content    String?   @db.LongText
-  intro_content_en String?   @db.LongText
-  intro_image_url  String?   @db.VarChar(255)
-  is_active        Boolean   @default(true)
-  modifiedBy       String?   @db.VarChar(255)
-  created_at       DateTime? @db.Timestamp(0)
-  updated_at       DateTime? @db.Timestamp(0)
-}
-
-model csr_sections {
-  id             BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
-  seq            Int         @default(0) @db.UnsignedInt
-  title          String?     @db.VarChar(255)
-  title_en       String?     @db.VarChar(255)
-  description    String?     @db.LongText
-  description_en String?     @db.LongText
-  image_url      String?     @db.VarChar(255)
-  is_active      Boolean     @default(true)
-  modifiedBy     String?     @db.VarChar(255)
-  created_at     DateTime?   @db.Timestamp(0)
-  updated_at     DateTime?   @db.Timestamp(0)
-  csr_items      csr_items[]
 }
 
 enum bayarind_binding_states_status {

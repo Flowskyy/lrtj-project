@@ -147,7 +147,6 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    scale: isDragging ? 1.02 : 1,
   };
 
   const securityAdmin = isSecurityAdmin(role);
@@ -227,7 +226,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 function RoleDragOverlay({ role }: { role: Role }) {
   const securityAdmin = isSecurityAdmin(role);
   return (
-    <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl rotate-1 scale-105`}>
+    <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl scale-105`}>
       <CardContent className="p-3">
         <div className="flex items-center gap-3">
           {/* Drag Handle */}

@@ -106,7 +106,7 @@ export async function PUT(
         action: 'UPDATE',
         beforeState: beforeCategory[0],
         afterState: category[0],
-        changedFields,
+        changedFields: changedFields.length > 0 ? changedFields : undefined,
       });
 
       return NextResponse.json(category[0]);

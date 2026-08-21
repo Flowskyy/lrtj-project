@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
   const order = searchParams.get('order') || 'asc';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const search = searchParams.get('search');
+  const searchScope = searchParams.get('searchScope');
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const skip = (page - 1) * limit;
@@ -36,6 +38,26 @@ export async function GET(request: NextRequest) {
   if (dateTo) {
     conditions.push('publish_date <= ?');
     params.push(dateTo);
+  }
+
+  // Add search conditions
+  if (search && search.trim()) {
+    const searchConditions: string[] = [];
+    const searchTerm = search.trim();
+
+    if (searchScope === 'createdBy') {
+      searchConditions.push('(createdBy LIKE ? OR createdBy IN (SELECT name COLLATE utf8mb4_unicode_ci FROM auth_users WHERE email LIKE ?))');
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    } else if (searchScope === 'title') {
+      searchConditions.push('(title LIKE ? OR title_en LIKE ?)');
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    } else {
+      // Default: search both title and createdBy
+      searchConditions.push('(title LIKE ? OR title_en LIKE ? OR createdBy LIKE ? OR createdBy IN (SELECT name COLLATE utf8mb4_unicode_ci FROM auth_users WHERE email LIKE ?))');
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`);
+    }
+
+    conditions.push(`(${searchConditions.join(' OR ')})`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

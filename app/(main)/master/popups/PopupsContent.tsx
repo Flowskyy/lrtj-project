@@ -130,7 +130,7 @@ function SortablePopupCard({ popup, onDelete }: { popup: Popup; onDelete: (popup
 
 function PopupDragOverlay({ popup }: { popup: Popup }) {
   return (
-    <Card className="bg-white/80 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] rounded-2xl rotate-3 scale-105">
+    <Card className="bg-white/80 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] rounded-2xl scale-105">
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           {/* Drag Handle */}

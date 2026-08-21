@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withActivityContextFromSession } from '@/lib/activity-middleware';
 import { logManualActivity } from '@/lib/activity-logger';
+import { formatWIB } from '@/lib/utils';
 
 export async function PATCH(request: Request) {
   return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
@@ -16,40 +17,50 @@ export async function PATCH(request: Request) {
         );
       }
 
-      // Get current user's role tier for authorization
-      const currentUserRole = await prisma.auth_roles.findUnique({
-        where: { id: roleId },
-        select: { tier: true, isSuperAdmin: true }
-      });
+      // Check if user is Super Admin for authorization
+      const currentUserRole = await prisma.$queryRaw`
+        SELECT tier, isSuperAdmin 
+        FROM auth_roles 
+        WHERE id = ${roleId}
+      ` as any[];
 
-      if (!currentUserRole) {
+      if (!currentUserRole || currentUserRole.length === 0) {
         return NextResponse.json(
           { error: 'User role not found' },
           { status: 404 }
         );
       }
 
-      const currentUserTier = currentUserRole.tier;
-      const isCurrentUserSuperAdmin = currentUserRole.isSuperAdmin;
+      const currentUserTier = currentUserRole[0].tier;
+      const isCurrentUserSuperAdmin = currentUserRole[0].isSuperAdmin;
 
-      // Verify user can reorder each role whose tier is changing
-      // A user can only move roles that are at a LOWER tier (higher tier number = less authority)
-      // Super Admin (tier 1) cannot be moved by anyone
+      // Only Super Admin can reorder roles
+      if (!isCurrentUserSuperAdmin) {
+        return NextResponse.json(
+          { error: 'Only Super Admin can reorder roles' },
+          { status: 403 }
+        );
+      }
+
+      // Verify all roles exist and prevent Super Admin from being moved
       for (const item of items) {
-        const role = await prisma.auth_roles.findUnique({
-          where: { id: item.id },
-          select: { tier: true, isSuperAdmin: true, name: true }
-        });
+        const role = await prisma.$queryRaw`
+          SELECT tier, isSuperAdmin, name 
+          FROM auth_roles 
+          WHERE id = ${item.id}
+        ` as any[];
 
-        if (!role) {
+        if (!role || role.length === 0) {
           return NextResponse.json(
             { error: `Role with ID ${item.id} not found` },
             { status: 404 }
           );
         }
 
+        const roleData = role[0];
+
         // Lock Super Admin at tier 1 - cannot be moved
-        if (role.isSuperAdmin && item.tier !== 1) {
+        if (roleData.isSuperAdmin && item.tier !== 1) {
           return NextResponse.json(
             { error: 'Super Admin role cannot be moved from tier 1' },
             { status: 403 }
@@ -57,15 +68,15 @@ export async function PATCH(request: Request) {
         }
 
         // Ensure role has a valid tier before allowing movement
-        if (role.tier === null) {
+        if (roleData.tier === null) {
           return NextResponse.json(
-            { error: `Role "${role.name}" has no tier assigned. Please assign a tier first.` },
+            { error: `Role "${roleData.name}" has no tier assigned. Please assign a tier first.` },
             { status: 400 }
           );
         }
 
         // Prevent any role from being moved to tier 1 (Super Admin's position)
-        if (item.tier === 1 && !role.isSuperAdmin) {
+        if (item.tier === 1 && !roleData.isSuperAdmin) {
           return NextResponse.json(
             { error: 'Cannot move a role to tier 1 - this position is reserved for Super Admin' },
             { status: 403 }
@@ -74,29 +85,29 @@ export async function PATCH(request: Request) {
 
         // Authorization check: user can only move roles at higher tiers (higher tier numbers = less authority)
         // Current user's tier must be numerically LOWER than the role's tier to move it
-        // Example: Tier 2 user can move Tier 3 roles, but not Tier 1 or Tier 2 roles
         if (
-          currentUserTier !== null &&
-          role.tier !== null &&
-          role.tier <= currentUserTier &&
-          !isCurrentUserSuperAdmin
+          roleData.tier !== null &&
+          roleData.tier <= currentUserTier &&
+          !roleData.isSuperAdmin
         ) {
           return NextResponse.json(
-            { error: `You do not have authority to move the role "${role.name}" (tier ${role.tier}). Your role tier (${currentUserTier}) is not senior enough.` },
+            { error: `You do not have authority to move the role "${roleData.name}" (tier ${roleData.tier}). Your role tier (${currentUserTier}) is not senior enough.` },
             { status: 403 }
           );
         }
       }
 
-      // Update all role tiers in a single transaction
-      await prisma.$transaction(
-        items.map((item: { id: number; tier: number }) =>
-          prisma.auth_roles.update({
-            where: { id: item.id },
-            data: { tier: item.tier, updatedAt: new Date() },
-          })
-        )
-      );
+      // Update all role tiers using raw SQL
+      const formatWIB = (await import('@/lib/utils')).formatWIB;
+      const now = formatWIB(new Date());
+      
+      for (const item of items) {
+        await prisma.$executeRaw`
+          UPDATE auth_roles 
+          SET tier = ${item.tier}, updatedAt = ${now}
+          WHERE id = ${item.id}
+        `;
+      }
 
       // Log the activity
       await logManualActivity({

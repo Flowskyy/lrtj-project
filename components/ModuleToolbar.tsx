@@ -98,7 +98,6 @@ interface ModuleToolbarProps {
   
   onResetFilters?: () => void;
   activeFilterCount?: number;
-  onApplyFilters?: () => void;
   
   // Column visibility props
   visibleColumns: { [key: string]: boolean };
@@ -171,15 +170,14 @@ export default function ModuleToolbar({
   dateTo,
   onDateToChange,
   showDateRange,
-  
+
   onResetFilters,
   activeFilterCount,
-  onApplyFilters,
-  
+
   visibleColumns,
   onColumnVisibilityToggle,
   columnConfigs,
-  
+
   primaryAction,
 }: ModuleToolbarProps) {
   return (
@@ -253,7 +251,6 @@ export default function ModuleToolbar({
           onDateToChange={onDateToChange}
           showDateRange={showDateRange}
           onResetFilters={onResetFilters}
-          onApplyFilters={onApplyFilters}
           activeFilterCount={activeFilterCount}
         />
 

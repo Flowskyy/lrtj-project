@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
   const order = searchParams.get('order') || 'asc';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const search = searchParams.get('search');
+  const searchScope = searchParams.get('searchScope');
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const skip = (page - 1) * limit;
@@ -36,6 +38,26 @@ export async function GET(request: NextRequest) {
   if (dateTo) {
     conditions.push('created_at <= ?');
     params.push(dateTo);
+  }
+
+  // Add search conditions
+  if (search && search.trim()) {
+    const searchTerm = search.trim();
+    const searchConditions: string[] = [];
+
+    if (searchScope === 'editedBy') {
+      searchConditions.push('(editedBy LIKE ?)');
+      params.push(`%${searchTerm}%`);
+    } else if (searchScope === 'name') {
+      searchConditions.push('(name LIKE ?)');
+      params.push(`%${searchTerm}%`);
+    } else {
+      // Default: search both name and editedBy
+      searchConditions.push('(name LIKE ? OR editedBy LIKE ?)');
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    }
+
+    conditions.push(`(${searchConditions.join(' OR ')})`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

@@ -21,33 +21,53 @@ export async function GET(request: NextRequest) {
         id,
         name,
         isSuperAdmin,
-        tier,
         showOnDashboard,
-        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+        tier,
+        createdAt,
+        updatedAt
       FROM auth_roles
-      ORDER BY tier ASC
+      ORDER BY id ASC
       LIMIT ${limit} OFFSET ${skip}
     ` as any[];
 
-    // Get permission and user counts for each role
-    const rolesWithCounts = await Promise.all(
-      roles.map(async (role) => {
-        const permissionCount = await prisma.$queryRaw`
-          SELECT COUNT(*) as count FROM role_permissions WHERE roleId = ${role.id}
-        ` as any[];
-        const userCount = await prisma.$queryRaw`
-          SELECT COUNT(*) as count FROM auth_users WHERE roleId = ${role.id}
-        ` as any[];
-        return {
-          ...role,
-          _count: {
-            role_permissions: Number(permissionCount[0]?.count || 0),
-            auth_users: Number(userCount[0]?.count || 0)
-          }
-        };
-      })
+    // Format Date objects as WIB strings for proper frontend handling
+    const normalizedRoles = roles.map((role: any) => ({
+      ...role,
+      createdAt: formatWIB(role.createdAt),
+      updatedAt: formatWIB(role.updatedAt)
+    }));
+
+    // Get permission and user counts for all roles in a single query each
+    const permissionCounts = await prisma.$queryRaw`
+      SELECT roleId, COUNT(*) as count 
+      FROM role_permissions 
+      WHERE roleId IN (${normalizedRoles.map((r: any) => r.id).join(',')})
+      GROUP BY roleId
+    ` as any[];
+    
+    const userCounts = await prisma.$queryRaw`
+      SELECT roleId, COUNT(*) as count 
+      FROM auth_users 
+      WHERE roleId IN (${normalizedRoles.map((r: any) => r.id).join(',')})
+      GROUP BY roleId
+    ` as any[];
+
+    // Create maps for quick lookup
+    const permissionCountMap = new Map(
+      permissionCounts.map((pc: any) => [pc.roleId, Number(pc.count)])
     );
+    const userCountMap = new Map(
+      userCounts.map((uc: any) => [uc.roleId, Number(uc.count)])
+    );
+
+    // Combine roles with their counts
+    const rolesWithCounts = normalizedRoles.map((role: any) => ({
+      ...role,
+      _count: {
+        role_permissions: permissionCountMap.get(role.id) || 0,
+        auth_users: userCountMap.get(role.id) || 0
+      }
+    }));
 
     return NextResponse.json({
       roles: rolesWithCounts,
@@ -87,15 +107,13 @@ export async function POST(request: NextRequest) {
 
       // Create role using raw SQL
       const result = await prisma.$queryRaw`
-        INSERT INTO auth_roles (name, isSuperAdmin, showOnDashboard, createdAt, updatedAt)
-        VALUES (${name.trim()}, ${isSuperAdmin || false}, ${showOnDashboard !== undefined ? showOnDashboard : true}, ${now}, ${now})
+        INSERT INTO auth_roles (name, isSuperAdmin, showOnDashboard, tier, createdAt, updatedAt)
+        VALUES (${name.trim()}, ${isSuperAdmin || false}, ${showOnDashboard !== undefined ? showOnDashboard : true}, 0, ${now}, ${now})
       ` as any[];
 
       // Get the inserted role ID
       const insertedRole = await prisma.$queryRaw`
-        SELECT id, name, isSuperAdmin, showOnDashboard,
-        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+        SELECT id, name, isSuperAdmin, showOnDashboard, tier, createdAt, updatedAt
         FROM auth_roles
         WHERE name = ${name.trim()}
       ` as any[];
@@ -104,7 +122,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create role" }, { status: 500 })
       }
 
-      const newRole = insertedRole[0];
+      const newRole = {
+        ...insertedRole[0],
+        createdAt: formatWIB(insertedRole[0].createdAt),
+        updatedAt: formatWIB(insertedRole[0].updatedAt)
+      };
 
       // Create permissions if not super admin
       if (!isSuperAdmin && permissions && permissions.length > 0) {

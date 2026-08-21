@@ -100,7 +100,7 @@ export async function PUT(
         action: 'UPDATE',
         beforeState: beforeBanner[0],
         afterState: afterBanner[0],
-        changedFields,
+        changedFields: changedFields.length > 0 ? changedFields : undefined,
       });
 
       return NextResponse.json(banner);

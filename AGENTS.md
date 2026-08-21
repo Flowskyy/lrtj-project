@@ -215,6 +215,39 @@ dilaporkan selesai HANYA setelah kriteria ini terpenuhi:
   **Jangan sentuh** halaman Landing/Auth — itu sudah jadi acuan referensi,
   bukan target redesign.
 
+## 🚫 Hidden/Inactive Pages — EXCLUDE FROM REPO-WIDE TASKS
+
+Pages berikut ini **TIDAK** muncul di sidebar navigation dan ditandai sebagai
+"Unavailable" di sistem permissions (lihat `components/PagePermissionSelector.tsx`).
+Ini adalah legacy pages yang tidak aktif digunakan dan **HARUS DIHINDARI** dalam
+repo-wide tasks (standardisasi search, optimization, redesign UI, dll) kecuali
+task secara eksplisit menyebutkan nama page ini:
+
+1. **Daily Benefit** (`/daily-benefit` dan sub-routes):
+   - `/daily-benefit` (list)
+   - `/daily-benefit/add` (create)
+   - `/daily-benefit/edit/[id]` (edit)
+   - `/daily-benefit/view/[id]` (view)
+
+2. **Redeem Benefit** (`/redeem-benefit` dan sub-routes):
+   - `/redeem-benefit` (list)
+   - `/redeem-benefit/view/[id]` (view)
+
+Alasan: Pages ini tidak ada di `NAV_ITEMS` di `DashboardLayoutClient.tsx`
+(tidak muncul di sidebar), dan di `PagePermissionSelector.tsx` ditandai
+`disabled: true` dengan group "Unavailable". Ada komentar: "standalone, not in
+sidebar - keep as disabled".
+
+**Konsekuensi:** Ketika mengerjakan repo-wide tasks (misalnya: "apply search
+pattern standardization ke semua pages", "optimize performance semua pages",
+"redesign UI semua admin pages"), **skip otomatis** kedua page ini kecuali task
+secara eksplisit menyebut "Daily Benefit" atau "Redeem Benefit" dalam
+deskripsinya. Jangan buang effort maintenance di surface area yang tidak aktif.
+
+Catatan: `Redeem Merchandise` (`/redeem-merchandise`) **MASIH AKTIF** dan ada
+di sidebar (di bawah Merchandise group), jadi **termasuk** dalam repo-wide tasks
+seperti biasa.
+
 ## ✅ Workflow yang Diharapkan
 
 1. Cek dulu skill relevan di `.devin/`, lalu investigasi/inspeksi (struktur

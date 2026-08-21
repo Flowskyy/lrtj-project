@@ -111,7 +111,7 @@ export async function PUT(
       action: 'UPDATE',
       beforeState,
       afterState: serialized,
-      changedFields,
+      changedFields: changedFields.length > 0 ? changedFields : undefined,
     });
 
     return NextResponse.json(serialized);
