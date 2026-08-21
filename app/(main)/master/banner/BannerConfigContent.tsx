@@ -66,16 +66,16 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
-      <Card className="bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-2xl hover:shadow-lg transition-shadow">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
+      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-shadow ${isDragging ? 'shadow-xl' : ''}`}>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
             {/* Drag Handle */}
             <div
               {...attributes}
               {...listeners}
-              className="cursor-grab active:cursor-grabbing flex-shrink-0 pt-1"
+              className="cursor-grab active:cursor-grabbing flex-shrink-0"
             >
-              <GripVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
             </div>
 
             {/* Image Thumbnail */}
@@ -89,36 +89,35 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {banner.description || "No description"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Sequence: {banner.sequence}
-              </p>
-              <div className="mt-2 space-y-1">
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Created:</span> {formatWIBDate(banner.created_at)} by {banner.created_by || "-"}
-                </div>
-                <div className="text-xs text-gray-500">
-                  <span className="font-medium">Updated:</span> {formatWIBDate(banner.updated_at)} by {banner.updated_by || "-"}
-                </div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-gray-900 truncate">
+                  {banner.description || "No description"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-[10px] text-gray-500">
+                  Sequence: {banner.sequence}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Updated: {formatWIBDate(banner.updated_at)}
+                </p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Link href={`/master/banner/edit/${banner.id}`}>
-                <Button variant="ghost" size="sm">
-                  <Pencil className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </Link>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(banner)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -130,12 +129,12 @@ function SortableBannerCard({ banner, onDelete }: { banner: Banner; onDelete: (b
 
 function BannerDragOverlay({ banner }: { banner: Banner }) {
   return (
-    <Card className="bg-white/80 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] rounded-2xl scale-105">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
+    <Card className="bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3">
           {/* Drag Handle */}
-          <div className="cursor-grab active:cursor-grabbing flex-shrink-0 pt-1">
-            <GripVertical className="h-5 w-5 text-gray-400" />
+          <div className="cursor-grab active:cursor-grabbing flex-shrink-0">
+            <GripVertical className="h-4 w-4 text-gray-400" />
           </div>
 
           {/* Image Thumbnail */}
@@ -149,12 +148,16 @@ function BannerDragOverlay({ banner }: { banner: Banner }) {
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {banner.description || "No description"}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Sequence: {banner.sequence}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-gray-900 truncate">
+                {banner.description || "No description"}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-[10px] text-gray-500">
+                Sequence: {banner.sequence}
+              </p>
+            </div>
           </div>
         </div>
       </CardContent>
@@ -357,7 +360,7 @@ export default function BannerConfigContent({ }: BannerConfigContentProps) {
             items={banners.map((b) => b.id)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-3">
+            <div className="space-y-2">
               {banners.map((banner) => (
                 <SortableBannerCard
                   key={banner.id}

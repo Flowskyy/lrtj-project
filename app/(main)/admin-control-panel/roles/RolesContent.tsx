@@ -145,7 +145,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
@@ -153,7 +153,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
-      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-shadow ${securityAdmin ? 'border-rose-200 bg-rose-50/30' : ''} ${isDragging ? 'shadow-xl' : ''}`}>
+      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-all duration-200 ${securityAdmin ? 'border-rose-200 bg-rose-50/30' : ''} ${isDragging ? 'shadow-xl scale-105' : ''}`}>
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
             {/* Drag Handle */}
@@ -161,7 +161,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
               <div
                 {...attributes}
                 {...listeners}
-                className="cursor-grab active:cursor-grabbing flex-shrink-0"
+                className="cursor-grab active:cursor-grabbing flex-shrink-0 p-1 -m-1"
               >
                 <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </div>
@@ -226,7 +226,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 function RoleDragOverlay({ role }: { role: Role }) {
   const securityAdmin = isSecurityAdmin(role);
   return (
-    <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl scale-105`}>
+    <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl`}>
       <CardContent className="p-3">
         <div className="flex items-center gap-3">
           {/* Drag Handle */}
@@ -258,7 +258,7 @@ function RoleDragOverlay({ role }: { role: Role }) {
                 Tier: {role.tier}
               </p>
               <p className="text-[10px] text-gray-500">
-                Permissions: {role._count.role_permissions}
+                Permissions: {role._count.role_permissions || 0}
               </p>
               <p className="text-[10px] text-gray-500">
                 Users: {role._count.auth_users || 0}
