@@ -9,15 +9,12 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ImageUpload from "@/components/ImageUpload";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { useAction } from "@/contexts/ActionContext";
-
-const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
-import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
+import RichTextContentField, { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface MerchandiseEditContentProps {
   userEmail: string | null;
@@ -69,13 +66,18 @@ export default function MerchandiseEditContent({ userEmail, merchandiseId }: Mer
     };
   }, [setAction, clearAction]);
 
-  // Fetch item data
+  // Fetch item data and categories in parallel
   useEffect(() => {
-    const fetchItem = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/merchandise/${merchandiseId}`);
-        if (res.ok) {
-          const data = await res.json();
+        const [itemRes, categoriesRes] = await Promise.all([
+          fetch(`/api/merchandise/${merchandiseId}`),
+          fetch("/api/merchandise-category")
+        ]);
+
+        // Process item response
+        if (itemRes.ok) {
+          const data = await itemRes.json();
           setItem(data);
           setFormName(data.name);
           setFormPoints(data.points);
@@ -86,33 +88,24 @@ export default function MerchandiseEditContent({ userEmail, merchandiseId }: Mer
         } else {
           toast.error("Failed to fetch merchandise");
           router.push("/merchandise");
+          return;
+        }
+
+        // Process categories response
+        if (categoriesRes.ok) {
+          const data = await categoriesRes.json();
+          setCategories(data);
         }
       } catch (err) {
-        console.error("Failed to fetch item", err);
+        console.error("Failed to fetch data", err);
         toast.error("Failed to fetch merchandise");
         router.push("/merchandise");
       } finally {
         setLoading(false);
       }
     };
-    fetchItem();
+    fetchData();
   }, [merchandiseId, router]);
-
-  // Fetch categories on mount
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch("/api/merchandise-category");
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch categories", err);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -471,6 +471,7 @@ export default function NewsContent({ }: NewsContentProps) {
                               src={getImageUrl(item.img_url)}
                               alt={item.title || "News"}
                               className="h-full w-full object-cover"
+                              loading="lazy"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/logo-lrtj.png";
                                 (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";

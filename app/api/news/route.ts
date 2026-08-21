@@ -68,13 +68,11 @@ export async function GET(request: NextRequest) {
   const sortDirection = (order === 'asc' ? 'ASC' : 'DESC');
   const orderByClause = `ORDER BY ${sortColumn} ${sortDirection}`;
 
-  // Use raw SQL for consistent WIB formatting
+  // Use raw SQL without DATE_FORMAT() - use app-side formatting instead
   const items = await prisma.$queryRawUnsafe(
     `SELECT
       id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
-      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
-      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
-      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+      publish_date, created_at, updated_at
     FROM news
     ${whereClause}
     ${orderByClause}
@@ -82,35 +80,50 @@ export async function GET(request: NextRequest) {
     ...params
   ) as any[];
 
-  // Get counts - use approximate count for unfiltered queries for performance
+  // Get counts - use single query with conditional aggregation for performance
   const hasFilters = conditions.length > 0;
-  let totalCount: any[];
+  let totalCount: number;
+  let activeCount: number;
+  let inactiveCount: number;
 
   if (hasFilters) {
-    // Use exact COUNT(*) when filters are applied
-    totalCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM news ${whereClause}`, ...params) as any[];
+    // Use exact COUNT with conditional aggregation when filters are applied
+    const countResult = await prisma.$queryRawUnsafe(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as inactive
+       FROM news ${whereClause}`,
+      ...params
+    ) as any[];
+    totalCount = Number(countResult[0]?.total || 0);
+    activeCount = Number(countResult[0]?.active || 0);
+    inactiveCount = Number(countResult[0]?.inactive || 0);
   } else {
     // Use cached approximate count for unfiltered queries (instant)
     const now = Date.now();
     if (cachedTotal && (now - cachedTotal.timestamp) < CACHE_TTL) {
-      totalCount = [{ count: cachedTotal.count }];
+      totalCount = cachedTotal.count;
     } else {
       // Cache miss or expired - fetch fresh approximate count
       const approxResult = await prisma.$queryRawUnsafe(
         `SELECT table_rows as count FROM information_schema.tables
          WHERE table_schema = 'lrt_public_apps' AND table_name = 'news'`
       ) as any[];
-      totalCount = approxResult;
-      cachedTotal = { count: Number(approxResult[0]?.count || 0), timestamp: now };
+      totalCount = Number(approxResult[0]?.count || 0);
+      cachedTotal = { count: totalCount, timestamp: now };
     }
+    
+    // Get active/inactive counts with single query
+    const statusCounts = await prisma.$queryRawUnsafe(
+      `SELECT 
+        SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as inactive
+       FROM news`
+    ) as any[];
+    activeCount = Number(statusCounts[0]?.active || 0);
+    inactiveCount = Number(statusCounts[0]?.inactive || 0);
   }
-
-  const total = Number(totalCount[0]?.count || 0);
-
-  const [activeCount, inactiveCount] = await Promise.all([
-    prisma.news.count({ where: { status: 1 } }),
-    prisma.news.count({ where: { status: 0 } }),
-  ]);
 
   // Convert BigInt to string for JSON serialization
   const serializedItems = items.map(item => ({
@@ -121,12 +134,12 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     data: serializedItems,
     meta: {
-      total,
+      total: totalCount,
       active: activeCount,
       inactive: inactiveCount,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(totalCount / limit),
     },
   });
 }
@@ -154,13 +167,11 @@ export async function POST(request: NextRequest) {
       )
     `;
 
-    // Fetch the new item with proper WIB formatting
+    // Fetch the new item without DATE_FORMAT() - use app-side formatting
     const newItem = await prisma.$queryRaw`
       SELECT
         id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
-        DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
-        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
-        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+        publish_date, created_at, updated_at
       FROM news
       ORDER BY id DESC
       LIMIT 1

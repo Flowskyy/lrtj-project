@@ -215,7 +215,41 @@ dilaporkan selesai HANYA setelah kriteria ini terpenuhi:
   **Jangan sentuh** halaman Landing/Auth — itu sudah jadi acuan referensi,
   bukan target redesign.
 
-## 🚫 Hidden/Inactive Pages — EXCLUDE FROM REPO-WIDE TASKS
+## � Rich Text Rendering Convention — WAJIB
+
+1. **Gunakan shared component untuk konsistensi:**
+   - **Editable mode (Add/Edit pages):** Gunakan `RichTextContentField` dari `components/RichTextContentField.tsx`
+   - **Read-only mode (View pages):** Gunakan `RichTextDisplay` dari `components/RichTextDisplay.tsx`
+   - **JANGAN** gunakan `dangerouslySetInnerHTML` atau rendering HTML manual lainnya
+
+2. **Mengapa Plate.js untuk keduanya?**
+   - `RichTextContentField` menggunakan Plate.js editor dengan plugins `NewsEditorKit`
+   - `RichTextDisplay` menggunakan Plate.js editor yang sama dengan `disabled={true}`
+   - Ini menjamin formatting 100% identik antara Edit dan View pages
+   - Kedua component menggunakan deserialization logic yang sama persis
+
+3. **Struktur component:**
+   - `RichTextContentField`: Full editor dengan toolbar, state management, dan save/cancel logic
+   - `RichTextDisplay`: Read-only renderer yang menggunakan engine Plate.js yang sama tapi tanpa toolbar/editing capability
+   - Keduanya menggunakan plugins yang sama: `NewsEditorKit` (basic nodes, lists, alignment, links, emoji, font size)
+
+4. **UI styling:**
+   - `RichTextDisplay` menggunakan styling: `p-4 bg-gray-50 border border-gray-200 rounded-lg`
+   - Spacing antar section: `space-y-6` (not `space-y-4`)
+   - Margin antara label dan konten: `mb-3` (not `mb-2`)
+   - Ini konsisten dengan design system yang lebih lega dan rapi
+
+5. **Pages yang menggunakan rich text:**
+   - **News:** Add/Edit/View (Indonesian & English content)
+   - **Merchandise:** Add/Edit/View (Description/Terms & Conditions)
+   - **Daily Benefit:** Edit/View (Terms & Conditions) - *Note: Daily Benefit marked as inactive in sidebar*
+
+6. **Rule penting:**
+   - Kalau menambahkan page baru dengan rich text, WAJIB gunakan `RichTextContentField` untuk edit dan `RichTextDisplay` untuk view
+   - JANGAN membuat implementasi custom rich text rendering
+   - Pastikan formatting match 100% antara Edit dan View pages
+
+## �🚫 Hidden/Inactive Pages — EXCLUDE FROM REPO-WIDE TASKS
 
 Pages berikut ini **TIDAK** muncul di sidebar navigation dan ditandai sebagai
 "Unavailable" di sistem permissions (lihat `components/PagePermissionSelector.tsx`).

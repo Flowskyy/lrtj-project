@@ -12,12 +12,9 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 import Link from "next/link";
 import { ArrowLeft, Eye } from "lucide-react";
 import { formatWIBDate } from "@/lib/formatWIBDate";
-import dynamic from "next/dynamic";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { useAction } from "@/contexts/ActionContext";
-
-const RichTextContentField = dynamic(() => import("@/components/RichTextContentField"), { ssr: false });
-import type { RichTextContentFieldRef } from "@/components/RichTextContentField";
+import RichTextContentField, { RichTextContentFieldRef } from "@/components/RichTextContentField";
 
 interface NewsItem {
   id: number;

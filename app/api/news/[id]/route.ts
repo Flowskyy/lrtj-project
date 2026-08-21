@@ -10,35 +10,25 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Use raw SQL for consistent WIB formatting
+  // Use raw SQL with LEFT JOIN to get creator email in single query - no DATE_FORMAT()
   const item = await prisma.$queryRaw`
     SELECT
-      id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
-      DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
-      DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
-      DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
-    FROM news
-    WHERE id = ${parseInt(id)}
+      n.id, n.title, n.title_en, n.content, n.content_en, n.img_url, n.caption_image, 
+      n.type, n.status, n.views, n.createdBy, n.publish_date, n.created_at, n.updated_at,
+      u.email as creatorEmail
+    FROM news n
+    LEFT JOIN auth_users u ON n.createdBy = u.name COLLATE utf8mb4_unicode_ci
+    WHERE n.id = ${parseInt(id)}
   ` as any[];
 
   if (!item || item.length === 0) {
     return NextResponse.json({ error: 'News not found' }, { status: 404 });
   }
 
-  // Fetch creator email if createdBy exists
-  let creatorEmail = null;
-  if (item[0].createdBy) {
-    const creator = await prisma.auth_users.findFirst({
-      where: { name: item[0].createdBy },
-      select: { email: true },
-    });
-    creatorEmail = creator?.email || null;
-  }
-
   const serialized = {
     ...item[0],
     views: item[0].views ? item[0].views.toString() : '0',
-    creatorEmail: creatorEmail || null,
+    creatorEmail: item[0].creatorEmail || null,
   };
   return NextResponse.json(serialized);
 }
@@ -50,14 +40,12 @@ export async function PUT(
   return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
     const { id } = await params;
     const data = await request.json();
-    
-    // Fetch the before state
+
+    // Fetch the before state without DATE_FORMAT()
     const beforeItem = await prisma.$queryRaw`
       SELECT
         id, title, title_en, content, content_en, img_url, caption_image, type, status, views, createdBy,
-        DATE_FORMAT(publish_date, '%Y-%m-%dT%H:%i:%s') as publish_date,
-        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') as created_at,
-        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%s') as updated_at
+        publish_date, created_at, updated_at
       FROM news
       WHERE id = ${parseInt(id)}
     ` as any[];

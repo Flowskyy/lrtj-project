@@ -448,6 +448,7 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
                               src={getImageUrl(item.image_url)}
                               alt={item.name}
                               className="h-full w-full object-cover"
+                              loading="lazy"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/logo-lrtj.png";
                                 (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";
@@ -574,6 +575,7 @@ export default function MerchandiseContent({ }: MerchandiseContentProps) {
                         src={getImageUrl(item.image_url)}
                         alt={item.name}
                         className="h-full w-full object-cover"
+                        loading="lazy"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "/logo-lrtj.png";
                           (e.target as HTMLImageElement).className = "h-6 w-auto object-contain brightness-95";

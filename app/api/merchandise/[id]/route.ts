@@ -10,12 +10,12 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Use raw SQL for consistent WIB formatting
+  // Use raw SQL without DATE_FORMAT() - use app-side formatting
   const item = await prisma.$queryRaw`
     SELECT
       m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
-      DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
-      DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+      m.created_at as createdAt,
+      m.updated_at as updatedAt,
       c.id as category_id, c.category_name,
       COALESCE(u.email, m.editedBy) as display_email
     FROM merchandise m
@@ -48,12 +48,12 @@ export async function PUT(
     const { id } = await params;
     const data = await request.json();
     try {
-      // Fetch the before state
+      // Fetch the before state without DATE_FORMAT()
       const beforeItem = await prisma.$queryRaw`
         SELECT
           m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
-          DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
-          DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+          m.created_at as createdAt,
+          m.updated_at as updatedAt,
           c.id as category_id, c.category_name,
           COALESCE(u.email, m.editedBy) as display_email
         FROM merchandise m
@@ -80,12 +80,12 @@ export async function PUT(
         WHERE id = ${parseInt(id)}
       `;
 
-      // Fetch the updated item with proper WIB formatting
+      // Fetch the updated item without DATE_FORMAT()
       const updatedItem = await prisma.$queryRaw`
         SELECT
           m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
-          DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
-          DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+          m.created_at as createdAt,
+          m.updated_at as updatedAt,
           c.id as category_id, c.category_name,
           COALESCE(u.email, m.editedBy) as display_email
         FROM merchandise m
@@ -144,12 +144,12 @@ export async function DELETE(
   return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
     const { id } = await params;
     
-    // Fetch the before state
+    // Fetch the before state without DATE_FORMAT()
     const beforeItem = await prisma.$queryRaw`
       SELECT
         m.id, m.name, m.redeem_point as points, m.image_url, m.term_condition as description, m.editedBy, m.status, m.category_id,
-        DATE_FORMAT(m.created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(m.updated_at, '%Y-%m-%dT%H:%i:%s') as updatedAt,
+        m.created_at as createdAt,
+        m.updated_at as updatedAt,
         c.id as category_id, c.category_name,
         COALESCE(u.email, m.editedBy) as display_email
       FROM merchandise m
