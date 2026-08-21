@@ -67,6 +67,7 @@ export default function UsersContent({ }: UsersContentProps) {
   const router = useRouter();
   const [items, setItems] = useState<MemberItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forceRefresh, setForceRefresh] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [activeSlcCount, setActiveSlcCount] = useState(0);
   const [inactiveSlcCount, setInactiveSlcCount] = useState(0);
@@ -163,6 +164,8 @@ export default function UsersContent({ }: UsersContentProps) {
     }
   };
 
+
+
   // Fetch membership options for tier filter
   useEffect(() => {
     const fetchMembershipOptions = async () => {
@@ -192,7 +195,22 @@ export default function UsersContent({ }: UsersContentProps) {
 
   useEffect(() => {
     fetchItems();
-  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo]);
+  }, [activationSlcFilter, tierFilter, sortBy, sortOrder, currentPage, searchQuery, searchScope, dateFrom, dateTo, forceRefresh]);
+
+  // Handle refresh from URL parameter (when returning from delete)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refresh = urlParams.get('refresh');
+    if (refresh) {
+      // Trigger a refresh
+      setForceRefresh(prev => prev + 1);
+      // Remove the refresh param from URL without triggering a full page reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
+
 
   // Prefetch next page
   useEffect(() => {
@@ -257,7 +275,7 @@ export default function UsersContent({ }: UsersContentProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!deleteItem) return;
+    if (!deleteItem || isDeleting) return; // Prevent double-click
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/users/${deleteItem.id}`, {
@@ -265,9 +283,10 @@ export default function UsersContent({ }: UsersContentProps) {
       });
       if (res.ok) {
         const result = await res.json();
-        await fetchItems();
         setDeleteItem(null);
         toast.success(result.message || "User permanently deleted successfully");
+        // Force refresh to ensure stale data is removed
+        setForceRefresh(prev => prev + 1);
       } else {
         const errorData = await res.json();
         toast.error(errorData.error || "Failed to delete user");

@@ -374,51 +374,64 @@ export async function DELETE(
     // If force delete, first delete all related records
     if (forceDelete && hasRelatedRecords) {
       // Delete related records in reverse dependency order
-      await prisma.$transaction(async (tx) => {
-        // Delete LarataPay access tokens
-        if (bayarindTokensCount > 0) {
-          await tx.bayarind_customer_tokens.deleteMany({ where: { user_id: BigInt(userId) } });
-        }
-        // Delete trip history
-        if (tripHistoryCount > 0) {
-          await tx.trip_history.deleteMany({ where: { user_id: userId } });
-        }
-        // Delete LRTJ earning history
-        if (lrtjpEarningCount > 0) {
-          await tx.lrtjp_earning_history.deleteMany({ where: { user_id: userId } });
-        }
-        // Delete SLC earning history
-        if (slcEarningCount > 0) {
-          await tx.slc_earning_history.deleteMany({ where: { user_id: userId } });
-        }
-        // Delete benefit redemptions
-        if (redeemBenefitCount > 0) {
-          await tx.redeem_benefit.deleteMany({ where: { user_id: userId } });
-        }
-        // Delete merchandise redemptions
-        if (redeemCount > 0) {
-          await tx.redeem.deleteMany({ where: { user_id: userId } });
-        }
-        // Finally delete the user
-        await tx.users.delete({
-          where: { id: userId },
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Delete LarataPay access tokens
+          if (bayarindTokensCount > 0) {
+            await tx.bayarind_customer_tokens.deleteMany({ where: { user_id: BigInt(userId) } });
+          }
+          // Delete trip history
+          if (tripHistoryCount > 0) {
+            await tx.trip_history.deleteMany({ where: { user_id: userId } });
+          }
+          // Delete LRTJ earning history
+          if (lrtjpEarningCount > 0) {
+            await tx.lrtjp_earning_history.deleteMany({ where: { user_id: userId } });
+          }
+          // Delete SLC earning history
+          if (slcEarningCount > 0) {
+            await tx.slc_earning_history.deleteMany({ where: { user_id: userId } });
+          }
+          // Delete benefit redemptions
+          if (redeemBenefitCount > 0) {
+            await tx.redeem_benefit.deleteMany({ where: { user_id: userId } });
+          }
+          // Delete merchandise redemptions
+          if (redeemCount > 0) {
+            await tx.redeem.deleteMany({ where: { user_id: userId } });
+          }
+          // Finally delete the user
+          await tx.users.delete({
+            where: { id: userId },
+          });
         });
-      });
+      } catch (transactionError) {
+        console.error('Transaction failed during force delete:', transactionError);
+        throw transactionError; // Re-throw to ensure it's caught by outer error handler
+      }
     } else {
       // Normal delete without related records - still delete bayarind tokens if any
-      await prisma.$transaction(async (tx) => {
-        // Always delete LarataPay access tokens (does nothing if none exist)
-        await tx.bayarind_customer_tokens.deleteMany({ where: { user_id: BigInt(userId) } });
-        // Delete the user
-        await tx.users.delete({
-          where: { id: userId },
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Always delete LarataPay access tokens (does nothing if none exist)
+          await tx.bayarind_customer_tokens.deleteMany({ where: { user_id: BigInt(userId) } });
+          // Delete the user
+          await tx.users.delete({
+            where: { id: userId },
+          });
         });
-      });
+      } catch (transactionError) {
+        console.error('Transaction failed during normal delete:', transactionError);
+        throw transactionError; // Re-throw to ensure it's caught by outer error handler
+      }
     }
 
     return NextResponse.json({ message: 'User permanently deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
-    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to delete user',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

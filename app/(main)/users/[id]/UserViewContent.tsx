@@ -97,7 +97,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
   }, [userId, router]);
 
   const handleDelete = async (force: boolean = false) => {
-    if (!deleteItem) return;
+    if (!deleteItem || isDeleting) return; // Prevent double-click
     setIsDeleting(true);
     try {
       const url = force ? `/api/users/${deleteItem.id}?force=true` : `/api/users/${deleteItem.id}`;
@@ -119,7 +119,8 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
         setDeleteItem(null);
         setRelatedRecords(null);
         setExpandedRows(new Set());
-        router.push("/users");
+        // Force refresh the users list by navigating with a timestamp
+        router.push(`/users?refresh=${Date.now()}`);
       } else {
         const errorData = await res.json();
         toast.error(errorData.error || "Failed to delete user");
@@ -133,6 +134,7 @@ export default function UserViewContent({ userId }: UserViewContentProps) {
   };
 
   const handleForceDelete = async () => {
+    if (isDeleting) return; // Prevent double-click
     setShowForceDeleteDialog(false);
     setRelatedRecords(null);
     await handleDelete(true);
