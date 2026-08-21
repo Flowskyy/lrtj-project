@@ -200,10 +200,10 @@ export function formatDisplayDate(wibString: string | null | undefined): string 
 /**
  * Format last seen timestamp with smart same-day vs different-day logic
  * Input: "2026-08-10T14:30:00" or "2026-08-10 14:30:00"
- * Output: 
- *   - If same day as today (WIB): "14:30"
- *   - If different day: "Aug 9, 2026, 14:30"
- * 
+ * Output:
+ *   - If same day as today (WIB): "Aug 13, 2026, 13:32 (Today)"
+ *   - If different day: "Aug 13, 2026, 13:32"
+ *
  * Uses WIB timezone for both the input and current time comparison
  */
 export function formatLastSeen(wibString: string | null | undefined): string {
@@ -219,9 +219,9 @@ export function formatLastSeen(wibString: string | null | undefined): string {
   // Get current WIB time
   const now = new Date()
   const currentWIB = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
-  
+
   // Compare dates (year, month, day) in WIB
-  const isSameDay = 
+  const isSameDay =
     parsedDate.getFullYear() === currentWIB.getFullYear() &&
     parsedDate.getMonth() === currentWIB.getMonth() &&
     parsedDate.getDate() === currentWIB.getDate()
@@ -231,15 +231,17 @@ export function formatLastSeen(wibString: string | null | undefined): string {
   const minutes = parsedDate.getMinutes()
   const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 
+  // Always show full date + time
+  const monthName = MONTH_NAMES[parsedDate.getMonth()]
+  const day = parsedDate.getDate()
+  const year = parsedDate.getFullYear()
+  const baseFormat = `${monthName} ${day}, ${year}, ${timeStr}`
+
+  // Add "(Today)" if same day
   if (isSameDay) {
-    // Same day: show time only
-    return timeStr
+    return `${baseFormat} (Today)`
   } else {
-    // Different day: show date + time
-    const monthName = MONTH_NAMES[parsedDate.getMonth()]
-    const day = parsedDate.getDate()
-    const year = parsedDate.getFullYear()
-    return `${monthName} ${day}, ${year}, ${timeStr}`
+    return baseFormat
   }
 }
 

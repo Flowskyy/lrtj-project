@@ -282,8 +282,10 @@ export default function AdminManagementContent({ currentUserId }: AdminManagemen
       if (a.isOnline && !b.isOnline) return -1;
       if (!a.isOnline && b.isOnline) return 1;
 
-      // Within the same online status, sort by email alphabetically
-      return a.email.localeCompare(b.email);
+      // Within the same online status, sort by lastSeen DESC (most recent first)
+      const aLastSeen = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+      const bLastSeen = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+      return bLastSeen - aLastSeen;
     });
 
   return (

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
-          ORDER BY au.createdAt DESC
+          ORDER BY au.isOnline DESC, au.lastSeen DESC
           LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       } catch (error) {
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
           WHERE au.roleId = ${parseInt(roleId)}
-          ORDER BY au.createdAt DESC
+          ORDER BY au.isOnline DESC, au.lastSeen DESC
           LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       }
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
             au.currentPage
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
-          ORDER BY au.createdAt DESC
+          ORDER BY au.isOnline DESC, au.lastSeen DESC
           LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       } catch (error) {
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
             au.lastSeen
           FROM auth_users au
           LEFT JOIN auth_roles ar ON au.roleId = ar.id
-          ORDER BY au.createdAt DESC
+          ORDER BY au.isOnline DESC, au.lastSeen DESC
           LIMIT ${limit} OFFSET ${skip}
         ` as any[];
       }
