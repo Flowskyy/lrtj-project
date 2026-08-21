@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Link from "next/link";
+import RichTextDisplay from "@/components/RichTextDisplay";
 
 interface MerchandiseItem {
   id: number;
@@ -246,11 +247,7 @@ export default function MerchandiseViewContent({ merchandiseId }: MerchandiseVie
           {/* Description Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Description</h3>
-            <div
-              className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3 sm:p-4 leading-relaxed prose prose-sm max-w-none [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-3 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2"
-            >
-              <div dangerouslySetInnerHTML={{ __html: item.description || '<p>-</p>' }} />
-            </div>
+            <RichTextDisplay content={item.description || ''} />
           </div>
 
           {/* Timestamps Card */}

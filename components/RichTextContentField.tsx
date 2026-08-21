@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
+const RichTextDisplay = dynamic(() => import("@/components/RichTextDisplay"), { ssr: false });
 
 const EditorInstance = ({ 
   value, 
@@ -241,18 +242,14 @@ const RichTextContentField = forwardRef<RichTextContentFieldRef, RichTextContent
     return tmp.textContent || tmp.innerText || '';
   };
 
-  // For read-only mode, just show the content
+  // For read-only mode, use the shared RichTextDisplay component
   if (readOnly) {
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {label}
         </label>
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <div className="text-gray-600 text-sm prose prose-sm max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: value || '<p>-</p>' }} />
-          </div>
-        </div>
+        <RichTextDisplay content={value || ''} />
       </div>
     );
   }
