@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withActivityContextFromSession } from '@/lib/activity-middleware';
 import { logManualActivity } from '@/lib/activity-logger';
-import { formatWIB } from '@/lib/utils';
+import { getWIBDate } from '@/lib/utils';
 
 export async function PATCH(request: Request) {
   return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
     try {
-      const body = await request.json();
+      let body;
+      try {
+        body = await request.json();
+      } catch (parseError) {
+        return NextResponse.json(
+          { error: 'Invalid request body: expected JSON' },
+          { status: 400 }
+        );
+      }
       const { items } = body;
 
       if (!Array.isArray(items) || items.length === 0) {
@@ -42,10 +50,10 @@ export async function PATCH(request: Request) {
         );
       }
 
-      // Verify all roles exist and prevent Super Admin from being moved
+      // Verify all roles exist and prevent locked roles from being moved
       for (const item of items) {
         const role = await prisma.$queryRaw`
-          SELECT tier, isSuperAdmin, name 
+          SELECT tier, isSuperAdmin, tierLocked, name 
           FROM auth_roles 
           WHERE id = ${item.id}
         ` as any[];
@@ -59,10 +67,10 @@ export async function PATCH(request: Request) {
 
         const roleData = role[0];
 
-        // Lock Super Admin at tier 1 - cannot be moved
-        if (roleData.isSuperAdmin && item.tier !== 1) {
+        // Prevent locked roles (isSuperAdmin or tierLocked) from being moved
+        if ((roleData.isSuperAdmin || roleData.tierLocked) && item.tier !== roleData.tier) {
           return NextResponse.json(
-            { error: 'Super Admin role cannot be moved from tier 1' },
+            { error: `Role "${roleData.name}" is locked and cannot be moved` },
             { status: 403 }
           );
         }
@@ -75,19 +83,29 @@ export async function PATCH(request: Request) {
           );
         }
 
-        // Prevent any role from being moved to tier 1 (Super Admin's position)
+        // Prevent any role from being moved to tier 1 if Super Admin exists and is at tier 1
         if (item.tier === 1 && !roleData.isSuperAdmin) {
-          return NextResponse.json(
-            { error: 'Cannot move a role to tier 1 - this position is reserved for Super Admin' },
-            { status: 403 }
-          );
+          const superAdminAtTier1 = await prisma.$queryRaw`
+            SELECT id FROM auth_roles WHERE isSuperAdmin = true AND tier = 1
+          ` as any[];
+          
+          if (superAdminAtTier1 && superAdminAtTier1.length > 0) {
+            return NextResponse.json(
+              { error: 'Cannot move a role to tier 1 - this position is reserved for Super Admin' },
+              { status: 403 }
+            );
+          }
         }
 
         // Authorization check: user can only move roles at higher tiers (higher tier numbers = less authority)
         // Current user's tier must be numerically LOWER than the role's tier to move it
+        // Defensive: treat tier 0 or null as the lowest possible seniority (equivalent to highest tier number + 1)
+        const effectiveRoleTier = roleData.tier === 0 || roleData.tier === null ? 999999 : roleData.tier;
+        const effectiveUserTier = currentUserTier === 0 || currentUserTier === null ? 999999 : currentUserTier;
+        
         if (
           roleData.tier !== null &&
-          roleData.tier <= currentUserTier &&
+          effectiveRoleTier <= effectiveUserTier &&
           !roleData.isSuperAdmin
         ) {
           return NextResponse.json(
@@ -98,8 +116,7 @@ export async function PATCH(request: Request) {
       }
 
       // Update all role tiers using raw SQL
-      const formatWIB = (await import('@/lib/utils')).formatWIB;
-      const now = formatWIB(new Date());
+      const now = getWIBDate();
       
       for (const item of items) {
         await prisma.$executeRaw`

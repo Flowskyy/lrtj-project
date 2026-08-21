@@ -1208,6 +1208,7 @@ model auth_roles {
   updatedAt         DateTime
   showOnDashboard   Boolean             @default(true)
   tier              Int?                @default(0)
+  tierLocked        Boolean             @default(false)
   admin_invitations admin_invitations[]
   auth_users        auth_users[]
   role_permissions  role_permissions[]

@@ -35,6 +35,7 @@ interface Role {
   name: string;
   isSuperAdmin: boolean;
   tier: number;
+  tierLocked: boolean;
   createdAt: string;
   updatedAt: string;
   _count: {
@@ -63,14 +64,15 @@ interface RolesContentProps {
 
 function StaticRoleCard({ role, onDelete }: { role: Role; onDelete: (role: Role) => void }) {
   const securityAdmin = isSecurityAdmin(role);
+  const isLocked = !!role.isSuperAdmin || !!role.tierLocked;
   return (
     <div className="relative">
-      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-shadow ${role.isSuperAdmin ? 'border-amber-200 bg-amber-50/30' : securityAdmin ? 'border-rose-200 bg-rose-50/30' : ''}`}>
+      <Card className={`bg-white/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-xl hover:shadow-lg transition-shadow ${!!role.isSuperAdmin ? 'border-amber-200 bg-amber-50/30' : securityAdmin ? 'border-rose-200 bg-rose-50/30' : ''}`}>
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
             {/* Static Icon */}
             <div className="flex-shrink-0 w-4">
-              {role.isSuperAdmin && <Crown className="h-4 w-4 text-amber-500" />}
+              {!!role.isSuperAdmin && <Crown className="h-4 w-4 text-amber-500" />}
               {securityAdmin && <Shield className="h-4 w-4 text-rose-500" />}
             </div>
 
@@ -80,7 +82,7 @@ function StaticRoleCard({ role, onDelete }: { role: Role; onDelete: (role: Role)
                 <p className="text-xs font-medium text-gray-900 truncate">
                   {role.name}
                 </p>
-                {role.isSuperAdmin && (
+                {!!role.isSuperAdmin && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
                     <Crown className="h-2.5 w-2.5 mr-0.5" />
                     Super Admin
@@ -95,7 +97,7 @@ function StaticRoleCard({ role, onDelete }: { role: Role; onDelete: (role: Role)
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-[10px] text-gray-500">
-                  Tier: {role.tier}{role.isSuperAdmin && ' (Locked)'}
+                  Tier: {role.tier}{isLocked && ' (Locked)'}
                 </p>
                 <p className="text-[10px] text-gray-500">
                   Permissions: {role._count.role_permissions}
@@ -121,7 +123,7 @@ function StaticRoleCard({ role, onDelete }: { role: Role; onDelete: (role: Role)
                 size="sm"
                 onClick={() => onDelete(role)}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
-                disabled={role.isSuperAdmin}
+                disabled={!!role.isSuperAdmin}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -150,6 +152,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
   };
 
   const securityAdmin = isSecurityAdmin(role);
+  const isLocked = !!role.isSuperAdmin || !!role.tierLocked;
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
@@ -186,7 +189,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-[10px] text-gray-500">
-                  Tier: {role.tier}
+                  Tier: {role.tier}{isLocked && ' (Locked)'}
                 </p>
                 <p className="text-[10px] text-gray-500">
                   Permissions: {role._count.role_permissions}
@@ -212,6 +215,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
                 size="sm"
                 onClick={() => onDelete(role)}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
+                disabled={!!role.isSuperAdmin}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -225,6 +229,7 @@ function SortableRoleCard({ role, onDelete, canDrag }: { role: Role; onDelete: (
 
 function RoleDragOverlay({ role }: { role: Role }) {
   const securityAdmin = isSecurityAdmin(role);
+  const isLocked = !!role.isSuperAdmin || !!role.tierLocked;
   return (
     <Card className={`bg-white/95 backdrop-blur-xl border border-white/70 shadow-[0_20px_60px_0_rgba(31,38,135,0.3)] rounded-xl`}>
       <CardContent className="p-3">
@@ -240,7 +245,7 @@ function RoleDragOverlay({ role }: { role: Role }) {
               <p className="text-xs font-medium text-gray-900 truncate">
                 {role.name}
               </p>
-              {role.isSuperAdmin && (
+              {!!role.isSuperAdmin && (
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
                   <Crown className="h-2.5 w-2.5 mr-0.5" />
                   Super Admin
@@ -255,10 +260,10 @@ function RoleDragOverlay({ role }: { role: Role }) {
             </div>
             <div className="flex items-center gap-3 mt-1">
               <p className="text-[10px] text-gray-500">
-                Tier: {role.tier}
+                Tier: {role.tier}{isLocked && ' (Locked)'}
               </p>
               <p className="text-[10px] text-gray-500">
-                Permissions: {role._count.role_permissions || 0}
+                Permissions: {role._count.role_permissions}
               </p>
               <p className="text-[10px] text-gray-500">
                 Users: {role._count.auth_users || 0}
@@ -330,7 +335,7 @@ export default function RolesContent({ }: RolesContentProps) {
           if (roleRes.ok) {
             const role = await roleRes.json();
             setCurrentUserTier(role.tier);
-            setIsCurrentUserSuperAdmin(role.isSuperAdmin);
+            setIsCurrentUserSuperAdmin(!!role.isSuperAdmin);
           }
         }
       }
@@ -353,23 +358,24 @@ export default function RolesContent({ }: RolesContentProps) {
     setActiveId(null);
 
     if (over && active.id !== over.id) {
-      const nonSuperAdminRoles = roles.filter(r => !r.isSuperAdmin);
-      const oldIndex = nonSuperAdminRoles.findIndex((r) => r.id === active.id);
-      const newIndex = nonSuperAdminRoles.findIndex((r) => r.id === over.id);
+      const unlockedRoles = roles.filter(r => !r.isSuperAdmin && !r.tierLocked);
+      const oldIndex = unlockedRoles.findIndex((r) => r.id === active.id);
+      const newIndex = unlockedRoles.findIndex((r) => r.id === over.id);
 
-      const newNonSuperAdminRoles = arrayMove(nonSuperAdminRoles, oldIndex, newIndex);
+      const newUnlockedRoles = arrayMove(unlockedRoles, oldIndex, newIndex);
 
-      // Update tier values: Super Admin stays at tier 1, others start at tier 2
-      const reorderedNonSuperAdminRoles = newNonSuperAdminRoles.map((role, index) => ({
+      // Update tier values: locked roles keep their tier, unlocked roles get recalculated
+      // Find the maximum tier among locked roles to start unlocked roles after that
+      const lockedRoles = roles.filter(r => !!r.isSuperAdmin || !!r.tierLocked);
+      const maxLockedTier = lockedRoles.length > 0 ? Math.max(...lockedRoles.map(r => r.tier)) : 0;
+      
+      const reorderedUnlockedRoles = newUnlockedRoles.map((role, index) => ({
         ...role,
-        tier: index + 2, // Start at tier 2 since Super Admin is tier 1
+        tier: maxLockedTier + index + 1,
       }));
 
-      // Reconstruct full roles array with Super Admin at the beginning
-      const superAdminRole = roles.find(r => r.isSuperAdmin);
-      const newRoles = superAdminRole
-        ? [superAdminRole, ...reorderedNonSuperAdminRoles]
-        : reorderedNonSuperAdminRoles;
+      // Reconstruct full roles array with locked roles at their positions
+      const newRoles = [...lockedRoles, ...reorderedUnlockedRoles];
 
       setRoles(newRoles);
       setHasUnsavedChanges(true);
@@ -452,10 +458,10 @@ export default function RolesContent({ }: RolesContentProps) {
     setHasUnsavedChanges(false);
   };
 
-  // Check if a role can be dragged based on tier authorization
+  // Check if a role can be dragged based on tier authorization and lock status
   const canDragRole = (role: Role) => {
-    if (role.isSuperAdmin) return false; // Super Admin is always locked
-    if (isCurrentUserSuperAdmin) return true; // Super Admin can drag everything except Super Admin
+    if (!!role.isSuperAdmin || !!role.tierLocked) return false; // Locked roles cannot be dragged
+    if (isCurrentUserSuperAdmin) return true; // Super Admin can drag everything except locked roles
     if (currentUserTier === null) return false;
     return role.tier > currentUserTier; // Can only drag roles at lower tiers (higher tier numbers)
   };
@@ -506,18 +512,17 @@ export default function RolesContent({ }: RolesContentProps) {
         </div>
       ) : (
         <>
-          {/* Super Admin - Fixed at top, not in sortable context */}
-          {roles.find(r => r.isSuperAdmin) && (
-            <div className="mb-2">
+          {/* Locked roles - Fixed at their positions, not in sortable context */}
+          {roles.filter(r => !!r.isSuperAdmin || !!r.tierLocked).map((role) => (
+            <div key={role.id} className="mb-2">
               <StaticRoleCard
-                key={roles.find(r => r.isSuperAdmin)!.id}
-                role={roles.find(r => r.isSuperAdmin)!}
+                role={role}
                 onDelete={openDeleteDialog}
               />
             </div>
-          )}
+          ))}
 
-          {/* Other roles - Sortable */}
+          {/* Unlocked roles - Sortable */}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -526,11 +531,11 @@ export default function RolesContent({ }: RolesContentProps) {
             modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
           >
             <SortableContext
-              items={roles.filter(r => !r.isSuperAdmin).map((r) => r.id)}
+              items={roles.filter(r => !r.isSuperAdmin && !r.tierLocked).map((r) => r.id)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-2">
-                {roles.filter(r => !r.isSuperAdmin).map((role) => (
+                {roles.filter(r => !r.isSuperAdmin && !r.tierLocked).map((role) => (
                   <SortableRoleCard
                     key={role.id}
                     role={role}
@@ -562,7 +567,7 @@ export default function RolesContent({ }: RolesContentProps) {
         }
         onConfirm={handleDelete}
         isDeleting={isDeleting}
-        disableConfirm={(selectedRole?._count.auth_users ?? 0) > 0 || selectedRole?.isSuperAdmin}
+        disableConfirm={(selectedRole?._count.auth_users ?? 0) > 0 || !!selectedRole?.isSuperAdmin}
       />
 
       {/* Save/Cancel Footer Bar */}

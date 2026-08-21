@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { formatWIB } from "@/lib/utils"
+import { getWIBDate, formatWIB } from "@/lib/utils"
 import { withActivityContextFromSession } from '@/lib/activity-middleware'
 import { logManualActivity } from '@/lib/activity-logger'
 
@@ -19,8 +19,9 @@ export async function GET(
         name,
         isSuperAdmin,
         showOnDashboard,
-        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+        tierLocked,
+        createdAt,
+        updatedAt
       FROM auth_roles
       WHERE id = ${parseInt(id)}
     ` as any[];
@@ -29,7 +30,11 @@ export async function GET(
       return NextResponse.json({ error: "Role not found" }, { status: 404 })
     }
 
-    const role = roles[0];
+    const role = {
+      ...roles[0],
+      createdAt: formatWIB(roles[0].createdAt),
+      updatedAt: formatWIB(roles[0].updatedAt)
+    };
 
     // Get permissions
     const permissions = await prisma.$queryRaw`
@@ -69,13 +74,12 @@ export async function PUT(
     try {
       const { id } = await params
       const body = await request.json()
-      const { name, isSuperAdmin, showOnDashboard, permissions } = body
+      const { name, isSuperAdmin, showOnDashboard, tierLocked, permissions } = body
 
       // Check if role exists and fetch before state
       const existing = await prisma.$queryRaw`
-        SELECT id, name, isSuperAdmin, showOnDashboard,
-        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+        SELECT id, name, isSuperAdmin, showOnDashboard, tierLocked,
+        createdAt, updatedAt
         FROM auth_roles
         WHERE id = ${parseInt(id)}
       ` as any[];
@@ -84,7 +88,15 @@ export async function PUT(
         return NextResponse.json({ error: "Role not found" }, { status: 404 })
       }
 
-      const role = existing[0];
+      const role = {
+        ...existing[0],
+        createdAt: formatWIB(existing[0].createdAt),
+        updatedAt: formatWIB(existing[0].updatedAt)
+      };
+
+      // Build dynamic update query
+      const updateFields: string[] = [];
+      const updateValues: any[] = [];
 
       // Check if new name conflicts with existing role
       if (name && name !== role.name) {
@@ -97,9 +109,31 @@ export async function PUT(
         }
       }
 
-      // Build dynamic update query
-      const updateFields: string[] = [];
-      const updateValues: any[] = [];
+      // Handle isSuperAdmin changes with tier enforcement
+      if (isSuperAdmin === true && !role.isSuperAdmin) {
+        // Role is becoming Super Admin
+        const existingSuperAdmin = await prisma.$queryRaw`
+          SELECT id FROM auth_roles WHERE isSuperAdmin = true AND tier = 1 AND id != ${parseInt(id)}
+        ` as any[];
+        
+        if (existingSuperAdmin && existingSuperAdmin.length > 0) {
+          return NextResponse.json({ error: "A Super Admin role already exists at tier 1" }, { status: 400 });
+        }
+        
+        updateFields.push('tier = ?');
+        updateValues.push(1);
+      } else if (isSuperAdmin === false && role.isSuperAdmin) {
+        // Role is losing Super Admin status
+        const maxTierResult = await prisma.$queryRaw`
+          SELECT MAX(tier) as maxTier FROM auth_roles WHERE id != ${parseInt(id)}
+        ` as any[];
+        
+        const currentMaxTier = maxTierResult[0]?.maxTier || 0;
+        const nextTier = currentMaxTier + 1;
+        
+        updateFields.push('tier = ?');
+        updateValues.push(nextTier);
+      }
       
       if (name) {
         updateFields.push('name = ?');
@@ -116,8 +150,13 @@ export async function PUT(
         updateValues.push(showOnDashboard);
       }
       
+      if (tierLocked !== undefined) {
+        updateFields.push('tierLocked = ?');
+        updateValues.push(tierLocked);
+      }
+      
       // Always update updatedAt with WIB time
-      const now = formatWIB(new Date());
+      const now = getWIBDate();
       updateFields.push('updatedAt = ?');
       updateValues.push(now);
       
@@ -141,7 +180,7 @@ export async function PUT(
         if (permissions.length > 0) {
           // Filter out disabled/unavailable permissions
           const validPermissions = permissions.filter((p: string) => p !== 'daily-benefit');
-          const now = formatWIB(new Date());
+          const now = getWIBDate();
           
           for (const pageKey of validPermissions) {
             await prisma.$queryRaw`
@@ -165,16 +204,24 @@ export async function PUT(
           id,
           name,
           isSuperAdmin,
-          DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-          DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+          showOnDashboard,
+          tierLocked,
+          createdAt,
+          updatedAt
         FROM auth_roles
         WHERE id = ${parseInt(id)}
       ` as any[];
 
+      const formattedUpdatedRoles = {
+        ...updatedRoles[0],
+        createdAt: formatWIB(updatedRoles[0].createdAt),
+        updatedAt: formatWIB(updatedRoles[0].updatedAt)
+      };
+
       // Calculate changed fields
       const changedFields = Object.keys(body).filter(key => {
         const beforeVal = role[key];
-        const afterVal = updatedRoles[0][key];
+        const afterVal = formattedUpdatedRoles[key];
         return JSON.stringify(beforeVal) !== JSON.stringify(afterVal);
       });
 
@@ -184,11 +231,11 @@ export async function PUT(
         recordId: id,
         action: 'UPDATE',
         beforeState: role,
-        afterState: updatedRoles[0],
+        afterState: formattedUpdatedRoles,
         changedFields: changedFields.length > 0 ? changedFields : undefined,
       });
 
-      return NextResponse.json(updatedRoles[0])
+      return NextResponse.json(formattedUpdatedRoles)
     } catch (error) {
       console.error("Error updating role:", error)
       return NextResponse.json({ error: "Failed to update role" }, { status: 500 })
@@ -209,8 +256,7 @@ export async function DELETE(
       // Fetch the before state
       const beforeRole = await prisma.$queryRaw`
         SELECT id, name, isSuperAdmin,
-        DATE_FORMAT(createdAt, '%Y-%m-%dT%H:%i:%s') as createdAt,
-        DATE_FORMAT(updatedAt, '%Y-%m-%dT%H:%i:%s') as updatedAt
+        createdAt, updatedAt
         FROM auth_roles
         WHERE id = ${roleId}
       ` as any[];
@@ -218,6 +264,12 @@ export async function DELETE(
       if (!beforeRole || beforeRole.length === 0) {
         return NextResponse.json({ error: "Role not found" }, { status: 404 })
       }
+
+      const formattedBeforeRole = {
+        ...beforeRole[0],
+        createdAt: formatWIB(beforeRole[0].createdAt),
+        updatedAt: formatWIB(beforeRole[0].updatedAt)
+      };
 
       // Check if role has users using raw SQL
       const userCountResult = await prisma.$queryRaw`
@@ -245,7 +297,7 @@ export async function DELETE(
         tableName: 'auth_roles',
         recordId: id,
         action: 'DELETE',
-        beforeState: beforeRole[0],
+        beforeState: formattedBeforeRole,
       });
 
       return NextResponse.json({ success: true })

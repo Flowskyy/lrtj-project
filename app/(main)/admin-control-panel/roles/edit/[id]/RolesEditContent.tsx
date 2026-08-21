@@ -19,6 +19,7 @@ interface RoleDetail {
   name: string;
   isSuperAdmin: boolean;
   showOnDashboard: boolean;
+  tierLocked: boolean;
   createdAt: string;
   updatedAt: string;
   role_permissions: Array<{ id: number; pageKey: string }>;
@@ -50,6 +51,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
     name: '',
     isSuperAdmin: false,
     showOnDashboard: true,
+    tierLocked: false,
     permissions: [] as string[]
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +74,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
           name: roleDetail.name,
           isSuperAdmin: roleDetail.isSuperAdmin,
           showOnDashboard: roleDetail.showOnDashboard,
+          tierLocked: roleDetail.tierLocked,
           permissions: roleDetail.role_permissions.map(p => p.pageKey)
         });
       } else {
@@ -276,6 +279,27 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
             />
           </div>
 
+          {/* Lock Tier Position Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <Label htmlFor="tierLocked" className="flex flex-col space-y-1">
+              <span>Lock Tier Position</span>
+              <span className="text-xs text-muted-foreground">
+                Prevent this role from being moved via drag-and-drop reordering
+              </span>
+            </Label>
+            <Switch
+              id="tierLocked"
+              checked={formData.tierLocked}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, tierLocked: checked }))}
+              disabled={isSubmitting || !!formData.isSuperAdmin}
+            />
+          </div>
+          {!!formData.isSuperAdmin && (
+            <p className="text-xs text-muted-foreground">
+              Automatically locked (Super Admin)
+            </p>
+          )}
+
           {/* User Count Warning */}
           {role && role._count.auth_users > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -336,7 +360,7 @@ export default function RolesEditContent({ userEmail, roleId }: RolesEditContent
           </div>
 
           {/* Permissions */}
-          {!formData.isSuperAdmin && (
+          {formData.isSuperAdmin === false && (
             <PagePermissionSelector
               selectedPermissions={formData.permissions}
               onPermissionToggle={togglePermission}

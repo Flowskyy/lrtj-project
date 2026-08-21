@@ -24,6 +24,7 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
     name: '',
     isSuperAdmin: false,
     showOnDashboard: true,
+    tierLocked: false,
     permissions: [] as string[]
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,8 +139,29 @@ export default function RolesAddContent({ userEmail }: RolesAddContentProps) {
             />
           </div>
 
+          {/* Lock Tier Position Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <Label htmlFor="tierLocked" className="flex flex-col space-y-1">
+              <span>Lock Tier Position</span>
+              <span className="text-xs text-muted-foreground">
+                Prevent this role from being moved via drag-and-drop reordering
+              </span>
+            </Label>
+            <Switch
+              id="tierLocked"
+              checked={formData.tierLocked}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, tierLocked: checked }))}
+              disabled={isSubmitting || !!formData.isSuperAdmin}
+            />
+          </div>
+          {!!formData.isSuperAdmin && (
+            <p className="text-xs text-muted-foreground">
+              Automatically locked (Super Admin)
+            </p>
+          )}
+
           {/* Permissions */}
-          {!formData.isSuperAdmin && (
+          {formData.isSuperAdmin === false && (
             <PagePermissionSelector
               selectedPermissions={formData.permissions}
               onPermissionToggle={togglePermission}

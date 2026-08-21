@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { formatWIB } from "@/lib/utils"
+import { getWIBDate, formatWIB } from "@/lib/utils"
 import { withActivityContextFromSession } from '@/lib/activity-middleware'
 import { logManualActivity } from '@/lib/activity-logger'
 
@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         isSuperAdmin,
         showOnDashboard,
         tier,
+        tierLocked,
         createdAt,
         updatedAt
       FROM auth_roles
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
   return withActivityContextFromSession(async (userId, userName, userEmail, roleId, roleName) => {
     try {
       const body = await request.json()
-      const { name, isSuperAdmin, showOnDashboard, permissions } = body
+      const { name, isSuperAdmin, showOnDashboard, tierLocked, permissions } = body
 
       if (!name || !name.trim()) {
         return NextResponse.json({ error: "Role name is required" }, { status: 400 })
@@ -103,17 +104,40 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Role name already exists" }, { status: 400 })
       }
 
-      const now = formatWIB(new Date());
+      const now = getWIBDate();
+
+      // Determine tier based on isSuperAdmin flag
+      let targetTier;
+      if (isSuperAdmin) {
+        // Super Admin must be tier 1
+        targetTier = 1;
+        // Check if tier 1 is already taken by another Super Admin
+        const existingSuperAdmin = await prisma.$queryRaw`
+          SELECT id FROM auth_roles WHERE isSuperAdmin = true AND tier = 1
+        ` as any[];
+        
+        if (existingSuperAdmin && existingSuperAdmin.length > 0) {
+          return NextResponse.json({ error: "A Super Admin role already exists at tier 1" }, { status: 400 });
+        }
+      } else {
+        // Get the current maximum tier value to assign the next available tier
+        const maxTierResult = await prisma.$queryRaw`
+          SELECT MAX(tier) as maxTier FROM auth_roles
+        ` as any[];
+        
+        const currentMaxTier = maxTierResult[0]?.maxTier || 0;
+        targetTier = currentMaxTier + 1;
+      }
 
       // Create role using raw SQL
       const result = await prisma.$queryRaw`
-        INSERT INTO auth_roles (name, isSuperAdmin, showOnDashboard, tier, createdAt, updatedAt)
-        VALUES (${name.trim()}, ${isSuperAdmin || false}, ${showOnDashboard !== undefined ? showOnDashboard : true}, 0, ${now}, ${now})
+        INSERT INTO auth_roles (name, isSuperAdmin, showOnDashboard, tier, tierLocked, createdAt, updatedAt)
+        VALUES (${name.trim()}, ${isSuperAdmin || false}, ${showOnDashboard !== undefined ? showOnDashboard : true}, ${targetTier}, ${tierLocked || false}, ${now}, ${now})
       ` as any[];
 
       // Get the inserted role ID
       const insertedRole = await prisma.$queryRaw`
-        SELECT id, name, isSuperAdmin, showOnDashboard, tier, createdAt, updatedAt
+        SELECT id, name, isSuperAdmin, showOnDashboard, tier, tierLocked, createdAt, updatedAt
         FROM auth_roles
         WHERE name = ${name.trim()}
       ` as any[];
