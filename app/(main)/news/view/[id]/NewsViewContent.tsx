@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, Edit, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Link from "next/link";
+import RichTextDisplay from "@/components/RichTextDisplay";
 
 interface NewsItem {
   id: number;
@@ -84,13 +85,6 @@ export default function NewsViewContent({ newsId }: NewsViewContentProps) {
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  // Helper to check if HTML content is actually empty
-  const isHtmlContentEmpty = (html: string | undefined | null): boolean => {
-    if (!html) return true;
-    const text = html.replace(/<[^>]*>/g, '').trim();
-    return text === '' || text === '-';
   };
 
   if (loading) {
@@ -252,24 +246,14 @@ export default function NewsViewContent({ newsId }: NewsViewContentProps) {
           {/* Content Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Content</h3>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-2">Indonesian</label>
-                <div 
-                  className="text-sm text-gray-900 prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: isHtmlContentEmpty(item.content) ? '<p class="text-gray-400">No content</p>' : (item.content || '') 
-                  }}
-                />
+                <label className="block text-xs font-medium text-gray-500 mb-3">Indonesian</label>
+                <RichTextDisplay content={item.content || ''} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-2">English</label>
-                <div 
-                  className="text-sm text-gray-900 prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: isHtmlContentEmpty(item.content_en) ? '<p class="text-gray-400">No content</p>' : (item.content_en || '') 
-                  }}
-                />
+                <label className="block text-xs font-medium text-gray-500 mb-3">English</label>
+                <RichTextDisplay content={item.content_en || ''} />
               </div>
             </div>
           </div>

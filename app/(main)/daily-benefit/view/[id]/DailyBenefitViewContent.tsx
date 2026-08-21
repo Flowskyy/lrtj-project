@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import Link from "next/link";
+import RichTextDisplay from "@/components/RichTextDisplay";
 
 interface DailyBenefitItem {
   id: number;
@@ -268,13 +269,10 @@ export default function DailyBenefitViewContent({ dailyBenefitId }: DailyBenefit
           </div>
 
           {/* Terms & Conditions Card */}
-          {item.term_condition && item.term_condition !== '<p>-</p>' && (
+          {item.term_condition && (
             <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Terms & Conditions</h3>
-              <div
-                className="text-sm text-gray-700 leading-relaxed [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold"
-                dangerouslySetInnerHTML={{ __html: item.term_condition }}
-              />
+              <RichTextDisplay content={item.term_condition} className="mt-2" />
             </div>
           )}
 
