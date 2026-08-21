@@ -82,7 +82,7 @@ export default function MerchandiseEditContent({ userEmail, merchandiseId }: Mer
           setFormName(data.name);
           setFormPoints(data.points);
           setFormImageUrl(data.image_url);
-          setFormDescription(data.description);
+          setFormDescription(data.description || '<p>-</p>');
           setFormStatus(data.status);
           setCategoryId(data.category_id);
         } else {
